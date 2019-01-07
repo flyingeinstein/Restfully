@@ -21,12 +21,12 @@ Currently this library only supports the Esp8266 hardware. The core code is not 
 # Usage
 
 To add Restfully to an existing Esp8266WebServer based application add the include for the Restfully.h header
-```
+```C
 #include <Restfully.h>
 ```
 
 Add a declaration of RestRequestHandler where you declare your WebServer. The RestRequestHandler class is derived from the standard RequestHandler class and intercepts WebServer requests that have a Rest endpoint. something like this:
-```
+```C
 ESP8266WebServer server(80);
 RestRequestHandler restHandler;   // add this
 ```
@@ -39,7 +39,7 @@ Add the restHandler to the web server instance in your setup() function:
 # Rest Endpoint Declarations
 
 Now similar to http server.on(...) calls, we can add our Rest API endpoints. We can however specify embedded arguments and thier types and Restfully will match and extract these arguments for us. Some samples:
-```
+```C
 // provide a simple echo API method that returns in Json the string or integer given in the 'msg' argument. A handler is bound to the GET http verb.
 restHandler.on("/api/echo/:msg(string|integer)", GET(handleEcho) );
 
@@ -51,7 +51,7 @@ restHandler.on("/api/digital/pin/:pin(integer)/set/:value(integer|string)", PUT(
 ```
 
 You bind a Rest URI endpoint declaration with a function handler. You can bind a seperate function to any of the HTTP verbs GET, POST, PUT, PATCH, DELETE, OPTIONS or ANY. You can specify the same handler function to multiple verbs. 
-```
+```C
 restHandler.on("/api/digital/pin/:pin(integer)", 
    GET(GpioGetHandler), 
    PUT(GpioPutHandler), 
@@ -60,7 +60,7 @@ restHandler.on("/api/digital/pin/:pin(integer)",
 ```
 
 Internally these endpoint URIs are parsed into a search tree so matching URIs during run-time are efficient. The following code would produce the same URI search tree as above and therefor the same performance. 
-```
+```C
 restHandler.on("/api/digital/pin/:pin(integer)", GET(GpioGetHandler) );
 restHandler.on("/api/digital/pin/:pin(integer)", PUT(GpioPutHandler) );
 restHandler.on("/api/digital/pin/:pin(integer)", OPTIONS(GpioOptionsHandler) );
@@ -68,11 +68,11 @@ restHandler.on("/api/digital/pin/:pin(integer)", OPTIONS(GpioOptionsHandler) );
 Using the same Endpoint declaration is fine if the bound HTTP verb is different but it would be invalid to try to attach a method handler to the same Endpoint and to the same HTTP verb.
 
 Since matching of URIs are efficient, you can use this to make code your method simpler especially for arguments we typically think of as as an enumeration or command, such as {start, stop, status} or {on, off, toggle}. Take this example that controls the User LED:
-```
+```C
 restHandler.on("/api/led/:command(string)", GET(GetLED), PUT(SetLED));
 ```
 Although brief there are a few issues here. Assuming we expect the :command argument to be one of either {on, off, status) then Restfully would have no issue passing /api/led/status to SetLED if the user did a PUT request. Or vice versa, it could pass /api/led/on for a GET request. Also /api/led/explode would invoke your handler. You would have to handle the logic of returning a 404 or 400 error code in your method logic along with a performance hit of some string comparisons. Instead, use multiple on(...) calls to let Restfully do the logic for you.
-```
+```C
 restHandler.on("/api/led/on", PUT(SetLED_On));
 restHandler.on("/api/led/off", PUT(SetLED_Off));
 restHandler.on("/api/led/status", GET(GetLED));
@@ -82,11 +82,11 @@ The Restfully parser will match the /api/led part of the URI, then conditionally
 ## Handler functions
 
 The function handler has the following prototype, for example the 'echo' handler:
-```
+```C
 int handleEcho(RestRequest& request)
 ```
 The 'request' argument provides access to the embedded arguments, web server (and therefor POST or query string parameters), and the Json request and response objects (via ArduinoJson library). Let's take a  more detailed look at the 'echo' handler:
-```
+```C
 int handleEcho(RestRequest& request) {
   String s("Hello ");
     auto msg = request["msg"];    // retrieve the :msg parameter from the URI
@@ -106,7 +106,7 @@ Handlers are not limited to being regular functions. You can attach lambdas or i
 
 ### Lambda Expressions
 The following implements an API interface to getting or setting an analog pin value (0-1023).
-```
+```C
   restHandler.on("/api/analog/pin/:pin(integer)", 
     GET([](RestRequest& request) {
       int pin = request["pin"]; // note: automatic conversion from Argument to integer
@@ -127,7 +127,7 @@ The following implements an API interface to getting or setting an analog pin va
 
 ### std::function handlers
 We are implementing the code as a lambda, but assigning it to a std::function.
-```
+```C
 std::function<int(RestRequest&)> WriteDigitalPin = [](RestRequest& request) {
     int pin = request["pin"]; // note: automatic conversion from Argument to integer
     auto value = request["value"];
@@ -146,7 +146,7 @@ std::function<int(RestRequest&)> WriteDigitalPin = [](RestRequest& request) {
 
 ### handlers bound to class method using std::function and std::bind handlers
 You can also bind handlers to a member of a class instance using std::bind. This means that the object instance must stay alive the entire run-time. std::bind() allows us to bind a _this_ pointer to a function and returns a static function. 
-```
+```C
 restHandler.on("/api/system/status", ANY(std::bind(
   &SystemAPI::status,     // the class method including the class name scope
   system_obj,             // a pointer to an instance of a SystemAPI class (the _this_ pointer)
