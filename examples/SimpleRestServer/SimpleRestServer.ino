@@ -12,7 +12,6 @@ const char* ssid = "MyRouter";
 const char* password = "mypassword";
 
 
-
 #include <ESP8266WiFi.h>
 #include <ESP8266mDNS.h>
 #include <ESP8266WebServer.h>
@@ -81,15 +80,15 @@ class OptionsRequestHandler : public RequestHandler
 
 int handleEcho(RestRequest& request) {
   String s("Hello ");
-  auto msg = request["msg"];
-  if(msg.isString())
-    s += msg.toString();
-  else {
-    s += '#';
-    s += (long)msg;
-  }
-  request.response["reply"] = s;
-  return 200;
+    auto msg = request["msg"];
+    if(msg.isString())
+      s += msg.toString();
+    else {
+      s += '#';
+      s += (long)msg;
+    }
+    request.response["reply"] = s;
+    return 200;
 }
 
 void setup() {
@@ -103,20 +102,75 @@ void setup() {
   //server.on("/status", JsonSendStatus);
   //server.on("/devices", JsonSendDevices);
 
-  std::function<int(RestRequest&)> echo = [](RestRequest& request) {
-      String s("Hello ");
-      auto msg = request["msg"];
-      if(msg.isString())
-        s += msg.toString();
-      else {
-        s += '#';
-        s += (long)msg;
-      }
-      request.response["reply"] = s;
-      return 200;
-  };
-
+  // binding a handler in the form of int(RestRequest&) to an endpoint
   restHandler.on("/api/echo/:msg(string|integer)", GET(handleEcho) );
+
+  // read the state of a digital pin
+  // uses a lambda function held within a std::function
+  std::function<int(RestRequest&)> ReadDigitalPin = [](RestRequest& request) {
+    int pin = request["pin"]; // note: automatic conversion from Argument to integer
+    request.response["value"] = (digitalRead(pin)==HIGH) 
+      ? "high"
+      :"low";
+    return 200;
+  };
+  std::function<int(RestRequest&)> WriteDigitalPin = [](RestRequest& request) {
+    int pin = request["pin"]; // note: automatic conversion from Argument to integer
+    auto value = request["value"];
+    pinMode(pin, OUTPUT);
+    if(value.isString()) {
+      const char* strval = (const char*)value;
+      digitalWrite(pin, (strcasecmp(strval, "high")==0) ? HIGH : LOW);  // expect "low" or "high"
+    } else
+      digitalWrite(pin, ((int)value > 0) ? HIGH : LOW);   // any non-zero value is HIGH
+    request.response["value"] = (digitalRead(pin)==HIGH) 
+      ? "high"
+      :"low";
+    return 200;
+  };
+  // now bind the handlers to the digital pin endpoint
+  restHandler.on("/api/digital/pin/:pin(integer)", GET(ReadDigitalPin));
+  restHandler.on("/api/digital/pin/:pin(integer)/set/:value(integer|string)", PUT(WriteDigitalPin));
+
+  // read or write the state of an analog pin
+  // uses direct lambda expression
+  restHandler.on("/api/analog/pin/:pin(integer)", 
+    GET([](RestRequest& request) {
+      int pin = request["pin"]; // note: automatic conversion from Argument to integer
+      request.response["value"] = analogRead(pin);
+      return 200;
+    }),
+    PUT([](RestRequest& request) {
+      int pin = request["pin"]; // note: automatic conversion from Argument to integer
+      int value = request["value"];
+      analogWrite(pin, value);
+      request.response["value"] = analogRead(pin);
+      return 200;
+    })
+  );
+
+  // set the state of the BuiltIn User LED
+  // uses a lambda function but in this case we have an extra argument 'value' which will be passed to digitalWrite, we
+  // will use this lambda and the std::bind() function to set as a constant. 
+  // LED is active low, so to turn on we write a LOW value to the pin.
+  auto SetLed = [](RestRequest& request, int value) {
+    pinMode(LED_BUILTIN, OUTPUT);
+    digitalWrite(LED_BUILTIN, value);
+    return 200;
+  };
+  restHandler.on("/api/led/off", PUT(std::bind(SetLed, 
+      std::placeholders::_1,     // RestRequest placeholder,
+      HIGH                      // High=Off, specified and bound as constant
+  )));  
+  restHandler.on("/api/led/on", PUT(std::bind(SetLed,
+      std::placeholders::_1,     // RestRequest placeholder,
+      LOW                      // Low=On, specified and bound as constant
+  )));
+  restHandler.on("/api/led/toggle", PUT([](RestRequest& request) {
+      pinMode(LED_BUILTIN, OUTPUT);
+      digitalWrite(LED_BUILTIN, ! digitalRead(LED_BUILTIN));    // toggle LED state
+      return 200;
+    }));
 
   //server.onNotFound(handleNotFound);
   // our 404 handler tries to load documents from SPIFFS
@@ -147,3 +201,4 @@ void loop() {
   if(WiFi.getMode() != WIFI_STA)
     return;
 }
+
