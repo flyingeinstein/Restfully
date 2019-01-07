@@ -1,0 +1,42 @@
+# check for includes
+include(CheckIncludeFile)
+check_include_file(string.h HAS_STRING_H)
+check_include_file(strings.h HAS_STRINGS_H)
+check_include_file(malloc.h HAS_MALLOC_H)
+
+# check symbols for existance on platform
+include(CheckSymbolExists)
+check_symbol_exists(strndup string.h HAS_STRNDUP)
+check_symbol_exists(stpcpy  string.h HAS_STPCPY)
+check_symbol_exists(stpncpy string.h HAS_STPNCPY)
+check_symbol_exists(register_printf_specifier printf.h HAS_REGISTER_PRINTF_SPECIFIER)
+
+
+# check compiler flags
+# I like to enable some strict checking that can prevent some dumb (programmer) mistakes
+include(CheckCXXCompilerFlag)
+
+# This flag is useful as not returning from a non-void function is an error
+check_cxx_compiler_flag("-Werror=return-type" HAVE_GCC_ERROR_RETURN_TYPE)
+if(HAVE_GCC_ERROR_RETURN_TYPE)
+    set(CMAKE_CXX_FLAGS_ERROR "-Werror=return-type")
+endif()
+
+# check to see if we have the sanitize flags, if so we can do memory checks while developing
+if(SANITIZE)
+    check_cxx_compiler_flag("-fsanitize=address -fno-omit-frame-pointer" HAVE_SANITIZE_FLAGS)
+    if(HAVE_SANITIZE_FLAGS)
+        message(STATUS "enabling sanitize memory leak detection flags")
+        set(CMAKE_CXX_FLAGS_ERROR "-fsanitize=address -fno-omit-frame-pointer")
+    endif()
+endif()
+
+# thought this would make a dSYM file for me but it doesnt
+# possibly does if I generated Xcode project files and ran inside XCode but cmake Xcode generator created faulty build project
+# set(CMAKE_XCODE_ATTRIBUTE_DEBUG_INFORMATION_FORMAT "dwarf-with-dsym")
+
+
+
+# combine the compiler flags
+set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} ${CMAKE_CXX_FLAGS_WARN}")
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} ${CMAKE_CXX_FLAGS_WARN} ${CMAKE_CXX_FLAGS_ERROR}")
