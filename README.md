@@ -156,7 +156,7 @@ restHandler.on("/api/system/status", ANY(std::bind(
 
 ## Better Enumerations
 Since we can use std::bind(), we can improve our handling of endpoints with commands or enumerations. Take the LED example above. We don't need to split the SetLED into SetLED_On and SetLED_Off, we can instead write the function once and use std::bind to create the two versions of the method call. This produces efficient code.
-```
+```C
 // our SetLED handler, but with an added _value_ argument to the handler
 auto SetLED = [](RestRequest& request, int value) {
   pinMode(LED_BUILTIN, OUTPUT);
