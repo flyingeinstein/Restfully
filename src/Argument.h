@@ -100,6 +100,8 @@ namespace Rest {
         inline bool isString() const { return (type&ARG_MASK_STRING)==ARG_MASK_STRING; }
 
         // only supported in C++11
+        inline operator int() const { assert(type&ARG_MASK_INTEGER); return (int)l; }
+        inline operator unsigned int() const { assert(type&ARG_MASK_INTEGER); return (int)ul; }
         inline operator long() const { assert(type&ARG_MASK_INTEGER); return l; }
         inline operator unsigned long() const { assert(type&ARG_MASK_INTEGER); return ul; }
         inline operator double() const { assert(type&ARG_MASK_NUMBER); return d; }
