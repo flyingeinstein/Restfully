@@ -182,12 +182,23 @@ namespace Rest {
         }
 
         Arguments operator+(const Arguments& rhs) {
-            int i, j;
+            size_t i, j;
             Arguments a(nargs + rhs.nargs);
             for(i=0; i<nargs; i++)
                 a.args[i] = args[i];
             for(j=0; j<rhs.nargs; j++)
                 a.args[i+j] = args[j];
+            return a;
+        }
+
+        Arguments concat(const Argument* _begin, const Argument* _end) {
+            size_t i;
+            size_t cnt = _end - _begin;
+            Arguments a(nargs + cnt);
+            for(i=0; i<nargs; i++)
+                a.args[i] = args[i];
+            while(_begin < _end)
+                a.args[i++] = *_begin++;
             return a;
         }
 
