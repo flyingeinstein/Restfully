@@ -7,7 +7,6 @@
 #include <stdint.h>
 
 #include "binbag.h"
-#include "pool.h"
 
 
 namespace Rest {
