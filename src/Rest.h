@@ -12,6 +12,7 @@
 #include "Argument.h"
 #include "Literal.h"
 #include "Link.h"
+#include "Pool.h"
 #include "Parser.h"
 
 // format:    /api/test/:param_name(integer|real|number|string|boolean)/method
