@@ -184,7 +184,7 @@ namespace Rest {
                         else if(ev->t.is(TID_STRING, TID_IDENTIFIER)) {
                             // we must see if we already have a literal with this name
                             lit = nullptr;
-                            wid = binbag_find_nocase(pool.text, ev->t.s);
+                            wid = pool.findLiteral(ev->t.s);
                             if(wid>=0 && epc->literals) {
                                 // word exists in dictionary, see if it is a literal of current endpoint
                                 lit = epc->literals;

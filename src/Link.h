@@ -44,11 +44,11 @@ namespace Rest {
         TNode *ep_head, *ep_tail, *ep_end;
         size_t sznodes;
 
-    public:
         // allocated text strings
         binbag* text;
 
-        Pool() : sznodes(512), text( binbag_create(1000, 1.5) )
+    public:
+        Pool() : sznodes(32), text( binbag_create(128, 1.5) )
         {
             ep_head = ep_tail =  (TNode*)calloc(sznodes, sizeof(TNode));
             ep_end = ep_head + sznodes;
@@ -68,9 +68,12 @@ namespace Rest {
         TArgumentType* newArgumentType(const char* name, unsigned short typemask)
         {
             // todo: make this part of paged memory
-            size_t nameid = binbag_insert_distinct(text, name);
-            TArgumentType* arg = new TArgumentType(binbag_get(text, nameid), typemask);  // todo: use our binbag here
-            return arg;
+            long nameid = binbag_insert_distinct(text, name);
+            return new TArgumentType(binbag_get(text, nameid), typemask);  // todo: use our binbag here
+        }
+
+        long findLiteral(const char* word) {
+            return binbag_find_nocase(text, word);
         }
 
         TLiteral* newLiteral(TNode* ep, TLiteral* literal)
