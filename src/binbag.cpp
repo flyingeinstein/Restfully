@@ -63,7 +63,6 @@ void check_fencepost(binbag* bb)
     uint32_t* fpmem = (uint32_t*)binbag_begin_iterator(bb) - FENCEPOSTS;
     for(int i=0; i<FENCEPOSTS; i++)
         if(fpmem[i] != fencepost) {
-            size_t slen = 0;
             printf("binbag: fencepost was corrupted at position %d, expected %08x, got %08x\n", i, fencepost, fpmem[i]);
             binbag_debug_print(bb);
             assert(fpmem[i] == fencepost);
@@ -84,8 +83,9 @@ void binbag_debug_print(binbag* bb)
     char s[1000];
     size_t slen = 0;
     long long offset;
-    printf("memory contents of binbag: %lu elements, %lub of %lub capacity used   (freespace %lu)\nelements:\n",
-           N=binbag_count(bb), binbag_byte_length(bb), binbag_capacity(bb), binbag_free_space(bb));
+    printf("memory contents of binbag: %u elements, %u of %ub capacity used   (freespace %u\nelements:\n",
+           (unsigned int)(N=binbag_count(bb)), (unsigned int)binbag_byte_length(bb),
+           (unsigned int)binbag_capacity(bb), (unsigned int)binbag_free_space(bb));
     for(size_t j=0; j<N; j++) {
         const char* el = binbag_get(bb, j);
 
@@ -108,7 +108,7 @@ void binbag_debug_print(binbag* bb)
                 strcpy(&s[43], el + slen - 37);
             }
         }
-        printf("   %4lu: @%08llu %4lub %s\n", j, offset, slen, s);
+        printf("   %4u: @%08llu %4ub %s\n", (unsigned int)j, offset, (unsigned int)slen, s);
     }
 
     // print fenceposts
@@ -135,8 +135,13 @@ binbag* binbag_create(size_t capacity_bytes, double growth_rate)
     if(capacity_bytes<32)
         capacity_bytes = 32;
     binbag* bb = (binbag*)calloc(1, sizeof(binbag));
+    if(bb== nullptr) return nullptr;
     capacity_bytes += FENCEPOSTS*sizeof(fencepost); // fencepost DMZ
     bb->begin = bb->tail = (char*)malloc(capacity_bytes);
+    if(bb->begin==nullptr) {
+        ::free(bb);
+        return nullptr;
+    }
     bb->end = bb->begin + capacity_bytes;
     bb->elements = (const char**)bb->end;
     bb->growth_rate = growth_rate;
@@ -327,13 +332,12 @@ long binbag_insertn(binbag *bb, const char *str, int length)
     bool all = false;
     int fs = (int)binbag_free_space(bb); // save 4 bytes for added array element and the null character
     check_fencepost(bb);
-    const char *p = bb->tail;   // we'll return this as the string we just inserted
     char *_p = NULL;
 
     if(fs>0 && length<fs) {
         size_t _ll = (size_t)((length<0) ? fs : std::min(fs, length));
         _p = stpncpy(bb->tail, str, _ll);  // must use signed inner type
-        size_t copied = _p - bb->tail;
+        ssize_t copied = _p - bb->tail;
         if(length>=0 && copied==length) {
             *_p = 0;
             all = true;
