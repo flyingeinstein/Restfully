@@ -8,6 +8,10 @@
 
 #include "binbag.h"
 
+// shared index of text strings
+// assigned a unique integer ID to each word stored
+extern binbag* literals_index;
+
 
 namespace Rest {
 
@@ -20,19 +24,18 @@ namespace Rest {
         TNode *ep_head, *ep_tail, *ep_end;
         size_t sznodes;
 
-        // allocated text strings
-        binbag* text;
-
     public:
-        Pool() : sznodes(32), text( binbag_create(128, 1.5) )
+        Pool() : sznodes(32)
         {
             ep_head = ep_tail =  (TNode*)calloc(sznodes, sizeof(TNode));
             ep_end = ep_head + sznodes;
+            if(literals_index == nullptr) {
+                literals_index = binbag_create(128, 1.5);
+            }
         }
 
         virtual ~Pool() {
             ::free(ep_head);
-            binbag_free(text);
         }
 
         TNode* newNode()
@@ -44,12 +47,12 @@ namespace Rest {
         TArgumentType* newArgumentType(const char* name, unsigned short typemask)
         {
             // todo: make this part of paged memory
-            long nameid = binbag_insert_distinct(text, name);
-            return new TArgumentType(binbag_get(text, nameid), typemask);  // todo: use our binbag here
+            long nameid = binbag_insert_distinct(literals_index, name);
+            return new TArgumentType(binbag_get(literals_index, nameid), typemask);  // todo: use our binbag here
         }
 
         long findLiteral(const char* word) {
-            return binbag_find_nocase(text, word);
+            return binbag_find_nocase(literals_index, word);
         }
 
         TLiteral* newLiteral(TNode* ep, TLiteral* literal)
@@ -89,8 +92,8 @@ namespace Rest {
         {
             TLiteral lit;
             lit.isNumeric = false;
-            if((lit.id = binbag_find_nocase(text, literal_value)) <0)
-                lit.id = binbag_insert(text, literal_value);  // insert value into the binbag, and record the index into the id field
+            if((lit.id = binbag_find_nocase(literals_index, literal_value)) <0)
+                lit.id = binbag_insert(literals_index, literal_value);  // insert value into the binbag, and record the index into the id field
             lit.next = nullptr;
             return newLiteral(ep, &lit);
         }
