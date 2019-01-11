@@ -330,15 +330,15 @@ long binbag_insertn(binbag *bb, const char *str, int length)
 {
     // trying to do this without needing a strlen() and a strcpy() operation
     bool all = false;
-    int fs = (int)binbag_free_space(bb); // save 4 bytes for added array element and the null character
+    int fs = (int)binbag_free_space(bb) - 5 - FENCEPOSTS* sizeof(fencepost); // save 4 bytes for added array element and the null character
     check_fencepost(bb);
     char *_p = NULL;
 
     if(fs>0 && length<fs) {
-        size_t _ll = (size_t)((length<0) ? fs : std::min(fs, length));
+        size_t _ll = (size_t)((length<0) ? fs : std::min(fs, length+1));
         _p = stpncpy(bb->tail, str, _ll);  // must use signed inner type
         ssize_t copied = _p - bb->tail;
-        if(length>=0 && copied==length) {
+        if(length>=0 && copied>=length) {
             *_p = 0;
             all = true;
         } else
