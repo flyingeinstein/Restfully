@@ -122,6 +122,8 @@ namespace Rest {
         {
         }
 
+        inline Node& getRoot() { return *root; }
+
         /// \brief Parses a url and either adds or resolves within the expression tree
         /// The Url and parse mode are set in ParseData and determine if parse() returns when expression tree hits a dead-end
         /// or if it starts expanding the expression tree.

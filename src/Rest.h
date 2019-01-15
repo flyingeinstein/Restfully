@@ -192,6 +192,40 @@ protected:
     };
 
 public:
+    class NodeRef {
+        friend class Endpoints;
+
+    public:
+        inline NodeRef() : endpoints(nullptr), node(nullptr) {}
+        inline NodeRef(const NodeRef& copy) : endpoints(copy.endpoints), node(copy.node) {}
+
+        NodeRef& operator=(const NodeRef& copy) {
+            endpoints=copy.endpoints;
+            node=copy.node;
+            return *this;
+        }
+
+        inline operator bool() const { return node!= nullptr && endpoints!= nullptr; }
+
+        inline NodeRef on(const char *endpoint_expression, THandler methodHandler ) {
+            if(node!= nullptr && endpoints!= nullptr && endpoints->exception== nullptr) {
+                endpoints->on(*node, endpoint_expression, methodHandler);
+                return (endpoints->exception == nullptr)
+                       ? *this
+                       : NodeRef();
+            } else
+                return *this;   // invalid NodeRef
+        }
+
+    protected:
+        Endpoints* endpoints;
+        Node* node;
+        // todo: do we want endpoint->name? we can add it
+
+        inline NodeRef(Endpoints* _endpoints, Node* _node) : endpoints(_endpoints), node(_node) {}
+    };
+
+public:
     /// \brief Initialize an empty UriExpression with a maximum number of code size.
     Endpoints()
             : defaultHandler(new Handler()), maxUriArgs(0), exception(nullptr)
@@ -216,84 +250,33 @@ public:
         return *this;
     }
 
-    /// \brief Parse and add single Uri Endpoint expressions to our list of Endpoints
-    Endpoints& on(const char *endpoint_expression, THandler methodHandler ) {
+    NodeRef from(const char *endpoint_expression) {
         short rs;
-
-        // if exception was set, abort
-        if(exception != nullptr)
-            return *this;
 
         typename Parser::EvalState ev(&parser, &endpoint_expression);
         if(ev.state<0) {
-            exception = new Endpoint(methodHandler.method, *defaultHandler, URL_FAIL_INTERNAL);
-            return *this;
+            return NodeRef();
         }
 
         ev.szargs = 20;
         ev.mode = Parser::expand;         // tell the parser we are adding this endpoint
 
         if((rs = parser.parse(&ev)) <URL_MATCHED) {
-            //printf("parse-eval-error %d   %s\n", rs, ev.uri);
-            exception = new Endpoint(methodHandler.method, *defaultHandler, rs);
-            exception->name = endpoint_expression;
-            return *this;
+            // parse evaluation error
+            return NodeRef();
         } else {
             // if we encountered more args than we did before, then save the new value
-            if(ev.nargs > maxUriArgs)
+            if (ev.nargs > maxUriArgs)
                 maxUriArgs = ev.nargs;
 
             // attach the handler to this endpoint
-            Node* epc = ev.ep;
-            Endpoint endpoint;
-            endpoint.name = ev.methodName;
-
-            if(methodHandler.method == HttpMethodAny) {
-                // attach to all remaining method handlers
-                Handler* h = new Handler(methodHandler.handler);
-                short matched = 0;
-                if(!epc->GET) { epc->GET = h; matched++; }
-                if(!epc->POST) { epc->POST = h; matched++; }
-                if(!epc->PUT) { epc->PUT = h; matched++; }
-                if(!epc->PATCH) { epc->PATCH = h; matched++; }
-                if(!epc->DELETE) { epc->DELETE = h; matched++; }
-                if(!epc->GET) { epc->GET = h; matched++; }
-                if(matched ==0)
-                    delete h;   // no unset methods, but not considered an error
-                return *this; // successfully added
-            } else {
-                Handler** target = nullptr;
-
-                // get a pointer to the Handler member variable from the node
-                switch(methodHandler.method) {
-                    case HttpGet: target = &epc->GET; break;
-                    case HttpPost: target = &epc->POST; break;
-                    case HttpPut: target = &epc->PUT; break;
-                    case HttpPatch: target = &epc->PATCH; break;
-                    case HttpDelete: target = &epc->DELETE; break;
-                    case HttpOptions: target = &epc->OPTIONS; break;
-                    default:
-                        exception = new Endpoint(methodHandler.method, *defaultHandler, URL_FAIL_INTERNAL); // unknown method type
-                        exception->name = endpoint_expression;
-                        return *this;
-                }
-
-                if(target !=nullptr) {
-                    // set the target method handler but error if it was already set by a previous endpoint declaration
-                    if(*target !=nullptr ) {
-                        //fprintf(stderr, "fatal: endpoint %s %s was previously set to a different handler\n",
-                        //        uri_method_to_string(methodHandler.method), endpoint_expression);
-                        exception = new Endpoint(methodHandler.method, *defaultHandler, URL_FAIL_DUPLICATE);
-                        exception->name = endpoint_expression;
-                        return *this;
-                    } else {
-                        *target = new Handler(methodHandler.handler);
-                        return *this; // successfully added
-                    }
-                }
-            }
+            Node *epc = ev.ep;
+            return NodeRef(this, epc);
         }
-        return *this;
+    }
+
+    Endpoints& on(const char *endpoint_expression, THandler methodHandler ) {
+        return on(parser.getRoot(), endpoint_expression, methodHandler);
     }
 
 #if __cplusplus < 201103L || (defined(_MSC_VER) && _MSC_VER < 1900)
@@ -385,7 +368,89 @@ public:
         // todo: we need to release memory from EV struct
     }
 
-public:
+    protected:
+        /// \brief Parse and add single Uri Endpoint expressions to our list of Endpoints
+        Endpoints& on(Node& node, const char *endpoint_expression, THandler methodHandler ) {
+            short rs;
+
+            // if exception was set, abort
+            if(exception != nullptr)
+                return *this;
+
+            typename Parser::EvalState ev(&parser, &endpoint_expression);
+            if(ev.state<0) {
+                exception = new Endpoint(methodHandler.method, *defaultHandler, URL_FAIL_INTERNAL);
+                return *this;
+            }
+
+            ev.ep = &node;
+            ev.szargs = 20;
+            ev.mode = Parser::expand;         // tell the parser we are adding this endpoint
+
+            if((rs = parser.parse(&ev)) <URL_MATCHED) {
+                //printf("parse-eval-error %d   %s\n", rs, ev.uri);
+                exception = new Endpoint(methodHandler.method, *defaultHandler, rs);
+                exception->name = endpoint_expression;
+                return *this;
+            } else {
+                // if we encountered more args than we did before, then save the new value
+                if(ev.nargs > maxUriArgs)
+                    maxUriArgs = ev.nargs;
+
+                // attach the handler to this endpoint
+                Node* epc = ev.ep;
+                Endpoint endpoint;
+                endpoint.name = ev.methodName;
+
+                if(methodHandler.method == HttpMethodAny) {
+                    // attach to all remaining method handlers
+                    Handler* h = new Handler(methodHandler.handler);
+                    short matched = 0;
+                    if(!epc->GET) { epc->GET = h; matched++; }
+                    if(!epc->POST) { epc->POST = h; matched++; }
+                    if(!epc->PUT) { epc->PUT = h; matched++; }
+                    if(!epc->PATCH) { epc->PATCH = h; matched++; }
+                    if(!epc->DELETE) { epc->DELETE = h; matched++; }
+                    if(!epc->GET) { epc->GET = h; matched++; }
+                    if(matched ==0)
+                        delete h;   // no unset methods, but not considered an error
+                    return *this; // successfully added
+                } else {
+                    Handler** target = nullptr;
+
+                    // get a pointer to the Handler member variable from the node
+                    switch(methodHandler.method) {
+                        case HttpGet: target = &epc->GET; break;
+                        case HttpPost: target = &epc->POST; break;
+                        case HttpPut: target = &epc->PUT; break;
+                        case HttpPatch: target = &epc->PATCH; break;
+                        case HttpDelete: target = &epc->DELETE; break;
+                        case HttpOptions: target = &epc->OPTIONS; break;
+                        default:
+                            exception = new Endpoint(methodHandler.method, *defaultHandler, URL_FAIL_INTERNAL); // unknown method type
+                            exception->name = endpoint_expression;
+                            return *this;
+                    }
+
+                    if(target !=nullptr) {
+                        // set the target method handler but error if it was already set by a previous endpoint declaration
+                        if(*target !=nullptr ) {
+                            //fprintf(stderr, "fatal: endpoint %s %s was previously set to a different handler\n",
+                            //        uri_method_to_string(methodHandler.method), endpoint_expression);
+                            exception = new Endpoint(methodHandler.method, *defaultHandler, URL_FAIL_DUPLICATE);
+                            exception->name = endpoint_expression;
+                            return *this;
+                        } else {
+                            *target = new Handler(methodHandler.handler);
+                            return *this; // successfully added
+                        }
+                    }
+                }
+            }
+            return *this;
+        }
+
+    public:
     Handler* defaultHandler; // like a 404 handler
 
 protected:
