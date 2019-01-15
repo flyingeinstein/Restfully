@@ -67,7 +67,9 @@ TEST(endpoints_simple)
     // add some endpoints
     endpoints.on("/api/devices", GET(getbus));
     Endpoints::Endpoint res = endpoints.resolve(Rest::HttpGet, "/api/devices");
-    return res.method==Rest::HttpGet && check_response(res.handler.handler, getbus) && res.status==URL_MATCHED;
+    return (res.method==Rest::HttpGet && check_response(res.handler.handler, getbus) && res.status==URL_MATCHED)
+       ? OK
+       : FAIL;
 }
 
 TEST(endpoints_partial_match_returns_no_handler) {
@@ -172,4 +174,84 @@ TEST(endpoints_many)
         return FAIL;
 
     return OK;
+}
+
+TEST(endpoints_subnode_simple)
+{
+    Endpoints endpoints;
+
+    // add some endpoints
+    Endpoints::NodeRef devs = endpoints.from("/api/devices");
+    devs.on("/lights", GET(getbus));
+
+    Endpoints::Endpoint res = endpoints.resolve(Rest::HttpGet, "/api/devices/lights");
+    if(res.method!=Rest::HttpGet || !check_response(res.handler.handler, getbus) || res.status!=URL_MATCHED)
+        return FAIL;
+
+    return OK;
+}
+
+TEST(endpoints_subnode_three)
+{
+    Endpoints endpoints;
+
+    // starting at the path /api/devices, add 4 new lights and doors endpoints.
+    // if any of the additions fail then they will return an invalid NodeRef which we then return FAIL. Note,
+    // calling on(...) on an invalid NodeRef just returns the invalid NodeRef again.
+    if(!endpoints.from("/api/devices")
+        .on("/lights", PUT(devices))
+        .on("/lights/kitchen", GET(getbus))
+        .on("/lights/bedroom", GET(getbus))
+        .on("/doors/garage", GET(getbus))
+    ) return FAIL;
+
+    Endpoints::Endpoint res = endpoints.resolve(Rest::HttpPut, "/api/devices/lights");
+    if(res.method!=Rest::HttpPut || !check_response(res.handler.handler, devices) || res.status!=URL_MATCHED)
+        return FAIL;
+
+    res = endpoints.resolve(Rest::HttpGet, "/api/devices/lights/kitchen");
+    if(res.method!=Rest::HttpGet || !check_response(res.handler.handler, getbus) || res.status!=URL_MATCHED)
+        return FAIL;
+
+    res = endpoints.resolve(Rest::HttpGet, "/api/devices/lights/bedroom");
+    if(res.method!=Rest::HttpGet || !check_response(res.handler.handler, getbus) || res.status!=URL_MATCHED)
+        return FAIL;
+
+    res = endpoints.resolve(Rest::HttpGet, "/api/devices/doors/garage");
+    if(res.method!=Rest::HttpGet || !check_response(res.handler.handler, getbus) || res.status!=URL_MATCHED)
+        return FAIL;
+
+    return OK;
+}
+
+TEST(endpoints_subnode_bad_path_fails)
+{
+    Endpoints endpoints;
+
+    // starting at the path /api/devices, add 4 new lights and doors endpoints.
+    // if any of the additions fail then they will return an invalid NodeRef which we then return FAIL. Note,
+    // calling on(...) on an invalid NodeRef just returns the invalid NodeRef again.
+    if(!endpoints.from("/api/ devices")
+            .on("/lights", PUT(devices))
+            .on("/lights/kitchen", GET(getbus))
+            .on("/lights/bedroom", GET(getbus))
+            .on("/doors/garage", GET(getbus))
+            ) return OK;
+    return FAIL; // failed FAIL test
+}
+
+TEST(endpoints_subnode_inner_exception_fails)
+{
+    Endpoints endpoints;
+
+    // starting at the path /api/devices, add 4 new lights and doors endpoints.
+    // if any of the additions fail then they will return an invalid NodeRef which we then return FAIL. Note,
+    // calling on(...) on an invalid NodeRef just returns the invalid NodeRef again.
+    if(!endpoints.from("/api/devices")
+            .on("/lights", PUT(devices))
+            .on("/lights/ &kitchen", GET(getbus))
+            .on("/lights/bedroom", GET(getbus))
+            .on("/doors/garage", GET(getbus))
+            ) return OK;
+    return FAIL; // failed FAIL test
 }
