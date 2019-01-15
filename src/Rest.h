@@ -181,7 +181,7 @@ protected:
         ArgumentType *string, *numeric, *boolean;
 
         // if no match is made, we can optionally call a wildcard handler
-        Node *wild;  // todo: make this a node instead so it contains all the GET, PUT, etc
+        Node *wild;
 
         // if we are at the end of the URI then we can pass to one of the http verb handlers
         Handler *GET, *POST, *PUT, *PATCH, *DELETE, *OPTIONS;
@@ -370,6 +370,7 @@ public:
                 endpoint.status = URL_MATCHED;
                 endpoint.handler = *handler;
                 endpoint.name = ev.methodName;
+                endpoint.method = method;
                 endpoint.args = ev.args;
                 endpoint.nargs = ev.nargs;
             } else {
