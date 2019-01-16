@@ -82,6 +82,22 @@ namespace Rest {
     //template<class C, class R>
     //struct function_traits<R(C::*)> : public function_traits<R(C&)>  {};
 
+#if 0
+    // std::bind for free functions
+    template<typename ReturnTypeT, typename ... Args, typename ... FArgs>
+#if defined _LIBCPP_VERSION  // libc++ (Clang)
+    struct function_traits<std::__1::__bind<ReturnTypeT( &)(Args ...), FArgs ...>>
+#elif defined __GLIBCXX__  // glibc++ (GNU C++)
+    struct function_traits<std::_Bind<ReturnTypeT(*(FArgs ...))(Args ...)>>
+#elif defined _MSC_VER  // MS Visual Studio
+        struct function_traits<std::_Binder<std::_Unforced, ReturnTypeT(__cdecl &)(Args ...), FArgs ...>>
+ #else
+ #error "Unsupported C++ compiler / standard library"
+#endif
+            : function_traits<ReturnTypeT(Args ...)>
+    {};
+#endif
+
 } // ns: Rest
 
 #endif //RESTFULLY_FUNCTION_TRAITS_H

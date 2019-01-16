@@ -56,6 +56,14 @@ public:
     template<class H> typename function_traits<H>::HandlerType OPTIONS(H handler) { return typename function_traits<H>::HandlerType(Rest::HttpOptions, typename function_traits<H>::FunctionType(handler)); }
     template<class H> typename function_traits<H>::HandlerType ANY(H handler) { return typename function_traits<H>::HandlerType(Rest::HttpMethodAny, typename function_traits<H>::FunctionType(handler)); }
 
+    template<class R, class... Args> Handler<Args...> GET(std::function<R(Args...)> handler) { return Handler<Args...>(Rest::HttpGet, handler); }
+    template<class R, class... Args> Handler<Args...> GET(R (*handler)(Args...) ) { return Handler<Args...>(Rest::HttpGet, handler); }
+    template<class R, typename... Args, typename... FArgs> Handler<FArgs...> GET(std::_Bind<R(*(FArgs...))(Args...)> handler) { return Handler<FArgs...>(Rest::HttpGet, handler); }
+    template<class R, class K, typename... Args, typename... FArgs> Handler<K, FArgs...> GET(std::_Bind<R(K::*(FArgs...))(Args...)> handler) { return Handler<K, FArgs...>(Rest::HttpGet, handler); }
+
+    // https://stackoverflow.com/questions/39714375/matching-a-c-lambda-expression-in-templates
+    template<class H> typename function_traits<H>::HandlerType GET(H&& handler) { return typename function_traits<H>::HandlerType(Rest::HttpGet, typename function_traits<H>::FunctionType(handler)); }
+
 #define DEFINE_HTTP_METHOD_HANDLERS(x)
 //    }
 

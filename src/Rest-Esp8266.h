@@ -45,8 +45,12 @@ namespace Rest {
 
             Request(TWebServer& _server, Rest::Arguments& _args) : server(_server), args(_args) {}
 
-          protected:
-            DynamicJsonDocument requestDoc;
+            Request(Request& copy) : TRequest(copy), TResponse(copy), server(copy.server), args(copy.args),
+                method(copy.method), contentType(copy.contentType), timestamp(copy.timestamp), httpStatus(copy.httpStatus)
+            {}
+
+          //protected:
+            //DynamicJsonDocument requestDoc;
         };
 
 
@@ -81,7 +85,15 @@ namespace Rest {
                 request.timestamp = millis();
                 request.httpStatus = 0;
 
-                ep.handler(request);
+                int rs = ep.handler(request);
+                if(request.httpStatus==0) {
+                    if (rs == 0)
+                        request.httpStatus = 200;
+                    else if (rs < 200)
+                        request.httpStatus = 400;
+                    else
+                        request.httpStatus = rs;
+                }
 
                 // make a << operator to send output to server response
                 String content;
@@ -92,7 +104,29 @@ namespace Rest {
               return false;
             }
 
-        #if 0
+            virtual int defer(Endpoints& endpoints, TRestRequest& parent) {
+                String _uri_rest = parent["_url"];  // contains the remaining part of the URL
+                typename Endpoints::Endpoint ep = endpoints.resolve(parent.method, _uri_rest.c_str());
+                if (ep) {
+                    RequestType request(parent);
+#if 0
+                    request.method = parent.method;
+                    request.contentType = parent.contentType;
+                    request.timestamp = parent.timestamp;
+                    request.httpStatus = 0;
+                    request.args = request.args + parent.args;
+#else
+                    request.args = request.args + ep;
+#endif
+                    int rv = ep.handler(request);
+                    //parent.response = request.response;
+                    //parent.requestDoc = request.requestDoc;
+                    return rv;
+                }
+                return 404;
+            }
+
+#if 0
             RequestHandler& on(const char *endpoint_expression, Rest::MethodHandler< int(TRestRequest&) > methodHandler ) {
               Rest::MethodHandler< RequestHandler > h( methodHandler.method, RequestHandler( methodHandler.handler ) );
               endpoints.on(endpoint_expression, h);
@@ -129,6 +163,8 @@ class Request {
       request = requestDoc.to<JsonObject>();
     }
 
+    Request(Request& copy) : requestDoc(copy.requestDoc), request(copy.request) {}
+
     /// The parsed POST as Json if the content-type was application/json
     DynamicJsonDocument requestDoc;
     JsonObject request;
@@ -140,6 +176,7 @@ class Response {
       response = responseDoc.to<JsonObject>();
       // todo: errors array?
     }
+    Response(Response& copy) : response(copy.response) {}
 
     /// output response object built by Rest method handler.
     /// This object is empty when the method handler is called and is up to the method handler to populate with the
