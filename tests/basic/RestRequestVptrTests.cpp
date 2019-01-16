@@ -16,34 +16,73 @@ template<class H> Rest::MethodHandler<std::function<H> > PUTR(const H& handler) 
 }
 #endif
 
-TEST(endpoints_vptr_std_function)
-{
-    RestRequestVptrHandler<RestRequest> rest;
-    std::function<int(RestRequest & )> func = [](RestRequest &request) {
-        request.response = "Hello World!";
-        return 200;
-    };
-    rest.on("/api/echo/:msg(string|integer)", GET(func));
-    return OK;
-}
+class VptrTest {
+public:
+    std::string greeting;
 
-int handler_echo_func(RestRequest& r) { r.response = std::string("Hello ") + (const char*)r.args["msg"]; return 2; }
+    VptrTest() : greeting("Hello") {}
+
+    int echo(RestRequest& r) {
+        r.response = greeting + " " + (const char*)r.args["msg"];
+        return 200;
+    }
+};
+
+//template<class Klass, class H> Rest::Handler<Klass*, H&> GET(int (Klass::*handler)(H&)) { return Rest::Handler<Klass*, H&>(HttpGet, std::function<int(Klass*, H&)>(handler)); }
+
 
 TEST(endpoints_vptr_on_echo)
 {
-    RestRequestVptrHandler<RestRequest> rest;
-    rest.on("/api/echo/:msg(string|integer)", GET(handler_echo_func));
+    RestRequestVptrHandler<VptrTest, RestRequest> rest;
+    rest.on("/api/echo/:msg(string|integer)", _GET(&VptrTest::echo));
     return OK;
 }
 
 TEST(endpoints_vptr_resolve_echo)
 {
     std::string response;
-    RestRequestVptrHandler<RestRequest> rest;
-    rest.on("/api/echo/:msg(string|integer)", GET(handler_echo_func));
+    VptrTest one;
+    RestRequestVptrHandler<VptrTest, RestRequest> rest;
+    rest.on("/api/echo/:msg(string|integer)", _GET(&VptrTest::echo));
+
+    rest.instance = &one;
+    if(rest.handle(HttpGet, "/api/echo/Maya", &response)) {
+        if(response !="Hello Maya")
+            return FAIL;
+    } else
+        return FAIL;    // handle returned fail
+
+    return OK;
+}
+
+TEST(endpoints_vptr_resolve_with_null_instance)
+{
+    std::string response;
+    RestRequestVptrHandler<VptrTest, RestRequest> rest;
+    rest.on("/api/echo/:msg(string|integer)", _GET(&VptrTest::echo));
+
+    // no instance set on 'rest' object
+    if(rest.handle(HttpGet, "/api/echo/Maya", &response)) {
+        if(response !="Hello Maya")
+            return FAIL;
+    } else
+        return OK;    // handle returned fail (which it should)
+
+    return FAIL;
+}
+
+TEST(endpoints_vptr_resolve_echo_instance)
+{
+    std::string response;
+    VptrTest one;
+    one.greeting = "Dzien Dobry";
+    RestRequestVptrHandler<VptrTest, RestRequest> rest;
+    rest.on("/api/echo/:msg(string|integer)", _GET(&VptrTest::echo));
+
+    rest.instance = &one;
     if(rest.handle(HttpGet, "/api/echo/Maya", &response)) {
         //printf("response: %s\n", response.c_str());
-        if(response !="Hello Maya")
+        if(response !="Dzien Dobry Maya")
             return FAIL;
     }
 
@@ -53,9 +92,10 @@ TEST(endpoints_vptr_resolve_echo)
 //template<class H> Rest::Handler<H&> GETT(std::function< int(H&) > handler) { return Rest::Handler<H&>(HttpGet, handler); }
 //Rest::Handler<RestRequest&> GETT(std::function< int(RestRequest&) > handler) { return Rest::Handler<RestRequest&>(HttpGet, handler); }
 
+#if 0
 TEST(endpoints_vptr_lambda)
 {
-    RestRequestVptrHandler<RestRequest> rest;
+    RestRequestVptrHandler<VptrTest, RestRequest> rest;
     rest.on("/api/echo/:msg(string|integer)", GET([](RestRequest &request) {
         request.response = "Hello World!";
         return 200;
@@ -114,3 +154,4 @@ TEST(endpoints_vptr_split_collection)
 
     return OK;
 }
+#endif

@@ -10,14 +10,14 @@
 #include <vector>
 
 
-template<class TRestRequest>
+template<class Klass, class TRestRequest>
 class RestRequestVptrHandler
 {
 public:
     // types
     typedef TRestRequest RequestType;
 
-    typedef Rest::Handler< TRestRequest& > RequestHandler;
+    typedef Rest::Handler< Klass*, TRestRequest& > RequestHandler;
     typedef std::vector<RequestHandler> Handlers;
 
     typedef typename Handlers::size_type size_type;
@@ -43,15 +43,22 @@ public:
     Endpoints endpoints;
     Handlers handlers;
 
+    Klass* instance;
+
+    RestRequestVptrHandler() : instance(nullptr) {}
+
     virtual bool handle(HttpMethod requestMethod, std::string requestUri, std::string* response_out=NULL) {
         Rest::HttpMethod method = (Rest::HttpMethod)requestMethod;
+        if(instance== nullptr)
+            return false;
+
         typename Endpoints::Endpoint ep = endpoints.resolve(method, requestUri.c_str());
         if (ep) {
             RequestType request(ep);
             request.method = method;
             request.uri = requestUri;
             RequestHandler handler = handlers[ ep.handler.handler ];
-            handler(request);
+            handler(instance, request);
             if(response_out)
                 *response_out = request.response;
             return true;
@@ -77,7 +84,7 @@ public:
         endpoints.on(endpoint_expression, methodHandler);
         return *this;
     }
-#else
+#elif 1
     template<class... Targs>
     RestRequestVptrHandler& on(const char *endpoint_expression, Targs... rest ) {
         on(endpoint_expression, rest...);   // add the rest (recursively)

@@ -14,56 +14,18 @@
 #include "Link.h"
 #include "Pool.h"
 #include "Parser.h"
+#include "handler.h"
 
 // format:    /api/test/:param_name(integer|real|number|string|boolean)/method
 
 namespace Rest {
 
-// indicates a default Rest handler that matches any http verb request
-// this enum belongs with the web servers HTTP_GET, HTTP_POST, HTTP_xxx constants
-typedef enum {
-    HttpMethodAny = 0,
-    HttpGet,
-    HttpPost,
-    HttpPut,
-    HttpPatch,
-    HttpDelete,
-    HttpOptions,   
-} HttpMethod;
-
-/// \brief Convert a http method enum value to a string.
-const char* uri_method_to_string(HttpMethod method);
-
-
-//typedef class RestRequest;
-//typedef std::function<short, RestRequest*> RestMethodHandler;
-//typedef std::function<void, void> RestVoidMethodHandler;
 
 typedef enum {
   HttpHandler,
   RestHandler
 } HandlerPrototype;
 
-typedef uint16_t url_opcode_t;
-
-
-template<class... TArgs>
-class Handler {
-public:
-    typedef std::function< int(TArgs... args) > F0;
-
-    Handler() {}
-    Handler(F0 _f) : method(HttpGet), handler(std::move(_f)) {}
-    Handler(HttpMethod m, F0 _f) : method(m), handler(std::move(_f)) {}
-    //Handler(int _f(TArgs... args)) : f0(_f) {}
-
-    int operator()(TArgs... args) {
-        return handler(args...);
-    }
-
-    HttpMethod method;
-    F0 handler;
-};
 
 /// \defgroup MethodHandlers Associates an http method verb to a handler function
 /// \@{
@@ -81,24 +43,22 @@ public:
 };
 #endif
 
-#if 0
-template<class H> MethodHandler<H> GET(const H& handler) { return MethodHandler<H>(HttpGet, handler); }
-template<class H> MethodHandler<H> PUT(const H& handler) { return MethodHandler<H>(HttpPut, handler); }
-template<class H> MethodHandler<H> POST(H& handler) { return MethodHandler<H>(HttpPost, handler); }
-template<class H> MethodHandler<H> PATCH(H& handler) { return MethodHandler<H>(HttpPatch, handler); }
-template<class H> MethodHandler<H> DELETE(H& handler) { return MethodHandler<H>(HttpDelete, handler); }
-template<class H> MethodHandler<H> OPTIONS(H& handler) { return MethodHandler<H>(HttpOptions, handler); }
-template<class H> MethodHandler<H> ANY(H& handler) { return MethodHandler<H>(HttpMethodAny, handler); }
-#elif 0
-    template<class H> Handler<H&> GET(std::function<int(H&)> handler) { return Handler<H&>(HttpGet, std::move(handler)); }
-    template<class H> Handler<H&> GET(int (handler)(H&)) { return Handler<H&>(HttpGet, std::function<int(H&)>(handler)); }
+#if 1
+    //template<class H> Rest::Handler<H::first_argument_type &> _GET(H& handler) { return Rest::Handler<typename function_traits<H>::template argument<0>::type &>(Rest::HttpGet, std::function<int(H&)>(handler)); }
+    //template<class H> Rest::Handler<H&> GET(std::function<int(H&)> handler) { return Rest::Handler<H&>(Rest::HttpGet, std::function<int(H&)>(handler)); }
 
-    template<class H> Handler<H&> PUT(std::function<int(H&)> handler) { return Handler<H&>(HttpPut, handler); }
-    template<class H> Handler<H&> POST(std::function<int(H&)> handler) { return Handler<H&>(HttpPost, handler); }
-    template<class H> Handler<H&> PATCH(std::function<int(H&)> handler) { return Handler<H&>(HttpPatch, handler); }
-    template<class H> Handler<H&> DELETE(std::function<int(H&)> handler) { return Handler<H&>(HttpDelete, handler); }
-    template<class H> Handler<H&> OPTIONS(std::function<int(H&)> handler) { return Handler<H&>(HttpOptions, handler); }
-    template<class H> Handler<H&> ANY(std::function<int(H&)> handler) { return Handler<H&>(HttpMethodAny, handler); }
+//    namespace Generics {
+    template<class H> typename function_traits<H>::HandlerType GET(H handler) { return typename function_traits<H>::HandlerType(Rest::HttpGet, typename function_traits<H>::FunctionType(handler)); }
+    template<class H> typename function_traits<H>::HandlerType PUT(H handler) { return typename function_traits<H>::HandlerType(Rest::HttpPut, typename function_traits<H>::FunctionType(handler)); }
+    template<class H> typename function_traits<H>::HandlerType POST(H handler) { return typename function_traits<H>::HandlerType(Rest::HttpPost, typename function_traits<H>::FunctionType(handler)); }
+    template<class H> typename function_traits<H>::HandlerType PATCH(H handler) { return typename function_traits<H>::HandlerType(Rest::HttpPatch, typename function_traits<H>::FunctionType(handler)); }
+    template<class H> typename function_traits<H>::HandlerType DELETE(H handler) { return typename function_traits<H>::HandlerType(Rest::HttpDelete, typename function_traits<H>::FunctionType(handler)); }
+    template<class H> typename function_traits<H>::HandlerType OPTIONS(H handler) { return typename function_traits<H>::HandlerType(Rest::HttpOptions, typename function_traits<H>::FunctionType(handler)); }
+    template<class H> typename function_traits<H>::HandlerType ANY(H handler) { return typename function_traits<H>::HandlerType(Rest::HttpMethodAny, typename function_traits<H>::FunctionType(handler)); }
+
+#define DEFINE_HTTP_METHOD_HANDLERS(x)
+//    }
+
 #else
 namespace Generics {
     template<class H> Handler<H&> GET(std::function<int(H&)> handler) { return Handler<H&>(HttpGet, std::move(handler)); }
@@ -468,3 +428,12 @@ protected:
 };
 
 } // ns:Rest
+
+using Rest::GET;
+using Rest::POST;
+using Rest::PUT;
+using Rest::PATCH;
+using Rest::DELETE;
+using Rest::OPTIONS;
+using Rest::ANY;
+
