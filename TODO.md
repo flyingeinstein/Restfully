@@ -1,6 +1,6 @@
 
 # Feature Requests
-* A method that adds a URI base path, and returns a reference to that base path endpoint (no handler attached). You can then add more endpoints starting at that base path. Would save program memory where we have many strings that start with "/api/etc/etc".
+* DONE A method that adds a URI base path, and returns a reference to that base path endpoint (no handler attached). You can then add more endpoints starting at that base path. Would save program memory where we have many strings that start with "/api/etc/etc".
 
 
 # Memory Optimizations
