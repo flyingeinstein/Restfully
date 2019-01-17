@@ -6,5 +6,5 @@ set(SOURCE_FILES Restfully.h
         handler.h
         Rest-Esp8266.h)
 add_library(restfully STATIC ${SOURCE_FILES})
-set_property(TARGET restfully PROPERTY CXX_STANDARD 11)
+set_property(TARGET restfully PROPERTY CXX_STANDARD 14)
 

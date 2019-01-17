@@ -56,8 +56,8 @@ TEST(endpoints_split_collection)
     RestRequestHandler<RestRequest> dev1;
     RestRequestHandler<RestRequest> dev2;
     rest.on("/api/device/:dev(integer)/*", GET([&msg,&dev1,&dev2](RestRequest &request) {
-        const char* url = (const char*)request.args["_url"];
-        int devid = (long)request.args["dev"];
+        auto url = (const char*)request.args["_url"];
+        auto devid = (int)request.args["dev"];
         switch(devid) {
             case 1: dev1.handle(HttpGet, url, &request.response); break;
             case 2: dev2.handle(HttpGet, url, &request.response); break;
