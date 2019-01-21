@@ -7,6 +7,7 @@
 #include <string>
 #include <cstring>
 #include <cassert>
+#include "Pool.h"
 
 #if defined(ARDUINO)
 #include <Arduino.h>
@@ -28,15 +29,29 @@ namespace Rest {
     class Type
     {
     public:
-        inline Type() : name(nullptr), typemask(0) {}
-        Type(const char* _name, unsigned short _typemask) : name(_name), typemask(_typemask) {}
+        inline Type() : name_index(0), type_mask(0) {}
+        Type(const char* _name, unsigned short _typemask)
+                : name_index(binbag_insert_distinct(literals_index, _name)),
+                  type_mask(_typemask) {
+        }
 
-    public:
+        Type(long _name_index, unsigned short _typemask)
+                : name_index(_name_index),
+                  type_mask(_typemask) {
+        }
+
+        inline const char* name() const { return binbag_get(literals_index, name_index); }
+
+        inline unsigned short typemask() const { return type_mask; }
+        inline bool supports(unsigned short mask) const { return (mask & type_mask)==mask; }
+
+
+    protected:
         // if this argument is matched, the value is added to the request object under this field name
-        const char* name;
+        long name_index;
 
         // collection of ARG_MASK_xxxx bits represent what types are supported for this argument
-        unsigned short typemask;
+        unsigned short type_mask;
     };
 
     class Argument : protected Type {
@@ -75,7 +90,7 @@ namespace Rest {
             return *this;
         }
 
-        inline const char* name() const { return Type::name; }
+        inline const char* name() const { return Type::name(); }
 
         int isOneOf(std::initializer_list<const char*> enum_values, bool case_insensitive=true) {
             typeof(strcmp) *cmpfunc = case_insensitive

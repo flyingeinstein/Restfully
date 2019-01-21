@@ -46,9 +46,8 @@ namespace Rest {
 
         TArgumentType* newArgumentType(const char* name, unsigned short typemask)
         {
-            // todo: make this part of paged memory
             long nameid = binbag_insert_distinct(literals_index, name);
-            return new TArgumentType(binbag_get(literals_index, nameid), typemask);  // todo: use our binbag here
+            return new TArgumentType(nameid, typemask);
         }
 
         long findLiteral(const char* word) {
