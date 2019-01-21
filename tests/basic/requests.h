@@ -16,7 +16,7 @@ public:
     std::string response;
     Rest::Arguments& args;
 
-    RestRequest(Rest::Arguments& _args) : args(_args) {}
+    RestRequest(Rest::Arguments& _args) : args(_args), method(Rest::HttpMethodAny) {}
 };
 
 
