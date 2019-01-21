@@ -47,23 +47,26 @@ public:
     //template<class H> Rest::Handler<H::first_argument_type &> _GET(H& handler) { return Rest::Handler<typename function_traits<H>::template argument<0>::type &>(Rest::HttpGet, std::function<int(H&)>(handler)); }
     //template<class H> Rest::Handler<H&> GET(std::function<int(H&)> handler) { return Rest::Handler<H&>(Rest::HttpGet, std::function<int(H&)>(handler)); }
 
-//    namespace Generics {
-    template<class H> typename function_traits<H>::HandlerType PUT(H handler) { return typename function_traits<H>::HandlerType(Rest::HttpPut, typename function_traits<H>::FunctionType(handler)); }
-    template<class H> typename function_traits<H>::HandlerType POST(H handler) { return typename function_traits<H>::HandlerType(Rest::HttpPost, typename function_traits<H>::FunctionType(handler)); }
-    template<class H> typename function_traits<H>::HandlerType PATCH(H handler) { return typename function_traits<H>::HandlerType(Rest::HttpPatch, typename function_traits<H>::FunctionType(handler)); }
-    template<class H> typename function_traits<H>::HandlerType DELETE(H handler) { return typename function_traits<H>::HandlerType(Rest::HttpDelete, typename function_traits<H>::FunctionType(handler)); }
-    template<class H> typename function_traits<H>::HandlerType OPTIONS(H handler) { return typename function_traits<H>::HandlerType(Rest::HttpOptions, typename function_traits<H>::FunctionType(handler)); }
-    template<class H> typename function_traits<H>::HandlerType ANY(H handler) { return typename function_traits<H>::HandlerType(Rest::HttpMethodAny, typename function_traits<H>::FunctionType(handler)); }
-
-    template<class H> typename function_traits<H>::HandlerType GET(H& handler) { return typename function_traits<H>::HandlerType(Rest::HttpGet, typename function_traits<H>::FunctionType(handler)); }
-    template<typename H> typename function_traits<H>::HandlerType GET(H&& handler) { return typename function_traits<H>::HandlerType(Rest::HttpGet, handler); }
 #if !defined( _LIBCPP_VERSION )
-    template<class R, typename... Args, typename... FArgs> Handler<FArgs...> GET(std::_Bind<R(*(FArgs...))(Args...)> handler) { return Handler<FArgs...>(Rest::HttpGet, handler); }
-    template<class R, class K, typename... Args, typename... FArgs> Handler<K, FArgs...> GET(std::_Bind<R(K::*(FArgs...))(Args...)> handler) { return Handler<K, FArgs...>(Rest::HttpGet, handler); }
+    template<class R, typename... Args, typename... FArgs> Handler<FArgs...> MethodHandler(HttpMethod m, std::__bind<R(*(FArgs...))(Args...)> handler) { return Handler<FArgs...>(m, handler); }
+    template<class R, class K, typename... Args, typename... FArgs> Handler<K, FArgs...> MethodHandler(HttpMethod m, std::__bind<R(K::*(FArgs...))(Args...)> handler) { return Handler<K, FArgs...>(m, handler); }
 #endif
 
-    // we probably dont need these
-    //template<class R, class... Args> Handler<Args...> GET(std::function<R(Args...)> handler) { return Handler<Args...>(Rest::HttpGet, handler); }
+
+    template<class H> typename function_traits<H>::HandlerType MethodHandler(HttpMethod m, H& handler) { return typename function_traits<H>::HandlerType(m, typename function_traits<H>::FunctionType(handler)); }
+    template<typename H> typename function_traits<H>::HandlerType MethodHandler(HttpMethod m, H&& handler) { return typename function_traits<H>::HandlerType(m, handler); }
+
+    // we probably dont need this one now
+    template<class R, class... Args> Handler<Args...> MethodHandler(HttpMethod m, std::function<R(Args...)> handler) { return Handler<Args...>(m, handler); }
+
+    // These will redirect to the MethodHandler template
+    template<class H> typename function_traits<H>::HandlerType GET(H handler) { return MethodHandler(Rest::HttpGet, handler); }
+    template<class H> typename function_traits<H>::HandlerType POST(H handler) { return MethodHandler(Rest::HttpPost, handler); }
+    template<class H> typename function_traits<H>::HandlerType PUT(H handler) { return MethodHandler(Rest::HttpPut, handler); }
+    template<class H> typename function_traits<H>::HandlerType PATCH(H handler) { return MethodHandler(Rest::HttpPatch, handler); }
+    template<class H> typename function_traits<H>::HandlerType DELETE(H handler) { return MethodHandler(Rest::HttpDelete, handler); }
+    template<class H> typename function_traits<H>::HandlerType OPTIONS(H handler) { return MethodHandler(Rest::HttpOptions, handler); }
+    template<class H> typename function_traits<H>::HandlerType ANY(H handler) { return MethodHandler(Rest::HttpMethodAny, handler); }
 
 #define DEFINE_HTTP_METHOD_HANDLERS(x)
 //    }
