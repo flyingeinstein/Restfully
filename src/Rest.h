@@ -47,13 +47,15 @@ public:
     //template<class H> Rest::Handler<H::first_argument_type &> _GET(H& handler) { return Rest::Handler<typename function_traits<H>::template argument<0>::type &>(Rest::HttpGet, std::function<int(H&)>(handler)); }
     //template<class H> Rest::Handler<H&> GET(std::function<int(H&)> handler) { return Rest::Handler<H&>(Rest::HttpGet, std::function<int(H&)>(handler)); }
 
-#if !defined( _LIBCPP_VERSION )
+#if 1
+    //template<class R, typename... Args, typename... FArgs> Handler<FArgs...> MethodHandler(HttpMethod m, std::_Bind<R(*(FArgs...))(Args...)> handler) { return Handler<FArgs...>(m, handler); }
+    //template<class R, class K, typename... Args, typename... FArgs> Handler<K, FArgs...> MethodHandler(HttpMethod m, std::_Bind<R(K::*(FArgs...))(Args...)> handler) { return Handler<K, FArgs...>(m, handler); }
+#elif !defined( _LIBCPP_VERSION )
     template<class R, typename... Args, typename... FArgs> Handler<FArgs...> MethodHandler(HttpMethod m, std::__bind<R(*(FArgs...))(Args...)> handler) { return Handler<FArgs...>(m, handler); }
     template<class R, class K, typename... Args, typename... FArgs> Handler<K, FArgs...> MethodHandler(HttpMethod m, std::__bind<R(K::*(FArgs...))(Args...)> handler) { return Handler<K, FArgs...>(m, handler); }
 #endif
 
-
-    template<class H> typename function_traits<H>::HandlerType MethodHandler(HttpMethod m, H& handler) { return typename function_traits<H>::HandlerType(m, typename function_traits<H>::FunctionType(handler)); }
+    //template<class H> typename function_traits<H>::HandlerType MethodHandler(HttpMethod m, H& handler) { return typename function_traits<H>::HandlerType(m, typename function_traits<H>::FunctionType(handler)); }
     template<typename H> typename function_traits<H>::HandlerType MethodHandler(HttpMethod m, H&& handler) { return typename function_traits<H>::HandlerType(m, handler); }
 
     // we probably dont need this one now
