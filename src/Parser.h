@@ -45,7 +45,7 @@ namespace Rest {
 
 #define GOTO_STATE(st) { ev->state = st; goto rescan; }
 #define NEXT_STATE(st) { ev->state = st; }
-#define SCAN { ev->t.clear(); ev->t.swap( ev->peek ); ev->peek.scan(&ev->uri, 1); }
+#define SCAN { ev->t.clear(); ev->t.swap( ev->peek ); if(ev->t.id!=TID_EOF) ev->peek.scan(&ev->uri, 1); }
 
     template<
             class TNode,
@@ -96,7 +96,7 @@ namespace Rest {
             size_t szargs;
 
             EvalState(Parser* _expr, const char** _uri)
-                    : mode(resolve), uri(nullptr), state(0), level(0), ep( _expr->root ),
+                    : mode(resolve), uri(nullptr), state(expectPathPartOrSep), level(0), ep( _expr->root ),
                       pmethodName(methodName), argtypes(nullptr), args(nullptr), nargs(0), szargs(0)
             {
                 methodName[0]=0;
@@ -104,8 +104,7 @@ namespace Rest {
                     // scan first token
                     if (!t.scan(_uri, 1))
                         goto bad_eval;
-                    if (!peek.scan(_uri, 1))
-                        goto bad_eval;
+                    peek.scan(_uri, 1);
                 }
                 uri = *_uri;
                 return;
