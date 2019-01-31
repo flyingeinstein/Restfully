@@ -32,17 +32,25 @@ namespace Rest {
     class Handler {
     public:
         typedef std::function< int(TArgs... args) > F0;
+        typedef std::tuple< TArgs... > arguments;
 
+#if 0
         Handler() {}
-        Handler(F0 _f) : method(HttpGet), handler(std::move(_f)) {}
-        Handler(HttpMethod m, F0 _f) : method(m), handler(std::move(_f)) {}
-        //Handler(int _f(TArgs... args)) : f0(_f) {}
+        //Handler(const F0& _f) : handler(_f) {}
+        Handler(F0&& _f) : handler(std::move(_f)) {}
+        //Handler(std::function<TArgs...> _f) : handler(_f) {}
+        Handler(int (_handler)(TArgs... args)) { handler = _handler; }
+#endif
+        template<class ... MArgs>
+        Handler(MArgs... args) : handler(args...) {}
 
         int operator()(TArgs... args) {
             return handler(args...);
         }
 
-        HttpMethod method;
+        inline bool operator==(std::nullptr_t v) const { return handler==v; }
+        inline bool operator!=(std::nullptr_t v) const { return handler!=v; }
+
         F0 handler;
     };
 

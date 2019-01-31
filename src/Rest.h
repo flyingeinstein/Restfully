@@ -20,90 +20,12 @@
 
 namespace Rest {
 
-
-typedef enum {
-  HttpHandler,
-  RestHandler
-} HandlerPrototype;
-
-
-/// \defgroup MethodHandlers Associates an http method verb to a handler function
-/// \@{
-/// \brief Class used to associate a http method verb with a handler function
-/// This is used when adding a handler to an endpoint for specific http verbs such as GET, PUT, POST, PATCH, DELETE, etc.
-/// Do not use this class, but instead use the template functions  GET(handler), PUT(handler), POST(handler), etc.
-#if 0
-template<class H>
-class MethodHandler {
-public:
-    HttpMethod method;
-    const H& handler;
-
-    MethodHandler(HttpMethod _method, const H& _handler) : method(_method), handler(_handler) {}
-};
-#endif
-
-#if 1
-    //template<class H> Rest::Handler<H::first_argument_type &> _GET(H& handler) { return Rest::Handler<typename function_traits<H>::template argument<0>::type &>(Rest::HttpGet, std::function<int(H&)>(handler)); }
-    //template<class H> Rest::Handler<H&> GET(std::function<int(H&)> handler) { return Rest::Handler<H&>(Rest::HttpGet, std::function<int(H&)>(handler)); }
-
-#if 1
-    //template<class R, typename... Args, typename... FArgs> Handler<FArgs...> MethodHandler(HttpMethod m, std::_Bind<R(*(FArgs...))(Args...)> handler) { return Handler<FArgs...>(m, handler); }
-    //template<class R, class K, typename... Args, typename... FArgs> Handler<K, FArgs...> MethodHandler(HttpMethod m, std::_Bind<R(K::*(FArgs...))(Args...)> handler) { return Handler<K, FArgs...>(m, handler); }
-#elif !defined( _LIBCPP_VERSION )
-    template<class R, typename... Args, typename... FArgs> Handler<FArgs...> MethodHandler(HttpMethod m, std::__bind<R(*(FArgs...))(Args...)> handler) { return Handler<FArgs...>(m, handler); }
-    template<class R, class K, typename... Args, typename... FArgs> Handler<K, FArgs...> MethodHandler(HttpMethod m, std::__bind<R(K::*(FArgs...))(Args...)> handler) { return Handler<K, FArgs...>(m, handler); }
-#endif
-
-    //template<class H> typename function_traits<H>::HandlerType MethodHandler(HttpMethod m, H& handler) { return typename function_traits<H>::HandlerType(m, typename function_traits<H>::FunctionType(handler)); }
-    template<typename H> typename function_traits<H>::HandlerType MethodHandler(HttpMethod m, H&& handler) { return typename function_traits<H>::HandlerType(m, handler); }
-
-    // we probably dont need this one now
-    template<class R, class... Args> Handler<Args...> MethodHandler(HttpMethod m, std::function<R(Args...)> handler) { return Handler<Args...>(m, handler); }
-
-    // These will redirect to the MethodHandler template
-    template<class H> typename function_traits<H>::HandlerType GET(H handler) { return MethodHandler(Rest::HttpGet, handler); }
-    template<class H> typename function_traits<H>::HandlerType POST(H handler) { return MethodHandler(Rest::HttpPost, handler); }
-    template<class H> typename function_traits<H>::HandlerType PUT(H handler) { return MethodHandler(Rest::HttpPut, handler); }
-    template<class H> typename function_traits<H>::HandlerType PATCH(H handler) { return MethodHandler(Rest::HttpPatch, handler); }
-    template<class H> typename function_traits<H>::HandlerType DELETE(H handler) { return MethodHandler(Rest::HttpDelete, handler); }
-    template<class H> typename function_traits<H>::HandlerType OPTIONS(H handler) { return MethodHandler(Rest::HttpOptions, handler); }
-    template<class H> typename function_traits<H>::HandlerType ANY(H handler) { return MethodHandler(Rest::HttpMethodAny, handler); }
-
-#define DEFINE_HTTP_METHOD_HANDLERS(x)
-//    }
-
-#else
-namespace Generics {
-    template<class H> Handler<H&> GET(std::function<int(H&)> handler) { return Handler<H&>(HttpGet, std::move(handler)); }
-    template<class H> Handler<H&> PUT(std::function<int(H&)> handler) { return Handler<H&>(HttpPut, handler); }
-    template<class H> Handler<H&> POST(std::function<int(H&)> handler) { return Handler<H&>(HttpPost, handler); }
-    template<class H> Handler<H&> PATCH(std::function<int(H&)> handler) { return Handler<H&>(HttpPatch, handler); }
-    template<class H> Handler<H&> DELETE(std::function<int(H&)> handler) { return Handler<H&>(HttpDelete, handler); }
-    template<class H> Handler<H&> OPTIONS(std::function<int(H&)> handler) { return Handler<H&>(HttpOptions, handler); }
-    template<class H> Handler<H&> ANY(std::function<int(H&)> handler) { return Handler<H&>(HttpMethodAny, handler); }
-}
-
-#define DEFINE_HTTP_METHOD_HANDLER(RequestType, M, e)  \
-    inline Rest::Handler<RequestType&> M(std::function<int(RequestType&)> handler) { return Rest::Handler<RequestType&>(Rest::e, std::move(handler)); }
-#define DEFINE_HTTP_METHOD_HANDLERS(RequestType)  \
-    DEFINE_HTTP_METHOD_HANDLER(RequestType, GET, HttpGet)   \
-    DEFINE_HTTP_METHOD_HANDLER(RequestType, PUT, HttpPut)   \
-    DEFINE_HTTP_METHOD_HANDLER(RequestType, POST, HttpPost)   \
-    DEFINE_HTTP_METHOD_HANDLER(RequestType, PATCH, HttpPatch)   \
-    DEFINE_HTTP_METHOD_HANDLER(RequestType, DELETE, HttpDelete)   \
-    DEFINE_HTTP_METHOD_HANDLER(RequestType, OPTIONS, HttpOptions)   \
-    DEFINE_HTTP_METHOD_HANDLER(RequestType, ANY, HttpMethodAny)
-#endif
-/// \@}
-
-
 /// \brief Implements a compiled list of Rest Uri Endpoint expressions
 /// Each UriExpression contains one or more Uri Endpoint expressions in a compiled form.
 /// You can store expressions for all Rest methods in the application if desired. This
 /// compiled byte-code machine can optimally compare and match a request Uri to an
 /// Endpoint specification.
-template<class THandler>
+template<class THandler = std::function<short(void)> >
 class Endpoints {
 public:
     typedef THandler Handler;
@@ -158,45 +80,134 @@ protected:
         Node *wild;
 
         // if we are at the end of the URI then we can pass to one of the http verb handlers
-        Handler *GET, *POST, *PUT, *PATCH, *DELETE, *OPTIONS;
+        using HandlerType = Handler;
+        HandlerType GET, POST, PUT, PATCH, DELETE, OPTIONS;
 
         inline Node() : literals(nullptr), string(nullptr), numeric(nullptr), boolean(nullptr), wild(nullptr),
                         GET(nullptr), POST(nullptr), PUT(nullptr), PATCH(nullptr), DELETE(nullptr), OPTIONS(nullptr)
         {}
+
+        inline bool isSet(const HandlerType& h) const { return h != nullptr; }
+
+        Node::HandlerType& handle(HttpMethod method) {
+            // get a pointer to the Handler member variable from the node
+            switch(method) {
+                case HttpGet: return GET;
+                case HttpPost: return POST;
+                case HttpPut: return PUT;
+                case HttpPatch: return PATCH;
+                case HttpDelete: return DELETE;
+                case HttpOptions: return OPTIONS;
+                default: return GET;
+            }
+        }
+
+        void handle(HttpMethod method, const Node::HandlerType& handler) {
+            // get a pointer to the Handler member variable from the node
+            switch(method) {
+                case HttpGet: GET = handler; break;
+                case HttpPost: POST = handler; break;
+                case HttpPut: PUT = handler; break;
+                case HttpPatch: PATCH = handler; break;
+                case HttpDelete: DELETE = handler; break;
+                case HttpOptions: OPTIONS = handler; break;
+                case HttpMethodAny:
+                    if(!isSet(GET)) GET = handler;
+                    if(!isSet(POST)) POST = handler;
+                    if(!isSet(PUT)) PUT = handler;
+                    if(!isSet(PATCH)) PATCH = handler;
+                    if(!isSet(DELETE)) DELETE = handler;
+                    if(!isSet(OPTIONS)) OPTIONS = handler;
+                    break;
+            }
+        }
+
     };
 
 public:
+    class Exception;
+
     class NodeRef {
         friend class Endpoints;
 
     public:
-        inline NodeRef() : endpoints(nullptr), node(nullptr) {}
-        inline NodeRef(const NodeRef& copy) : endpoints(copy.endpoints), node(copy.node) {}
+        inline NodeRef() : endpoints(nullptr), node(nullptr), exception(0) {}
+        inline NodeRef(const NodeRef& copy) : endpoints(copy.endpoints), node(copy.node), exception(copy.exception) {}
 
         NodeRef& operator=(const NodeRef& copy) {
             endpoints=copy.endpoints;
             node=copy.node;
+            exception = copy.exception;
             return *this;
         }
 
-        inline operator bool() const { return node!= nullptr && endpoints!= nullptr; }
+        inline operator bool() const { return node!=nullptr && endpoints!=nullptr; }
 
-        inline NodeRef on(const char *endpoint_expression, THandler methodHandler ) {
-            if(node!= nullptr && endpoints!= nullptr && endpoints->exception== nullptr) {
-                endpoints->on(*node, endpoint_expression, methodHandler);
-                return (endpoints->exception == nullptr)
-                       ? *this
-                       : NodeRef();
-            } else
-                return *this;   // invalid NodeRef
+        inline NodeRef on(const char *endpoint_expression ) {
+            if(node!=nullptr && endpoints!=nullptr && endpoints->exception==0) {
+                return endpoints->on(*node, endpoint_expression);
+            } else {
+                // todo: set exception here
+                return NodeRef(endpoints, URL_FAIL_NO_ENDPOINT);   // invalid NodeRef
+            }
+        }
+
+        inline int error() const { return exception; }
+
+        template<typename H> inline NodeRef GET(H handler) { attach(HttpGet, handler); return *this; }
+        template<typename H> inline NodeRef PUT(H handler) { attach(HttpPut, handler); return *this; }
+        template<typename H> inline NodeRef PATCH(H handler) { attach(HttpPatch, handler); return *this; }
+        template<typename H> inline NodeRef POST(H handler) { attach(HttpPost, handler); return *this; }
+        template<typename H> inline NodeRef DELETE(H handler) { attach(HttpDelete, handler); return *this; }
+        template<typename H> inline NodeRef OPTIONS(H handler) { attach(HttpOptions, handler); return *this; }
+        template<typename H> inline NodeRef ANY(H handler) { attach(HttpMethodAny, handler); return *this; }
+
+        template<typename H> inline NodeRef GET(const char* expr, H handler) {
+            NodeRef r = on(expr);
+            r.attach(HttpGet, handler);
+            return *this;
+        }
+        template<typename H> inline NodeRef PUT(const char* expr, H handler) { on(expr).attach(HttpPut, handler); return *this; }
+        template<typename H> inline NodeRef PATCH(const char* expr, H handler) { on(expr).attach(HttpPatch, handler); return *this; }
+        template<typename H> inline NodeRef POST(const char* expr, H handler) { on(expr).attach(HttpPost, handler); return *this; }
+        template<typename H> inline NodeRef DELETE(const char* expr, H handler) { on(expr).attach(HttpDelete, handler); return *this; }
+        template<typename H> inline NodeRef OPTIONS(const char* expr, H handler) { on(expr).attach(HttpOptions, handler); return *this; }
+        template<typename H> inline NodeRef ANY(const char* expr, H handler) { on(expr).attach(HttpMethodAny, handler); return *this; }
+
+        inline void attach(HttpMethod method, THandler handler ) {
+            if(node!= nullptr && endpoints!= nullptr)
+                node->handle(method, handler);
+        }
+
+        inline NodeRef& katch(const std::function<void(Exception)>& endpoint_exception_handler) {
+            if(exception>0) {
+                endpoint_exception_handler(Exception(*this, exception));
+                exception = 0;
+            }
+            return *this;
+        }
+
+        // todo: implement node::name()
+        std::string name() const {
+            return "todo:name";
         }
 
     protected:
         Endpoints* endpoints;
         Node* node;
+        int exception;
         // todo: do we want endpoint->name? we can add it
 
-        inline NodeRef(Endpoints* _endpoints, Node* _node) : endpoints(_endpoints), node(_node) {}
+        inline NodeRef(Endpoints* _endpoints, int _exception) : endpoints(_endpoints), node(nullptr), exception(_exception) {}
+        inline NodeRef(Endpoints* _endpoints, Node* _node) : endpoints(_endpoints), node(_node), exception(0) {}
+    };
+
+    class Exception {
+    public:
+        NodeRef node;
+        int code;
+
+        inline Exception(const NodeRef& _node, int _code) : node(_node), code(_code) {}
     };
 
 public:
@@ -224,77 +235,8 @@ public:
         return *this;
     }
 
-    NodeRef from(const char *endpoint_expression) {
-        short rs;
-
-        typename Parser::EvalState ev(&parser, &endpoint_expression);
-        if(ev.state<0) {
-            return NodeRef();
-        }
-
-        ev.szargs = 20;
-        ev.mode = Parser::expand;         // tell the parser we are adding this endpoint
-
-        if((rs = parser.parse(&ev)) <URL_MATCHED) {
-            // parse evaluation error
-            return NodeRef();
-        } else {
-            // if we encountered more args than we did before, then save the new value
-            if (ev.nargs > maxUriArgs)
-                maxUriArgs = ev.nargs;
-
-            // attach the handler to this endpoint
-            Node *epc = ev.ep;
-            return NodeRef(this, epc);
-        }
-    }
-
-    Endpoints& on(const char *endpoint_expression, THandler methodHandler ) {
-        return on(parser.getRoot(), endpoint_expression, methodHandler);
-    }
-
-#if __cplusplus < 201103L || (defined(_MSC_VER) && _MSC_VER < 1900)
-    // for pre-c++11 support we have to specify a number of add handler methods
-    inline Endpoints& on(const char *endpoint_expression, MethodHandler<Handler> h1, MethodHandler<Handler> h2 ) {
-        on(endpoint_expression, h1);
-        return on(endpoint_expression, h2);
-    }
-    inline Endpoints& on(const char *endpoint_expression, MethodHandler<Handler> h1, MethodHandler<Handler> h2, MethodHandler<Handler> h3 ) {
-        on(endpoint_expression, h1, h2);
-        return on(endpoint_expression, h3);
-    }
-    inline Endpoints& on(const char *endpoint_expression, MethodHandler<Handler> h1, MethodHandler<Handler> h2, MethodHandler<Handler> h3, MethodHandler<Handler> h4 ) {
-        on(endpoint_expression, h1, h2, h3);
-        return on(endpoint_expression, h4);
-    }
-    inline Endpoints& on(const char *endpoint_expression, MethodHandler<Handler> h1, MethodHandler<Handler> h2, MethodHandler<Handler> h3, MethodHandler<Handler> h4, MethodHandler<Handler> h5 ) {
-        on(endpoint_expression, h1, h2, h3, h4);
-        return on(endpoint_expression, h5);
-    }
-    inline Endpoints& on(const char *endpoint_expression, MethodHandler<Handler> h1, MethodHandler<Handler> h2, MethodHandler<Handler> h3, MethodHandler<Handler> h4, MethodHandler<Handler> h5, MethodHandler<Handler> h6 ) {
-        on(endpoint_expression, h1, h2, h3, h4, h5);
-        return on(endpoint_expression, h6);
-    }
-    inline Endpoints& on(const char *endpoint_expression, MethodHandler<Handler> h1, MethodHandler<Handler> h2, MethodHandler<Handler> h3, MethodHandler<Handler> h4, MethodHandler<Handler> h5, MethodHandler<Handler> h6, MethodHandler<Handler> h7 ) {
-        on(endpoint_expression, h1, h2, h3, h4, h5, h6);
-        return on(endpoint_expression, h7);
-    }
-#else
-    // c++11 using parameter pack expressions to recursively call add()
-    template<class T, class... Targs>
-    Endpoints& on(const char *endpoint_expression, T h1, Targs... rest ) {
-        on(endpoint_expression, h1);   // add first argument
-        return on(endpoint_expression, rest...);   // add the rest (recursively)
-    }
-#endif
-
-    inline Endpoints& katch(const std::function<void(Endpoint)>& endpoint_exception_handler) {
-        if(exception != nullptr) {
-            endpoint_exception_handler(*exception);
-            delete exception;
-            exception = nullptr;
-        }
-        return *this;
+    NodeRef on(const char *endpoint_expression) {
+        return on(parser.getRoot(), endpoint_expression);
     }
 
     /// \brief Match a Uri against the compiled list of Uri expressions.
@@ -311,21 +253,10 @@ public:
         if((rs=parser.parse( &ev )) >=URL_MATCHED) {
             // successfully resolved the endpoint
             Endpoint endpoint;
-            Handler* handler;
-
-            switch(method) {
-                case HttpGet: handler = ev.ep->GET; break;
-                case HttpPost: handler = ev.ep->POST; break;
-                case HttpPut: handler = ev.ep->PUT; break;
-                case HttpPatch: handler = ev.ep->PATCH; break;
-                case HttpDelete: handler = ev.ep->DELETE; break;
-                case HttpOptions: handler = ev.ep->OPTIONS; break;
-                default: handler = defaultHandler;
-            }
-
+            Handler& handler = ev.ep->handle(method);
             if(handler !=nullptr) {
                 endpoint.status = URL_MATCHED;
-                endpoint.handler = *handler;
+                endpoint.handler = handler;
                 endpoint.name = ev.methodName;
                 endpoint.method = method;
                 endpoint.args = ev.args;
@@ -344,87 +275,34 @@ public:
 
     protected:
         /// \brief Parse and add single Uri Endpoint expressions to our list of Endpoints
-        Endpoints& on(Node& node, const char *endpoint_expression, THandler methodHandler ) {
+        NodeRef on(Node& node, const char *endpoint_expression) {
             short rs;
 
-            // if exception was set, abort
-            if(exception != nullptr)
-                return *this;
-
-            typename Parser::EvalState ev(&parser, &endpoint_expression);
-            if(ev.state<0) {
-                exception = new Endpoint(methodHandler.method, *defaultHandler, URL_FAIL_INTERNAL);
-                return *this;
+            // determine if expression is a relative or absolute expression
+            if(*endpoint_expression == '/') {
+                // start at root node
+                node = parser.getRoot();
+                endpoint_expression++;
             }
 
-            ev.ep = &node;
+            typename Parser::EvalState ev(&parser, &endpoint_expression);
             ev.szargs = 20;
             ev.mode = Parser::expand;         // tell the parser we are adding this endpoint
+            ev.ep = &node;
 
             if((rs = parser.parse(&ev)) <URL_MATCHED) {
-                //printf("parse-eval-error %d   %s\n", rs, ev.uri);
-                exception = new Endpoint(methodHandler.method, *defaultHandler, rs);
-                exception->name = endpoint_expression;
-                return *this;
+                return NodeRef(this, URL_FAIL_SYNTAX);
             } else {
                 // if we encountered more args than we did before, then save the new value
                 if(ev.nargs > maxUriArgs)
                     maxUriArgs = ev.nargs;
 
                 // attach the handler to this endpoint
-                Node* epc = ev.ep;
-                Endpoint endpoint;
-                endpoint.name = ev.methodName;
-
-                if(methodHandler.method == HttpMethodAny) {
-                    // attach to all remaining method handlers
-                    Handler* h = new Handler(methodHandler.handler);
-                    short matched = 0;
-                    if(!epc->GET) { epc->GET = h; matched++; }
-                    if(!epc->POST) { epc->POST = h; matched++; }
-                    if(!epc->PUT) { epc->PUT = h; matched++; }
-                    if(!epc->PATCH) { epc->PATCH = h; matched++; }
-                    if(!epc->DELETE) { epc->DELETE = h; matched++; }
-                    if(!epc->GET) { epc->GET = h; matched++; }
-                    if(matched ==0)
-                        delete h;   // no unset methods, but not considered an error
-                    return *this; // successfully added
-                } else {
-                    Handler** target = nullptr;
-
-                    // get a pointer to the Handler member variable from the node
-                    switch(methodHandler.method) {
-                        case HttpGet: target = &epc->GET; break;
-                        case HttpPost: target = &epc->POST; break;
-                        case HttpPut: target = &epc->PUT; break;
-                        case HttpPatch: target = &epc->PATCH; break;
-                        case HttpDelete: target = &epc->DELETE; break;
-                        case HttpOptions: target = &epc->OPTIONS; break;
-                        default:
-                            exception = new Endpoint(methodHandler.method, *defaultHandler, URL_FAIL_INTERNAL); // unknown method type
-                            exception->name = endpoint_expression;
-                            return *this;
-                    }
-
-                    if(target !=nullptr) {
-                        // set the target method handler but error if it was already set by a previous endpoint declaration
-                        if(*target !=nullptr ) {
-                            //fprintf(stderr, "fatal: endpoint %s %s was previously set to a different handler\n",
-                            //        uri_method_to_string(methodHandler.method), endpoint_expression);
-                            exception = new Endpoint(methodHandler.method, *defaultHandler, URL_FAIL_DUPLICATE);
-                            exception->name = endpoint_expression;
-                            return *this;
-                        } else {
-                            *target = new Handler(methodHandler.handler);
-                            return *this; // successfully added
-                        }
-                    }
-                }
+                return NodeRef(this, ev.ep);
             }
-            return *this;
         }
 
-    public:
+public:
     Handler* defaultHandler; // like a 404 handler
 
 protected:
@@ -442,12 +320,3 @@ protected:
 };
 
 } // ns:Rest
-
-using Rest::GET;
-using Rest::POST;
-using Rest::PUT;
-using Rest::PATCH;
-using Rest::DELETE;
-using Rest::OPTIONS;
-using Rest::ANY;
-

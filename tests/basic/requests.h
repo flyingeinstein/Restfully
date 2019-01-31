@@ -56,37 +56,12 @@ public:
             return false;
     }
 
-#if 0
-    RestRequestHandler& on(const char *endpoint_expression, Rest::Handler< TRestRequest& > methodHandler ) {
-        //Rest::Handler< RequestHandler > h( methodHandler.method, RequestHandler( methodHandler.handler ) );
-        endpoints.on(endpoint_expression, methodHandler);
-        return *this;
+    typename Endpoints::NodeRef on(const char *endpoint_expression ) {
+        return endpoints.on(endpoint_expression);   // add the rest (recursively)
     }
 
-    RestRequestHandler& on(const char *endpoint_expression, std::function< int(TRestRequest&) > methodHandler ) {
-        //Rest::Handler< RequestHandler > h( methodHandler.method, RequestHandler( methodHandler.handler ) );
-        endpoints.on(endpoint_expression, methodHandler);
-        return *this;
-    }
-#else
-    template<class... Targs>
-    RestRequestHandler& on(const char *endpoint_expression, Targs... rest ) {
-        endpoints.on(endpoint_expression, rest...);   // add the rest (recursively)
-        return *this;
-    }
-#endif
-
-#if 0
-    // c++11 using parameter pack expressions to recursively call add()
-    template<class T, class... Targs>
-    RestRequestHandler& on(const char *endpoint_expression, T h1, Targs... rest ) {
-      on(endpoint_expression, h1);   // add first argument
-      return on(endpoint_expression, rest...);   // add the rest (recursively)
-    }
-#endif
 };
 
-DEFINE_HTTP_METHOD_HANDLERS(RestRequest)
 
 using Rest::uri_result_to_string;
 

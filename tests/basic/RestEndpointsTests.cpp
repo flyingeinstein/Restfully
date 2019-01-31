@@ -52,6 +52,8 @@ std::function<int(RestRequest&)> dummy(std::string _response) {
 
 bool check_response(std::function<int(RestRequest&)> x, std::function<int(RestRequest&)> y)
 {
+    if(x==nullptr || y==nullptr)
+        return false;
     Rest::Arguments args(1);
     RestRequest rx(args), ry(args);
     x(rx);
@@ -65,7 +67,7 @@ TEST(endpoints_simple)
     Endpoints endpoints;
 
     // add some endpoints
-    endpoints.on("/api/devices", GET(getbus));
+    endpoints.on("/api/devices").GET(getbus);
     Endpoints::Endpoint res = endpoints.resolve(Rest::HttpGet, "/api/devices");
     return (res.method==Rest::HttpGet && check_response(res.handler.handler, getbus) && res.status==URL_MATCHED)
        ? OK
@@ -75,7 +77,7 @@ TEST(endpoints_simple)
 TEST(endpoints_partial_match_returns_no_handler) {
     Endpoints endpoints;
     //Endpoints::Handler getbus("get i2c-bus");
-    endpoints.on("/api/bus/i2c/:bus(integer)/devices", GET(getbus));
+    endpoints.on("/api/bus/i2c/:bus(integer)/devices").GET(getbus);
     Endpoints::Endpoint r = endpoints.resolve(Rest::HttpGet, "/api/bus/i2c");
     return (r.status==URL_FAIL_NO_HANDLER)
         ? OK
@@ -85,7 +87,7 @@ TEST(endpoints_partial_match_returns_no_handler) {
 TEST(endpoints_wildcard_match_returns_handler) {        // todo: implement URL wildcards!!!
     Endpoints endpoints;
     //Endpoints::Handler getbus("get i2c-bus");
-    endpoints.on("/api/bus/i2c/:bus(integer)/*", GET(getbus));
+    endpoints.on("/api/bus/i2c/:bus(integer)/*").GET(getbus);
     Endpoints::Endpoint r = endpoints.resolve(Rest::HttpGet, "/api/bus/i2c/5/config/display");
     return (r.status==URL_MATCHED && check_response(r.handler.handler, getbus))
            ? OK
@@ -95,7 +97,7 @@ TEST(endpoints_wildcard_match_returns_handler) {        // todo: implement URL w
 TEST(endpoints_int_argument)
 {
     Endpoints endpoints;
-    endpoints.on("/api/bus/i2c/:bus(integer)/devices", GET(getbus));
+    endpoints.on("/api/bus/i2c/:bus(integer)/devices").GET(getbus);
     Endpoints::Endpoint r_1 = endpoints.resolve(Rest::HttpGet, "/api/bus/i2c/3/devices");
     return (r_1.status==URL_MATCHED && check_response(r_1.handler.handler, getbus) && r_1["bus"].isInteger() && 3==(long)r_1["bus"])
        ? OK
@@ -105,7 +107,7 @@ TEST(endpoints_int_argument)
 TEST(endpoints_real_argument)
 {
     Endpoints endpoints;
-    endpoints.on("/api/bus/i2c/:bus(real)/devices", GET(getbus));
+    endpoints.on("/api/bus/i2c/:bus(real)/devices").GET(getbus);
     Endpoints::Endpoint r_1 = endpoints.resolve(Rest::HttpGet, "/api/bus/i2c/3.14/devices");
     return (r_1.status==URL_MATCHED && check_response(r_1.handler.handler, getbus) && r_1["bus"].isNumber() && 3.14==(double)r_1["bus"])
         ? OK
@@ -115,38 +117,39 @@ TEST(endpoints_real_argument)
 TEST(endpoints_string_argument)
 {
     Endpoints endpoints;
-    endpoints.on("/api/bus/i2c/:bus(string)/devices", GET(getbus));
+    endpoints.on("/api/bus/i2c/:bus(string)/devices").GET(getbus);
     Endpoints::Endpoint r_1 = endpoints.resolve(Rest::HttpGet, "/api/bus/i2c/default/devices");
     return (r_1.status==URL_MATCHED && check_response(r_1.handler.handler, getbus) && r_1["bus"].isString() && strcmp("default", (const char*)r_1["bus"])==0)
         ? OK
         : FAIL;
 }
 
-TEST(endpoints_many)
+TEST_DISABLED(endpoints_many)
 {
 	Endpoints endpoints;
 	//Endpoints::Handler devices("devices"), slots("dev:slots"), slot("dev:slot"), getbus("get i2c-bus"), putbus("put i2c-bus");
 
     // add some endpoints
+	auto dev = endpoints.on("/api/devices");
+    dev
+        .GET(devices)
+	    .GET(":dev(integer|string)/slots", slots)
+        .PUT(":dev(integer|string)/slot/:slot(integer)/meta", slot);
 	endpoints
-	    .on("/api/devices", GET(devices))
-	    .on("/api/devices/:dev(integer|string)/slots", GET(slots))
-        .on("/api/devices/:dev(integer|string)/slot/:slot(integer)/meta", PUT(slot));
-	endpoints
-        .on("/api/bus/i2c/:bus(integer)/devices",
-                  GET(getbus),
-                  PUT(getbus),
-                  PATCH(getbus),
-                  POST(getbus),
-                  DELETE(getbus),
-                  //GET(putbus),         // will cause a duplicate endpoint error
-                  OPTIONS(getbus)
-                  )
+        .on("/api/bus/i2c/:bus(integer)/devices")
+                  .GET(getbus)
+                  .PUT(getbus)
+                  .PATCH(getbus)
+                  .POST(getbus)
+                  .DELETE(getbus)
+                  //.GET(putbus)         // will cause a duplicate endpoint error
+                  .OPTIONS(getbus)
+
         // any errors produced in the above sentences will get caught here
-        .katch([](Endpoints::Endpoint p) {
+        .katch([](Endpoints::Exception ex) {
             std::cout << "exception occured adding endpoints: "
-                << uri_result_to_string(p.status) << ": "
-                << p.name;
+                << uri_result_to_string(ex.code) << ": "
+                << ex.node.name();
             return FAIL;
         });
 
@@ -181,8 +184,8 @@ TEST(endpoints_subnode_simple)
     Endpoints endpoints;
 
     // add some endpoints
-    Endpoints::NodeRef devs = endpoints.from("/api/devices");
-    devs.on("/lights", GET(getbus));
+    Endpoints::NodeRef devs = endpoints.on("/api/devices");
+    devs.on("lights").GET(getbus);
 
     Endpoints::Endpoint res = endpoints.resolve(Rest::HttpGet, "/api/devices/lights");
     if(res.method!=Rest::HttpGet || !check_response(res.handler.handler, getbus) || res.status!=URL_MATCHED)
@@ -198,12 +201,13 @@ TEST(endpoints_subnode_three)
     // starting at the path /api/devices, add 4 new lights and doors endpoints.
     // if any of the additions fail then they will return an invalid NodeRef which we then return FAIL. Note,
     // calling on(...) on an invalid NodeRef just returns the invalid NodeRef again.
-    if(!endpoints.from("/api/devices")
-        .on("/lights", PUT(devices))
-        .on("/lights/kitchen", GET(getbus))
-        .on("/lights/bedroom", GET(getbus))
-        .on("/doors/garage", GET(getbus))
-    ) return FAIL;
+    if(endpoints.on("/api/devices")
+        .PUT("lights", devices)
+        .GET("lights/kitchen", getbus)
+        .GET("lights/bedroom", getbus)
+        .GET("doors/garage", getbus)
+        .error() !=0)
+            return FAIL;
 
     Endpoints::Endpoint res = endpoints.resolve(Rest::HttpPut, "/api/devices/lights");
     if(res.method!=Rest::HttpPut || !check_response(res.handler.handler, devices) || res.status!=URL_MATCHED)
@@ -231,12 +235,15 @@ TEST(endpoints_subnode_bad_path_fails)
     // starting at the path /api/devices, add 4 new lights and doors endpoints.
     // if any of the additions fail then they will return an invalid NodeRef which we then return FAIL. Note,
     // calling on(...) on an invalid NodeRef just returns the invalid NodeRef again.
-    if(!endpoints.from("/api/ devices")
-            .on("/lights", PUT(devices))
-            .on("/lights/kitchen", GET(getbus))
-            .on("/lights/bedroom", GET(getbus))
-            .on("/doors/garage", GET(getbus))
-            ) return OK;
+    auto devs = endpoints.on("/api/devices");
+    devs
+        .PUT("lights", devices)
+        .GET("kitchen", getbus)
+        .GET("bedroom", getbus)
+        .GET("doors/garage", getbus);
+    if(devs.error())
+        return OK;
+
     return FAIL; // failed FAIL test
 }
 
@@ -247,11 +254,38 @@ TEST(endpoints_subnode_inner_exception_fails)
     // starting at the path /api/devices, add 4 new lights and doors endpoints.
     // if any of the additions fail then they will return an invalid NodeRef which we then return FAIL. Note,
     // calling on(...) on an invalid NodeRef just returns the invalid NodeRef again.
-    if(!endpoints.from("/api/devices")
-            .on("/lights", PUT(devices))
-            .on("/lights/ &kitchen", GET(getbus))
-            .on("/lights/bedroom", GET(getbus))
-            .on("/doors/garage", GET(getbus))
-            ) return OK;
-    return FAIL; // failed FAIL test
+    if(endpoints.on("/api/devices")
+            .PUT("/lights", devices)
+            .GET("/lights/ &kitchen", getbus)
+            .GET("/lights/bedroom", getbus)
+            .GET("/doors/garage", getbus)
+            .error()!=0 )
+        return OK;  // correctly caused error
+    else
+        return FAIL; // failed FAIL test
+}
+
+TEST(endpoints_curry_using_bind) {
+    Endpoints endpoints;
+    bool ledState = false;
+
+    auto SetLed = [&ledState](RestRequest &request, bool value) {
+        ledState = value;
+        return 200;
+    };
+    auto x = std::bind(SetLed,
+                       std::placeholders::_1,     // RestRequest placeholder,
+                       true                       // specified and bound as constant
+    );
+
+    endpoints.on("/api/led")
+        .PUT("off", std::bind(SetLed,
+                       std::placeholders::_1,     // RestRequest placeholder,
+                       true                       // specified and bound as constant
+    ))
+        .PUT("on", std::bind(SetLed,
+                      std::placeholders::_1,     // RestRequest placeholder,
+                      false                      // specified and bound as constant
+    ));
+    return OK;
 }

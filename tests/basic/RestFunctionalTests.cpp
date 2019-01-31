@@ -137,3 +137,4 @@ TEST(endpoints_default_handler_called)
             ? OK
             : FAIL;
 }
+

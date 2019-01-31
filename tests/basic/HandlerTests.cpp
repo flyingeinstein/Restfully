@@ -16,7 +16,7 @@ public:
 
     inline FakeRequest(int x=0) : value(x) {}
 };
-DEFINE_HTTP_METHOD_HANDLERS(FakeRequest)
+
 typedef Rest::Handler<FakeRequest&> FakeHandler;
 
 
@@ -82,7 +82,7 @@ TEST(handler_get_std_function)
 {
     FakeRequest r(1);
     std::function<int(FakeRequest&)> f = [](FakeRequest& r) { r.value = 2; return r.value; };
-    FakeHandler h = GET(f);
+    FakeHandler h(f);
     return (h(r)==2 && r.value==2)
            ? OK
            : FAIL;
@@ -92,7 +92,7 @@ TEST(handler_get_instance_function)
 {
     handler_class c;
     FakeRequest r(1);
-    FakeHandler h = GET(std::bind(&handler_class::m, &c, std::placeholders::_1));
+    FakeHandler h(std::bind(&handler_class::m, &c, std::placeholders::_1));
     return (h(r)==2 && r.value==2)
            ? OK
            : FAIL;
