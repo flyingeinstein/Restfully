@@ -45,7 +45,7 @@ class Token {
 
   public:
     short id;
-    char *s;        // todo: we can probably make this use binbag, and store string ID in 'i'
+    char *s;        // todo: make BinBag token type and store string ID in 'i'
     int64_t i;
     double d;
 

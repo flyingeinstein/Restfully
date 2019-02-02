@@ -184,7 +184,7 @@ TEST(endpoints_subnode_simple)
     Endpoints endpoints;
 
     // add some endpoints
-    Endpoints::NodeRef devs = endpoints.on("/api/devices");
+    Endpoints::Node devs = endpoints.on("/api/devices");
     devs.on("lights").GET(getbus);
 
     Endpoints::Endpoint res = endpoints.resolve(Rest::HttpGet, "/api/devices/lights");
@@ -240,7 +240,7 @@ TEST(endpoints_subnode_bad_path_fails)
         .PUT("lights", devices)
         .GET("kitchen", getbus)
         .GET("bedroom", getbus)
-        .GET("doors/garage", getbus);
+        .GET("doors/ &garage", getbus);
     if(devs.error())
         return OK;
 
@@ -255,10 +255,10 @@ TEST(endpoints_subnode_inner_exception_fails)
     // if any of the additions fail then they will return an invalid NodeRef which we then return FAIL. Note,
     // calling on(...) on an invalid NodeRef just returns the invalid NodeRef again.
     if(endpoints.on("/api/devices")
-            .PUT("/lights", devices)
+            .PUT("lights", devices)
             .GET("/lights/ &kitchen", getbus)
             .GET("/lights/bedroom", getbus)
-            .GET("/doors/garage", getbus)
+            .GET("doors/garage", getbus)
             .error()!=0 )
         return OK;  // correctly caused error
     else

@@ -56,7 +56,7 @@ public:
             return false;
     }
 
-    typename Endpoints::NodeRef on(const char *endpoint_expression ) {
+    typename Endpoints::Node on(const char *endpoint_expression ) {
         return endpoints.on(endpoint_expression);   // add the rest (recursively)
     }
 

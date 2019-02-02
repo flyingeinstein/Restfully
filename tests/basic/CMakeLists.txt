@@ -1,6 +1,7 @@
 project(basic-tests)
 
-set(SOURCE_FILES binbag.cpp requests.h vptr-requests.h RestTests.cpp RestEndpointsTests.cpp RestRequestTests.cpp  RestRequestVptrTests.cpp)
+#set(SOURCE_FILES binbag.cpp requests.h vptr-requests.h RestTests.cpp RestEndpointsTests.cpp RestRequestTests.cpp  RestRequestVptrTests.cpp)
+set(SOURCE_FILES binbag.cpp requests.h vptr-requests.h HandlerTests.cpp RestEndpointsTests.cpp RestRequestTests.cpp)
 
 add_executable(basic-tests ${SOURCE_FILES})
 add_dependencies(basic-tests common-tests restfully)

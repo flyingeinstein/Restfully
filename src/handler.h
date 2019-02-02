@@ -176,12 +176,6 @@ namespace Rest {
 
         using HandlerType = typename function_traits<decltype( & FunctionT::operator())>::HandlerType ;
         using FunctionType = typename function_traits<decltype( & FunctionT::operator())>::FunctionType ;
-
-        //using HandlerType = typename function_traits<decltype( & FunctionT::operator())>::HandlerType ;
-        //using FunctionType = typename function_traits<decltype( & FunctionT::operator())>::FunctionType ;
-
-        //typedef Rest::Handler< arguments... > HandlerType;
-        //typedef std::function<return_type( arguments... )> FunctionType;
     };
 
     // Free functions
@@ -210,14 +204,14 @@ namespace Rest {
     // std::bind for object methods
     template<typename ClassT, typename ReturnTypeT, typename ... Args, typename ... FArgs>
 #if defined _LIBCPP_VERSION  // libc++ (Clang)
-    struct function_traits<std::__1::__bind<ReturnTypeT (ClassT::*)(Args ...), FArgs ...>>
+    struct function_traits<std::__bind<ReturnTypeT (ClassT::*)(Args ...), FArgs ...>>
 #elif defined _GLIBCXX_RELEASE  // glibc++ (GNU C++ >= 7.1)
-        struct function_traits<std::_Bind<ReturnTypeT(ClassT::*(ClassT *, FArgs ...))(Args ...)>>
+        struct function_traits<std::_Bind<ReturnTypeT(ClassT::*(FArgs ...))(Args ...)>>
 #elif defined __GLIBCXX__  // glibc++ (GNU C++)
 struct function_traits<std::_Bind<std::_Mem_fn<ReturnTypeT (ClassT::*)(Args ...)>(FArgs ...)>>
 #elif defined _MSC_VER  // MS Visual Studio
 struct function_traits<
-std::_Binder<std::_Unforced, ReturnTypeT(__cdecl ClassT::*)(Args ...), FArgs ...>
+  std::_Binder<std::_Unforced, ReturnTypeT(__cdecl ClassT::*)(Args ...), FArgs ...>
 >
 #else
 #error "Unsupported C++ compiler / standard library"
