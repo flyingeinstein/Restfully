@@ -32,6 +32,7 @@ protected:
         size_type handler;
 
         IndexedHandler() : method(HttpGet), handler(0) {}
+        IndexedHandler(std::nullptr_t np) : method(HttpGet), handler(0) {}
         IndexedHandler(size_type _index) : method(HttpGet), handler(_index) {}
         IndexedHandler(HttpMethod _method, size_type _index) : method(_method), handler(_index) {}
     };
@@ -66,40 +67,9 @@ public:
             return false;
     }
 
-    RestRequestVptrHandler& on(const char *endpoint_expression, RequestHandler handler ) {
-        typename Handlers::iterator i = handlers.insert(handlers.end(), handler);
-        endpoints.on(endpoint_expression, IndexedHandler( handler.method, (size_type)(i - handlers.begin()) ) );
-        return *this;
+    typename Endpoints::Node on(const char *endpoint_expression ) {
+        return endpoints.on(endpoint_expression);   // add the rest (recursively)
     }
-
-#if 0
-    RestRequestHandler& on(const char *endpoint_expression, Rest::Handler< TRestRequest& > methodHandler ) {
-        //Rest::Handler< RequestHandler > h( methodHandler.method, RequestHandler( methodHandler.handler ) );
-        endpoints.on(endpoint_expression, methodHandler);
-        return *this;
-    }
-
-    RestRequestHandler& on(const char *endpoint_expression, std::function< int(TRestRequest&) > methodHandler ) {
-        //Rest::Handler< RequestHandler > h( methodHandler.method, RequestHandler( methodHandler.handler ) );
-        endpoints.on(endpoint_expression, methodHandler);
-        return *this;
-    }
-#elif 1
-    template<class... Targs>
-    RestRequestVptrHandler& on(const char *endpoint_expression, Targs... rest ) {
-        on(endpoint_expression, rest...);   // add the rest (recursively)
-        return *this;
-    }
-#endif
-
-#if 0
-    // c++11 using parameter pack expressions to recursively call add()
-    template<class T, class... Targs>
-    RestRequestHandler& on(const char *endpoint_expression, T h1, Targs... rest ) {
-      on(endpoint_expression, h1);   // add first argument
-      return on(endpoint_expression, rest...);   // add the rest (recursively)
-    }
-#endif
 };
 
 

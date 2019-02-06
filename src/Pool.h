@@ -15,9 +15,13 @@ extern binbag* literals_index;
 
 namespace Rest {
 
-    template<class TNode, class TLiteral, class TArgumentType>
+    template<class TNode>
     class Pool
     {
+    public:
+        using TLiteral = typename TNode::LiteralType;
+        using TArgumentType = typename TNode::ArgumentType;
+
     protected:
         // stores the expression as a chain of endpoint nodes
         // todo: this will need to use paged memory

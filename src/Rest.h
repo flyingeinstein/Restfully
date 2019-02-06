@@ -9,6 +9,7 @@
 
 
 #include "Token.h"
+#include "Node.h"
 #include "Argument.h"
 #include "Literal.h"
 #include "Link.h"
@@ -29,16 +30,86 @@ template<class THandler = std::function<short(void)> >
 class Endpoints {
 public:
     typedef THandler Handler;
-    typedef ::Rest::Argument Argument;
 
-protected:
-    class NodeData;
-    typedef Link<Rest::Literal, NodeData> Literal;
-    typedef Link<Rest::Type, NodeData> ArgumentType;
-    typedef ::Rest::Token Token;
-    typedef ::Rest::Parser<NodeData, Rest::Literal, Rest::Argument, Token> Parser;
+    using Literal = Rest::Literal;
+    using ArgumentType = Rest::Type;
+    using Argument = Rest::Argument;
+    using NodeData = Rest::NodeData<Literal, ArgumentType, THandler>;
+
+    using Token = Rest::Token;
+    using Parser = Rest::Parser<NodeData, Token, Pool<NodeData> >;
+
 
 public:
+    class Node : public Rest::Node<NodeData, THandler> {
+    public:
+        using Super = Rest::Node<NodeData, THandler>;
+
+        template<typename ... TArgs>
+        Node(Endpoints* _endpoints, TArgs ... args) : endpoints(_endpoints), Super(args...) {}
+
+        Node(const Node& copy) : endpoints(copy.endpoints), Super(copy) {}
+
+        Node& operator=(const Node& copy) {
+            endpoints = copy.endpoints;
+            Super::operator=(copy);
+            return *this;
+        }
+
+        inline Node on(const char *endpoint_expression ) {
+            if(Super::node!=nullptr && endpoints!=nullptr && endpoints->exception==0) {
+                return endpoints->on(Super::node, endpoint_expression);
+            } else {
+                // todo: set exception here
+                return Node(endpoints, URL_FAIL_NO_ENDPOINT);   // invalid NodeRef
+            }
+        }
+
+#if 0
+        using Super::GET;
+        using Super::PUT;
+        using Super::PATCH;
+        using Super::POST;
+        using Super::DELETE;
+        using Super::OPTIONS;
+        using Super::ANY;
+#else
+        template<typename H> inline Node& GET(H handler) { attach(HttpGet, handler); return *this; }
+        template<typename H> inline Node& PUT(H handler) { attach(HttpPut, handler); return *this; }
+        template<typename H> inline Node& PATCH(H handler) { attach(HttpPatch, handler); return *this; }
+        template<typename H> inline Node& POST(H handler) { attach(HttpPost, handler); return *this; }
+        template<typename H> inline Node& DELETE(H handler) { attach(HttpDelete, handler); return *this; }
+        template<typename H> inline Node& OPTIONS(H handler) { attach(HttpOptions, handler); return *this; }
+        template<typename H> inline Node& ANY(H handler) { attach(HttpMethodAny, handler); return *this; }
+#endif
+
+        template<typename H> inline Node& GET(const char* expr, H handler) { attach(expr, HttpGet, handler); return *this; }
+        template<typename H> inline Node& PUT(const char* expr, H handler) { attach(expr, HttpPut, handler); return *this; }
+        template<typename H> inline Node& PATCH(const char* expr, H handler) { attach(expr, HttpPatch, handler); return *this; }
+        template<typename H> inline Node& POST(const char* expr, H handler) { attach(expr, HttpPost, handler); return *this; }
+        template<typename H> inline Node& DELETE(const char* expr, H handler) { attach(expr, HttpDelete, handler); return *this; }
+        template<typename H> inline Node& OPTIONS(const char* expr, H handler) { attach(expr, HttpOptions, handler); return *this; }
+        template<typename H> inline Node& ANY(const char* expr, H handler) { attach(expr, HttpMethodAny, handler); return *this; }
+
+        using Super::attach;
+        using Super::exception;
+
+        template<class HandlerT>
+        inline void attach(const char* expr, HttpMethod method, HandlerT handler ) {
+            if (Super::node != nullptr) {
+                Node r = on(expr);
+                r.attach(method, handler);
+                if(r.exception!=0)
+                    exception = r.exception;
+            }
+        }
+
+    protected:
+        Endpoints* endpoints;
+    };
+
+    using Exception = typename Node::Exception;
+
 
     class Endpoint : public Arguments {
     public:
@@ -65,154 +136,6 @@ public:
         inline explicit operator bool() const { return status==URL_MATCHED; }
 
         friend Endpoints;
-    };
-
-protected:
-    class NodeData {
-    public:
-        // if there is more input in parse stream
-        Literal *literals;    // first try to match one of these literals
-
-        // if no literal matches, then try to match based on token type
-        ArgumentType *string, *numeric, *boolean;
-
-        // if no match is made, we can optionally call a wildcard handler
-        NodeData *wild;
-
-        // if we are at the end of the URI then we can pass to one of the http verb handlers
-        using HandlerType = Handler;
-        HandlerType GET, POST, PUT, PATCH, DELETE, OPTIONS;
-
-        inline NodeData() : literals(nullptr), string(nullptr), numeric(nullptr), boolean(nullptr), wild(nullptr),
-                        GET(nullptr), POST(nullptr), PUT(nullptr), PATCH(nullptr), DELETE(nullptr), OPTIONS(nullptr)
-        {}
-
-        inline bool isSet(const HandlerType& h) const { return h != nullptr; }
-
-        NodeData::HandlerType& handle(HttpMethod method) {
-            // get a pointer to the Handler member variable from the node
-            switch(method) {
-                case HttpGet: return GET;
-                case HttpPost: return POST;
-                case HttpPut: return PUT;
-                case HttpPatch: return PATCH;
-                case HttpDelete: return DELETE;
-                case HttpOptions: return OPTIONS;
-                default: return GET;
-            }
-        }
-
-        void handle(HttpMethod method, const NodeData::HandlerType& handler) {
-            // get a pointer to the Handler member variable from the node
-            switch(method) {
-                case HttpGet: GET = handler; break;
-                case HttpPost: POST = handler; break;
-                case HttpPut: PUT = handler; break;
-                case HttpPatch: PATCH = handler; break;
-                case HttpDelete: DELETE = handler; break;
-                case HttpOptions: OPTIONS = handler; break;
-                case HttpMethodAny:
-                    if(!isSet(GET)) GET = handler;
-                    if(!isSet(POST)) POST = handler;
-                    if(!isSet(PUT)) PUT = handler;
-                    if(!isSet(PATCH)) PATCH = handler;
-                    if(!isSet(DELETE)) DELETE = handler;
-                    if(!isSet(OPTIONS)) OPTIONS = handler;
-                    break;
-            }
-        }
-
-    };
-
-public:
-    class Exception;
-
-    class Node {
-        friend class Endpoints;
-
-    public:
-        inline Node() : endpoints(nullptr), node(nullptr), exception(0) {}
-        inline Node(const Node& copy) : endpoints(copy.endpoints), node(copy.node), exception(copy.exception) {}
-
-        Node& operator=(const Node& copy) {
-            endpoints=copy.endpoints;
-            node=copy.node;
-            exception = copy.exception;
-            return *this;
-        }
-
-        inline operator bool() const { return node!=nullptr && endpoints!=nullptr; }
-
-        inline Node on(const char *endpoint_expression ) {
-            if(node!=nullptr && endpoints!=nullptr && endpoints->exception==0) {
-                return endpoints->on(node, endpoint_expression);
-            } else {
-                // todo: set exception here
-                return Node(endpoints, URL_FAIL_NO_ENDPOINT);   // invalid NodeRef
-            }
-        }
-
-        inline int error() const { return exception; }
-
-        template<typename H> inline Node& GET(H handler) { attach(HttpGet, handler); return *this; }
-        template<typename H> inline Node& PUT(H handler) { attach(HttpPut, handler); return *this; }
-        template<typename H> inline Node& PATCH(H handler) { attach(HttpPatch, handler); return *this; }
-        template<typename H> inline Node& POST(H handler) { attach(HttpPost, handler); return *this; }
-        template<typename H> inline Node& DELETE(H handler) { attach(HttpDelete, handler); return *this; }
-        template<typename H> inline Node& OPTIONS(H handler) { attach(HttpOptions, handler); return *this; }
-        template<typename H> inline Node& ANY(H handler) { attach(HttpMethodAny, handler); return *this; }
-
-        template<typename H> inline Node& GET(const char* expr, H handler) { attach(expr, HttpGet, handler); return *this; }
-        template<typename H> inline Node& PUT(const char* expr, H handler) { attach(expr, HttpPut, handler); return *this; }
-        template<typename H> inline Node& PATCH(const char* expr, H handler) { attach(expr, HttpPatch, handler); return *this; }
-        template<typename H> inline Node& POST(const char* expr, H handler) { attach(expr, HttpPost, handler); return *this; }
-        template<typename H> inline Node& DELETE(const char* expr, H handler) { attach(expr, HttpDelete, handler); return *this; }
-        template<typename H> inline Node& OPTIONS(const char* expr, H handler) { attach(expr, HttpOptions, handler); return *this; }
-        template<typename H> inline Node& ANY(const char* expr, H handler) { attach(expr, HttpMethodAny, handler); return *this; }
-
-        inline void attach(HttpMethod method, THandler handler ) {
-            if(node!= nullptr && endpoints!= nullptr)
-                node->handle(method, handler);
-        }
-
-        inline void attach(const char* expr, HttpMethod method, THandler handler ) {
-            if (node != nullptr && endpoints != nullptr) {
-                Node r = on(expr);
-                r.attach(method, handler);
-                if(r.exception!=0)
-                    exception = r.exception;
-            }
-        }
-
-        inline Node& katch(const std::function<void(Exception)>& endpoint_exception_handler) {
-            if(exception>0) {
-                endpoint_exception_handler(Exception(*this, exception));
-                exception = 0;
-            }
-            return *this;
-        }
-
-        // todo: implement node::name()
-        std::string name() const {
-            return "todo:name";
-        }
-
-    protected:
-        Endpoints* endpoints;
-        NodeData* node;
-        int exception;
-        // todo: do we want endpoint->name? we can add it
-
-        inline Node(Endpoints* _endpoints, int _exception) : endpoints(_endpoints), node(nullptr), exception(_exception) {}
-        inline Node(Endpoints* _endpoints, NodeData* _node) : endpoints(_endpoints), node(_node), exception(0) {}
-    };
-
-    class Exception {
-    public:
-        Node node;
-        int code;
-
-        inline Exception(Node _node, int _code) : node(_node), code(_code) {}
     };
 
 public:

@@ -49,19 +49,18 @@ namespace Rest {
 
     template<
             class TNode,
-            class TLiteral,
-            class TArgument,
             class TToken=Token,
-            class TPool=Pool<TNode, Link<TLiteral, TNode>, Link<typename TArgument::Type, TNode> >
+            class TPool=Pool<TNode>
     >
     class Parser
     {
     public:
+        using LiteralType = typename TNode::LiteralType;
+        using ArgumentType = typename TNode::ArgumentType;
+
         typedef TNode Node;
         typedef TToken Token;
-        typedef TArgument Argument;
-        typedef Link<TLiteral, Node> Literal;
-        typedef Link<typename TArgument::Type, Node> ArgumentType;
+
 
         typedef enum {
             expand = 1,           // indicates adding a new endpoint/handler
@@ -132,7 +131,7 @@ namespace Rest {
             short rv;
             long wid;
             Node* epc = ev->ep;
-            Literal* lit;
+            LiteralType* lit;
             ArgumentType* arg;
 
             // read datatype or decl type

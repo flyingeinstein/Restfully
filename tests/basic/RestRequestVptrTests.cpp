@@ -28,7 +28,7 @@ public:
 TEST(endpoints_vptr_on_echo)
 {
     RestRequestVptrHandler<VptrTest, RestRequest> rest;
-    rest.on("/api/echo/:msg(string|integer)", GET(&VptrTest::echo));
+    rest.on("/api/echo/:msg(string|integer)").GET(&VptrTest::echo);
     return OK;
 }
 
@@ -37,7 +37,7 @@ TEST(endpoints_vptr_resolve_echo)
     std::string response;
     VptrTest one;
     RestRequestVptrHandler<VptrTest, RestRequest> rest;
-    rest.on("/api/echo/:msg(string|integer)", GET(&VptrTest::echo));
+    rest.on("/api/echo/:msg(string|integer)").GET(&VptrTest::echo);
 
     rest.instance = &one;
     if(rest.handle(HttpGet, "/api/echo/Maya", &response)) {
@@ -53,7 +53,7 @@ TEST(endpoints_vptr_resolve_with_null_instance)
 {
     std::string response;
     RestRequestVptrHandler<VptrTest, RestRequest> rest;
-    rest.on("/api/echo/:msg(string|integer)", GET(&VptrTest::echo));
+    rest.on("/api/echo/:msg(string|integer)").GET(&VptrTest::echo);
 
     // no instance set on 'rest' object
     if(rest.handle(HttpGet, "/api/echo/Maya", &response)) {
@@ -71,7 +71,7 @@ TEST(endpoints_vptr_resolve_echo_instance)
     VptrTest one;
     one.greeting = "Dzien Dobry";
     RestRequestVptrHandler<VptrTest, RestRequest> rest;
-    rest.on("/api/echo/:msg(string|integer)", GET(&VptrTest::echo));
+    rest.on("/api/echo/:msg(string|integer)").GET(&VptrTest::echo);
 
     rest.instance = &one;
     if(rest.handle(HttpGet, "/api/echo/Maya", &response)) {
