@@ -120,9 +120,7 @@ public:
 
         inline Endpoint() :  Arguments(0), status(0), method(HttpMethodAny) {}
         inline Endpoint(HttpMethod _method, const Handler& _handler, int _status) :  Arguments(0), status(_status), method(_method), handler(_handler) {}
-        inline Endpoint(const Endpoint& copy) : Arguments(copy), status(copy.status), name(copy.name), method(copy.method), handler(copy.handler)
-        {
-        }
+        inline Endpoint(const Endpoint& copy) : Arguments(copy), status(copy.status), name(copy.name), method(copy.method), handler(copy.handler) {}
 
         inline Endpoint& operator=(const Endpoint& copy) {
             Arguments::operator=(copy);
@@ -158,24 +156,21 @@ public:
             delete defaultHandler;
     }
 
-    Endpoints& onDefault(const Handler& _handler) {
-        *defaultHandler = _handler;
-        return *this;
-    }
+    Endpoints& onDefault(const Handler& _handler) { *defaultHandler = _handler; return *this; }
 
-    Node on(const char *endpoint_expression) {
-        return on(nullptr, endpoint_expression);
-    }
+    inline Node on(const char *endpoint_expression) { return on(nullptr, endpoint_expression); }
 
     /// \brief Match a Uri against the compiled list of Uri expressions.
     /// If a match is found with an associated http method handler, the resolved UriEndpoint object is filled in.
     Endpoints::Endpoint resolve(HttpMethod method, const char *uri) {
         short rs;
+        Argument args[maxUriArgs+1];
         typename Parser::EvalState ev(&parser, &uri);
         if(ev.state<0)
             return Endpoint(method, *defaultHandler, URL_FAIL_INTERNAL);
         ev.mode = Parser::resolve;
-        ev.args = new Argument[ev.szargs = maxUriArgs+1];
+        ev.szargs = maxUriArgs+1;
+        ev.args = args;
 
         // parse the input
         if((rs=parser.parse( &ev )) >=URL_MATCHED) {
@@ -187,8 +182,10 @@ public:
                 endpoint.handler = handler;
                 endpoint.name = ev.methodName;
                 endpoint.method = method;
-                endpoint.args = ev.args;
                 endpoint.nargs = ev.nargs;
+                endpoint.args = new Argument[ ev.nargs ];
+                for(int i=0; i<ev.nargs; i++)
+                    endpoint.args[i] = ev.args[i];
             } else {
                 endpoint.handler = *defaultHandler;
                 endpoint.status = URL_FAIL_NO_HANDLER;
@@ -198,7 +195,6 @@ public:
             // cannot resolve
             return Endpoint(method, *defaultHandler, rs);
         }
-        // todo: we need to release memory from EV struct
     }
 
     protected:
@@ -211,13 +207,6 @@ public:
                 if(*endpoint_expression == '/')
                     endpoint_expression++;
             }
-
-            // determine if expression is a relative or absolute expression
-            /*if(*endpoint_expression == '/') {
-                // start at root node
-                node.node = &parser.getRoot();
-                endpoint_expression++;
-            }*/
 
             typename Parser::EvalState ev(&parser, &endpoint_expression);
             ev.szargs = 20;
