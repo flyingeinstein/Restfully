@@ -78,10 +78,10 @@ namespace Rest {
         using Exception = Exception<Node>;
 
         inline Node() : node(nullptr), exception(0) {}
-        inline Node(int _exception) : node(nullptr), exception(_exception) {}
-        inline Node(TNodeData* _node) : node(_node), exception(0) {}
-
         inline Node(const Node& copy) : node(copy.node), exception(copy.exception) {}
+
+        explicit inline Node(int _exception) : node(nullptr), exception(_exception) {}
+        explicit inline Node(TNodeData* _node) : node(_node), exception(0) {}
 
         Node& operator=(const Node& copy) {
             node=copy.node;
@@ -92,14 +92,6 @@ namespace Rest {
         inline operator bool() const { return node!=nullptr; }
 
         inline int error() const { return exception; }
-
-        template<typename H> inline Node& GET(H handler) { attach(HttpGet, handler); return *this; }
-        template<typename H> inline Node& PUT(H handler) { attach(HttpPut, handler); return *this; }
-        template<typename H> inline Node& PATCH(H handler) { attach(HttpPatch, handler); return *this; }
-        template<typename H> inline Node& POST(H handler) { attach(HttpPost, handler); return *this; }
-        template<typename H> inline Node& DELETE(H handler) { attach(HttpDelete, handler); return *this; }
-        template<typename H> inline Node& OPTIONS(H handler) { attach(HttpOptions, handler); return *this; }
-        template<typename H> inline Node& ANY(H handler) { attach(HttpMethodAny, handler); return *this; }
 
         inline void attach(HttpMethod method, THandler handler ) {
             if(node!= nullptr)

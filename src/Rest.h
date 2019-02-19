@@ -45,6 +45,14 @@ public:
     public:
         using Super = Rest::Node<NodeData, THandler>;
 
+        using Super::attach;
+        using Super::exception;
+
+        // test to ensure the base class has an attach(HttpMethod, THandler) method
+        static_assert(
+                has_method<Super, attach_caller, void(HttpMethod method, THandler handler) >::value,
+                "Node class should have attach method with signature void(HttpMethod,THandler)");
+
         template<typename ... TArgs>
         Node(Endpoints* _endpoints, TArgs ... args) : endpoints(_endpoints), Super(args...) {}
 
@@ -65,15 +73,6 @@ public:
             }
         }
 
-#if 0
-        using Super::GET;
-        using Super::PUT;
-        using Super::PATCH;
-        using Super::POST;
-        using Super::DELETE;
-        using Super::OPTIONS;
-        using Super::ANY;
-#else
         template<typename H> inline Node& GET(H handler) { attach(HttpGet, handler); return *this; }
         template<typename H> inline Node& PUT(H handler) { attach(HttpPut, handler); return *this; }
         template<typename H> inline Node& PATCH(H handler) { attach(HttpPatch, handler); return *this; }
@@ -81,7 +80,6 @@ public:
         template<typename H> inline Node& DELETE(H handler) { attach(HttpDelete, handler); return *this; }
         template<typename H> inline Node& OPTIONS(H handler) { attach(HttpOptions, handler); return *this; }
         template<typename H> inline Node& ANY(H handler) { attach(HttpMethodAny, handler); return *this; }
-#endif
 
         template<typename H> inline Node& GET(const char* expr, H handler) { attach(expr, HttpGet, handler); return *this; }
         template<typename H> inline Node& PUT(const char* expr, H handler) { attach(expr, HttpPut, handler); return *this; }
@@ -90,9 +88,6 @@ public:
         template<typename H> inline Node& DELETE(const char* expr, H handler) { attach(expr, HttpDelete, handler); return *this; }
         template<typename H> inline Node& OPTIONS(const char* expr, H handler) { attach(expr, HttpOptions, handler); return *this; }
         template<typename H> inline Node& ANY(const char* expr, H handler) { attach(expr, HttpMethodAny, handler); return *this; }
-
-        using Super::attach;
-        using Super::exception;
 
         template<class HandlerT>
         inline void attach(const char* expr, HttpMethod method, HandlerT handler ) {
