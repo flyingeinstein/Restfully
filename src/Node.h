@@ -75,35 +75,22 @@ namespace Rest {
     template<class TNodeData, class THandler>
     class Node {
     public:
-        using Exception = Exception<Node>;
 
-        inline Node() : node(nullptr), exception(0) {}
-        inline Node(const Node& copy) : node(copy.node), exception(copy.exception) {}
+        inline Node() : node(nullptr) {}
+        explicit inline Node(TNodeData* _node) : node(_node) {}
 
-        explicit inline Node(int _exception) : node(nullptr), exception(_exception) {}
-        explicit inline Node(TNodeData* _node) : node(_node), exception(0) {}
+        inline Node(const Node& copy) : node(copy.node) {}
 
         Node& operator=(const Node& copy) {
             node=copy.node;
-            exception = copy.exception;
             return *this;
         }
 
         inline operator bool() const { return node!=nullptr; }
 
-        inline int error() const { return exception; }
-
         inline void attach(HttpMethod method, THandler handler ) {
             if(node!= nullptr)
                 node->handle(method, handler);
-        }
-
-        inline Node& katch(const std::function<void(Exception)>& endpoint_exception_handler) {
-            if(exception>0) {
-                endpoint_exception_handler(Exception(*this, exception));
-                exception = 0;
-            }
-            return *this;
         }
 
         // todo: implement node::name()
@@ -113,7 +100,6 @@ namespace Rest {
 
     protected:
         TNodeData* node;
-        int exception;
         // todo: do we want endpoint->name? we can add it
     };
 

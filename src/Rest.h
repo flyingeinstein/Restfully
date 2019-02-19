@@ -44,9 +44,9 @@ public:
     class Node : public Rest::Node<NodeData, THandler> {
     public:
         using Super = Rest::Node<NodeData, THandler>;
+        using Exception = Exception<Node>;
 
         using Super::attach;
-        using Super::exception;
 
         // test to ensure the base class has an attach(HttpMethod, THandler) method
         static_assert(
@@ -54,23 +54,35 @@ public:
                 "Node class should have attach method with signature void(HttpMethod,THandler)");
 
         template<typename ... TArgs>
-        Node(Endpoints* _endpoints, TArgs ... args) : endpoints(_endpoints), Super(args...) {}
+        Node(Endpoints* _endpoints, TArgs ... args) : endpoints(_endpoints), exception(0), Super(args...) {}
 
-        Node(const Node& copy) : endpoints(copy.endpoints), Super(copy) {}
+        Node(const Node& copy) : endpoints(copy.endpoints), exception(copy.exception), Super(copy) {}
+
+        explicit inline Node(Endpoints* _endpoints, int _exception) : Super(nullptr), endpoints(_endpoints), exception(_exception) {}
 
         Node& operator=(const Node& copy) {
             endpoints = copy.endpoints;
+            exception = copy.exception;
             Super::operator=(copy);
             return *this;
         }
+
+        inline int error() const { return exception; }
 
         inline Node on(const char *endpoint_expression ) {
             if(Super::node!=nullptr && endpoints!=nullptr && endpoints->exception==0) {
                 return endpoints->on(Super::node, endpoint_expression);
             } else {
-                // todo: set exception here
-                return Node(endpoints, URL_FAIL_NO_ENDPOINT);   // invalid NodeRef
+                return Node(endpoints, exception = URL_FAIL_NO_ENDPOINT);   // invalid NodeRef
             }
+        }
+
+        inline Node& katch(const std::function<void(Exception)>& endpoint_exception_handler) {
+            if(exception>0) {
+                endpoint_exception_handler(Exception(*this, exception));
+                exception = 0;
+            }
+            return *this;
         }
 
         template<typename H> inline Node& GET(H handler) { attach(HttpGet, handler); return *this; }
@@ -101,8 +113,8 @@ public:
 
     protected:
         Endpoints* endpoints;
+        int exception;
     };
-
     using Exception = typename Node::Exception;
 
 
