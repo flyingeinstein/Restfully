@@ -21,6 +21,7 @@
 #define URL_FAIL_SYNTAX                     (-11)
 #define URL_FAIL_INTERNAL                   (-15)
 #define URL_FAIL_INTERNAL_BAD_STRING        (-16)
+#define URL_FAIL_NULL_ROOT                  (-17)
 
 namespace Rest {
 
@@ -49,8 +50,8 @@ namespace Rest {
 
     template<
             class TNode,
-            class TToken=Token,
-            class TPool=Pool<TNode>
+            class TPool,
+            class TToken=Token
     >
     class Parser
     {
@@ -94,10 +95,12 @@ namespace Rest {
             size_t nargs;
             size_t szargs;
 
-            EvalState(Parser* _expr, const char** _uri)
-                    : mode(resolve), uri(nullptr), state(expectPathPartOrSep), level(0), ep( _expr->root ),
+            EvalState(Parser* _expr, Node* _ep, const char** _uri)
+                    : mode(resolve), uri(nullptr), state(expectPathPartOrSep), level(0), ep( _ep ),
                       pmethodName(methodName), argtypes(nullptr), args(nullptr), nargs(0), szargs(0)
             {
+                assert(ep);
+                assert(_expr);
                 methodName[0]=0;
                 if(_uri != nullptr) {
                     // scan first token
@@ -113,15 +116,12 @@ namespace Rest {
         };
 
     protected:
-        TPool pool;
-        Node* root;
+        TPool* pool;
 
     public:
-        Parser() : root(pool.newNode())
+        Parser(TPool* _pool) : pool(_pool)
         {
         }
-
-        inline Node& getRoot() { return *root; }
 
         /// \brief Parses a url and either adds or resolves within the expression tree
         /// The Url and parse mode are set in ParseData and determine if parse() returns when expression tree hits a dead-end
@@ -172,7 +172,7 @@ namespace Rest {
                         if(ev->mode == expand && ev->t.is(TID_WILDCARD)) {
                             // encountered wildcard, must be last token
                             if(epc->wild==nullptr) {
-                                ev->ep = epc->wild = pool.newNode();
+                                ev->ep = epc->wild = pool->newNode();
                             } else {
                                 ev->ep = epc->wild;
                             }
@@ -185,7 +185,7 @@ namespace Rest {
                         else if(ev->t.is(TID_STRING, TID_IDENTIFIER)) {
                             // we must see if we already have a literal with this name
                             lit = nullptr;
-                            wid = pool.findLiteral(ev->t.s);
+                            wid = pool->findLiteral(ev->t.s);
                             if(wid>=0 && epc->literals) {
                                 // word exists in dictionary, see if it is a literal of current endpoint
                                 lit = epc->literals;
@@ -199,8 +199,8 @@ namespace Rest {
                             if(lit==nullptr) {
                                 if(ev->mode == expand) {
                                     // regular URI word, add to lexicon and generate code
-                                    lit = pool.addLiteralString(ev->ep, ev->t.s);
-                                    ev->ep = lit->next = pool.newNode();
+                                    lit = pool->addLiteralString(ev->ep, ev->t.s);
+                                    ev->ep = lit->next = pool->newNode();
                                 } else if(ev->mode == resolve && epc->string!=nullptr) {
                                     GOTO_STATE(expectParameterValue);
                                 } else {
@@ -363,8 +363,8 @@ namespace Rest {
 
                             if(arg == nullptr) {
                                 // add the argument to the Endpoint
-                                arg = pool.newArgumentType(name, typemask);
-                                ev->ep = arg->next = pool.newNode();
+                                arg = pool->newArgumentType(name, typemask);
+                                ev->ep = arg->next = pool->newNode();
 
                                 if ((typemask & ARG_MASK_NUMBER) > 0) {
                                     // int or real

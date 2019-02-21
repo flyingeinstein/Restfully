@@ -34,6 +34,9 @@ typedef enum {
 
 namespace Rest {
 
+    // this never gets destroyed
+    binbag* literals_index = nullptr;
+
     const Argument Argument::null;
 
 const char* uri_method_to_string(HttpMethod method) {

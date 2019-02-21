@@ -26,98 +26,20 @@ namespace Rest {
 /// You can store expressions for all Rest methods in the application if desired. This
 /// compiled byte-code machine can optimally compare and match a request Uri to an
 /// Endpoint specification.
-template<class THandler = std::function<short(void)> >
+template<
+        class THandler = std::function<short(void)>,
+        class TNodeData = Rest::NodeData<THandler>
+>
 class Endpoints {
 public:
-    typedef THandler Handler;
+    using Handler = THandler;
+    using NodeData = TNodeData;
 
-    using Literal = Rest::Literal;
-    using ArgumentType = Rest::Type;
+    using Literal = typename TNodeData::LiteralType;
+    using ArgumentType = typename TNodeData::ArgumentType;
     using Argument = Rest::Argument;
-    using NodeData = Rest::NodeData<Literal, ArgumentType, THandler>;
-
-    using Token = Rest::Token;
-    using Parser = Rest::Parser<NodeData, Token, Pool<NodeData> >;
-
 
 public:
-    class Node : public Rest::Node<NodeData, THandler> {
-    public:
-        using Super = Rest::Node<NodeData, THandler>;
-        using Exception = Exception<Node>;
-
-        using Super::attach;
-
-        // test to ensure the base class has an attach(HttpMethod, THandler) method
-        static_assert(
-                has_method<Super, attach_caller, void(HttpMethod method, THandler handler) >::value,
-                "Node class should have attach method with signature void(HttpMethod,THandler)");
-
-        template<typename ... TArgs>
-        Node(Endpoints* _endpoints, TArgs ... args) : endpoints(_endpoints), exception(0), Super(args...) {}
-
-        Node(const Node& copy) : endpoints(copy.endpoints), exception(copy.exception), Super(copy) {}
-
-        explicit inline Node(Endpoints* _endpoints, int _exception) : Super(nullptr), endpoints(_endpoints), exception(_exception) {}
-
-        Node& operator=(const Node& copy) {
-            endpoints = copy.endpoints;
-            exception = copy.exception;
-            Super::operator=(copy);
-            return *this;
-        }
-
-        inline int error() const { return exception; }
-
-        inline Node on(const char *endpoint_expression ) {
-            if(Super::node!=nullptr && endpoints!=nullptr && endpoints->exception==0) {
-                return endpoints->on(Super::node, endpoint_expression);
-            } else {
-                return Node(endpoints, exception = URL_FAIL_NO_ENDPOINT);   // invalid NodeRef
-            }
-        }
-
-        inline Node& katch(const std::function<void(Exception)>& endpoint_exception_handler) {
-            if(exception>0) {
-                endpoint_exception_handler(Exception(*this, exception));
-                exception = 0;
-            }
-            return *this;
-        }
-
-        template<typename H> inline Node& GET(H handler) { attach(HttpGet, handler); return *this; }
-        template<typename H> inline Node& PUT(H handler) { attach(HttpPut, handler); return *this; }
-        template<typename H> inline Node& PATCH(H handler) { attach(HttpPatch, handler); return *this; }
-        template<typename H> inline Node& POST(H handler) { attach(HttpPost, handler); return *this; }
-        template<typename H> inline Node& DELETE(H handler) { attach(HttpDelete, handler); return *this; }
-        template<typename H> inline Node& OPTIONS(H handler) { attach(HttpOptions, handler); return *this; }
-        template<typename H> inline Node& ANY(H handler) { attach(HttpMethodAny, handler); return *this; }
-
-        template<typename H> inline Node& GET(const char* expr, H handler) { attach(expr, HttpGet, handler); return *this; }
-        template<typename H> inline Node& PUT(const char* expr, H handler) { attach(expr, HttpPut, handler); return *this; }
-        template<typename H> inline Node& PATCH(const char* expr, H handler) { attach(expr, HttpPatch, handler); return *this; }
-        template<typename H> inline Node& POST(const char* expr, H handler) { attach(expr, HttpPost, handler); return *this; }
-        template<typename H> inline Node& DELETE(const char* expr, H handler) { attach(expr, HttpDelete, handler); return *this; }
-        template<typename H> inline Node& OPTIONS(const char* expr, H handler) { attach(expr, HttpOptions, handler); return *this; }
-        template<typename H> inline Node& ANY(const char* expr, H handler) { attach(expr, HttpMethodAny, handler); return *this; }
-
-        template<class HandlerT>
-        inline void attach(const char* expr, HttpMethod method, HandlerT handler ) {
-            if (Super::node != nullptr) {
-                Node r = on(expr);
-                r.attach(method, handler);
-                if(r.exception!=0)
-                    exception = r.exception;
-            }
-        }
-
-    protected:
-        Endpoints* endpoints;
-        int exception;
-    };
-    using Exception = typename Node::Exception;
-
-
     class Endpoint : public Arguments {
     public:
         int status;
@@ -126,7 +48,14 @@ public:
         Handler handler;
 
         inline Endpoint() :  Arguments(0), status(0), method(HttpMethodAny) {}
+        inline Endpoint(HttpMethod _method, int _status) :  Arguments(0), status(_status), method(_method) {}
         inline Endpoint(HttpMethod _method, const Handler& _handler, int _status) :  Arguments(0), status(_status), method(_method), handler(_handler) {}
+
+        template<class ... TArgumentsArgs>
+        inline Endpoint(HttpMethod _method, const Handler& _handler, int _status, TArgumentsArgs ... args )
+            :  Arguments(args...), status(_status), method(_method), handler(_handler) {
+        }
+
         inline Endpoint(const Endpoint& copy) : Arguments(copy), status(copy.status), name(copy.name), method(copy.method), handler(copy.handler) {}
 
         inline Endpoint& operator=(const Endpoint& copy) {
@@ -143,110 +72,115 @@ public:
         friend Endpoints;
     };
 
+    using Node = Rest::Node< Endpoints >;
+    using Exception = typename Node::Exception;
+
 public:
     /// \brief Initialize an empty UriExpression with a maximum number of code size.
     Endpoints()
-            : defaultHandler(new Handler()), maxUriArgs(0), exception(nullptr)
+            : sznodes(32), maxUriArgs(0)
     {
-    }
-
-    template<class... Targs>
-    Endpoints(Targs... args)
-            : defaultHandler(new Handler(args...)), maxUriArgs(0), exception(nullptr)
-    {
+        ep_head = ep_tail =  (TNodeData*)calloc(sznodes, sizeof(TNodeData));
+        ep_end = ep_head + sznodes;
+        if(literals_index == nullptr) {
+            literals_index = binbag_create(128, 1.5);
+        }
+        newNode();  // create the root node
     }
 
     /// \brief Destroys the RestUriExpression and releases memory
     virtual ~Endpoints() {
-        delete exception;
-        if(defaultHandler)
-            delete defaultHandler;
+        ::free(ep_head);
     }
 
-    Endpoints& onDefault(const Handler& _handler) { *defaultHandler = _handler; return *this; }
+    Node on(const char* expression) {
+        return getRoot().on(expression);
+    }
 
-    inline Node on(const char *endpoint_expression) { return on(nullptr, endpoint_expression); }
+    Endpoint resolve(HttpMethod method, const char* expression) {
+        return getRoot().resolve(method, expression);
+    }
 
-    /// \brief Match a Uri against the compiled list of Uri expressions.
-    /// If a match is found with an associated http method handler, the resolved UriEndpoint object is filled in.
-    Endpoints::Endpoint resolve(HttpMethod method, const char *uri) {
-        short rs;
-        Argument args[maxUriArgs+1];
-        typename Parser::EvalState ev(&parser, &uri);
-        if(ev.state<0)
-            return Endpoint(method, *defaultHandler, URL_FAIL_INTERNAL);
-        ev.mode = Parser::resolve;
-        ev.szargs = maxUriArgs+1;
-        ev.args = args;
+    inline Node getRoot() { return Node(this, ep_head); }
 
-        // parse the input
-        if((rs=parser.parse( &ev )) >=URL_MATCHED) {
-            // successfully resolved the endpoint
-            Endpoint endpoint;
-            Handler& handler = ev.ep->handle(method);
-            if(handler !=nullptr) {
-                endpoint.status = URL_MATCHED;
-                endpoint.handler = handler;
-                endpoint.name = ev.methodName;
-                endpoint.method = method;
-                endpoint.nargs = ev.nargs;
-                endpoint.args = new Argument[ ev.nargs ];
-                for(int i=0; i<ev.nargs; i++)
-                    endpoint.args[i] = ev.args[i];
-            } else {
-                endpoint.handler = *defaultHandler;
-                endpoint.status = URL_FAIL_NO_HANDLER;
-            }
-            return endpoint;
+    Node newNode()
+    {
+        assert(ep_tail < ep_end);
+        return Node(this, new (ep_tail++) TNodeData());
+    }
+
+    ArgumentType* newArgumentType(const char* name, unsigned short typemask)
+    {
+        long nameid = binbag_insert_distinct(literals_index, name);
+        return new ArgumentType(nameid, typemask);
+    }
+
+    long findLiteral(const char* word) {
+        return binbag_find_nocase(literals_index, word);
+    }
+
+    Literal* newLiteral(TNodeData* ep, Literal* literal)
+    {
+        Literal* _new, *p;
+        int _insert;
+        if(ep->literals) {
+            // todo: this kind of realloc every Literal insert will cause memory fragmentation, use Endpoints shared mem
+            // find the end of this list
+            Literal *_list = ep->literals;
+            while (_list->isValid())
+                _list++;
+            _insert = (int)(_list - ep->literals);
+
+            // allocate a new list
+            _new = (Literal*)realloc(ep->literals, (_insert + 2) * sizeof(Literal));
+            //memset(_new+_insert+1, 0, sizeof(Literal));
         } else {
-            // cannot resolve
-            return Endpoint(method, *defaultHandler, rs);
-        }
+            _new = (Literal*)calloc(2, sizeof(Literal));
+            _insert = 0;
+        };
+
+        // insert the new literal
+        memcpy(_new + _insert, literal, sizeof(Literal));
+        ep->literals = _new;
+
+        p = &_new[_insert + 1];
+        p->id = -1;
+        p->isNumeric = false;
+        p->next = nullptr;
+
+        return _new + _insert;
     }
 
-    protected:
-        /// \brief Parse and add single Uri Endpoint expressions to our list of Endpoints
-        Node on(NodeData* node, const char *endpoint_expression) {
-            short rs;
 
-            if(node==nullptr || (*endpoint_expression == '/')) {
-                node = &parser.getRoot();
-                if(*endpoint_expression == '/')
-                    endpoint_expression++;
-            }
+    Literal* addLiteralString(TNodeData* ep, const char* literal_value)
+    {
+        Literal lit;
+        lit.isNumeric = false;
+        if((lit.id = binbag_find_nocase(literals_index, literal_value)) <0)
+            lit.id = binbag_insert(literals_index, literal_value);  // insert value into the binbag, and record the index into the id field
+        lit.next = nullptr;
+        return newLiteral(ep, &lit);
+    }
 
-            typename Parser::EvalState ev(&parser, &endpoint_expression);
-            ev.szargs = 20;
-            ev.mode = Parser::expand;         // tell the parser we are adding this endpoint
-            ev.ep = node;
-
-            if((rs = parser.parse(&ev)) <URL_MATCHED) {
-                return Node(this, URL_FAIL_SYNTAX);
-            } else {
-                // if we encountered more args than we did before, then save the new value
-                if(ev.nargs > maxUriArgs)
-                    maxUriArgs = ev.nargs;
-
-                // attach the handler to this endpoint
-                return Node(this, ev.ep);
-            }
-        }
+    Literal* addLiteralNumber(TNodeData* ep, ssize_t literal_value)
+    {
+        Literal lit;
+        lit.isNumeric = true;
+        lit.id = literal_value;
+        lit.next = nullptr;
+        return newLiteral(ep, &lit);
+    }
 
 public:
-    Handler* defaultHandler; // like a 404 handler
+    // stores the expression as a chain of endpoint nodes
+    // todo: this will need to use paged memory
+    TNodeData *ep_head, *ep_tail, *ep_end;
+    size_t sznodes;
 
-protected:
     // some statistics on the endpoints
+    // todo: move this into a stats structure that is public
     size_t maxUriArgs;       // maximum number of embedded arguments on any one endpoint expression
-
-        /// \brief The parser splits the URL into a tree expression where handlers can be atttached to any branch
-        /// or endpoint in the tree.
-    Parser parser;
-
-    /// \brief if an error occurs during an add() this member will be set
-    /// all further add() calls will instantly return without adding Endpoints. Use katch() member to handle this
-    /// exception at some point after one or more add() calls.
-    Endpoint* exception;
 };
+
 
 } // ns:Rest

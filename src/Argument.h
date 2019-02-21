@@ -58,6 +58,8 @@ namespace Rest {
     public:
         typedef Type Type;
 
+        using Type::name;
+
         Argument() : type(0), ul(0) {}
         Argument(const Argument& copy) : Type(copy), type(copy.type), ul(copy.ul) {
             if(type == ARG_MASK_STRING)
@@ -89,8 +91,6 @@ namespace Rest {
                 ul = copy.ul;
             return *this;
         }
-
-        inline const char* name() const { return Type::name(); }
 
         int isOneOf(std::initializer_list<const char*> enum_values, bool case_insensitive=true) {
             typeof(strcmp) *cmpfunc = case_insensitive
@@ -170,6 +170,17 @@ namespace Rest {
         {
             if(n>0)
                 args = new Argument[nargs];
+        }
+
+        Arguments(Argument* _args, size_t n)
+                : args(nullptr), nargs(n)
+        {
+            if(n>0) {
+                // copy the given array of arguments
+                args = new Argument[nargs];
+                for(int i=0; i<nargs; i++)
+                    args[i] = _args[i];
+            }
         }
 
         Arguments(const Arguments& copy)
