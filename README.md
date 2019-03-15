@@ -1,3 +1,7 @@
+# BETA!!!
+
+This project is not ready for production yet. 
+
 # Restfully
 Arduino library for making Rest compliant APIs on the ESP8266 (ESP32). This libary currently supports
 the ESP8266WebServer and the ArduinoJSON library for handling the parsing of the Request and building 
