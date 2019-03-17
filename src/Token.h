@@ -6,12 +6,13 @@
 
 #include <string.h>
 #include <cstdlib>
+#include <stdio.h>
 
 #if defined(HAS_MALLOC_H)
 #include <malloc.h>
 #endif
 
- 
+
 // simple token IDs
 #define TID_EOF               300
 #define TID_INTEGER           303
