@@ -1,11 +1,9 @@
 
 #pragma once
 
-#include "Rest-Esp8266.h"
+#include "Rest-Esp.h"
 
-
-typedef Esp8266RestRequestHandler RestRequestHandler;
-typedef Esp8266RestRequest RestRequest;  // RestRequestHandler::RequestType RestRequest;
-typedef typename RestRequestHandler::HandlerType HandlerType;
-typedef typename RestRequestHandler::Endpoints Endpoints;
-
+using RestRequestHandler = EspRestRequestHandler;
+using RestRequest = EspRestRequest;  // RestRequestHandler::RequestType RestRequest;
+using HandlerType = typename RestRequestHandler::HandlerType;
+using Endpoints = typename RestRequestHandler::Endpoints;
