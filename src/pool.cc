@@ -2,7 +2,7 @@
 #include "pool.h"
 
 #include <assert.h>
-#include <memory.h>
+#include <string.h>
 
 // we always pass in these standard list of parameters, so might as well save us some time
 #define STANDARD_POOL_PARAMS    head, tail, end, element_size
