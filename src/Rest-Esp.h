@@ -1,6 +1,5 @@
 #pragma once
 
-#include <ESP8266WebServer.h>
 #include <ArduinoJson.h>
 
 #include "Rest.h"
@@ -46,7 +45,7 @@ namespace Rest {
             Request(TWebServer& _server, Rest::Arguments& _args) : server(_server), args(_args) {}
 
           protected:
-            DynamicJsonDocument requestDoc;
+            DynamicJsonDocument requestDoc{ 2048 };
         };
 
 
@@ -81,7 +80,15 @@ namespace Rest {
                 request.timestamp = millis();
                 request.httpStatus = 0;
 
-                ep.handler(request);
+                int rs = ep.handler(request);
+                if(request.httpStatus==0) {
+                    if (rs == 0)
+                        request.httpStatus = 200;
+                    else if (rs < 200)
+                        request.httpStatus = 400;
+                    else
+                        request.httpStatus = rs;
+                }
 
                 // make a << operator to send output to server response
                 String content;
@@ -110,7 +117,7 @@ namespace Rest {
               endpoints.on(endpoint_expression, h1);   // add first argument
               return *this;
             }
-        
+
             // c++11 using parameter pack expressions to recursively call add()
             template<class T, class... Targs>
             RequestHandler& on(const char *endpoint_expression, T h1, Targs... rest ) {
@@ -130,7 +137,7 @@ class Request {
     }
 
     /// The parsed POST as Json if the content-type was application/json
-    DynamicJsonDocument requestDoc;
+    DynamicJsonDocument requestDoc{ 2048 };
     JsonObject request;
 };
 
@@ -144,7 +151,7 @@ class Response {
     /// output response object built by Rest method handler.
     /// This object is empty when the method handler is called and is up to the method handler to populate with the
     /// exception of standard errors, warnings and status output which is added when the method handler returns.
-    DynamicJsonDocument responseDoc;
+    DynamicJsonDocument responseDoc{ 2048 };
     JsonObject response;
 
     /// Array of JsonError objects.
@@ -158,7 +165,7 @@ class Response {
 };
 }
 
-typedef Rest::Generics::Request<ESP8266WebServer, ArduinoJson::Request, ArduinoJson::Response> Esp8266RestRequest;
-typedef Rest::Generics::RequestHandler< Esp8266RestRequest > Esp8266RestRequestHandler;
+using EspRestRequest = Rest::Generics::Request<WebServer, ArduinoJson::Request, ArduinoJson::Response>;
+using EspRestRequestHandler = Rest::Generics::RequestHandler<EspRestRequest>;
 
-DEFINE_HTTP_METHOD_HANDLERS(Esp8266RestRequest)
+DEFINE_HTTP_METHOD_HANDLERS(EspRestRequest)
