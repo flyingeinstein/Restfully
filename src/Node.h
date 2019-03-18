@@ -12,8 +12,28 @@
 #include "Argument.h"
 #include "Parser.h"
 
+#include <vector>   // todo: stop using stl vector
+
 
 namespace Rest {
+
+    class UriRequest {
+    public:
+        HttpMethod method;
+        const char* uri;
+        Arguments args;
+
+        inline UriRequest() :  method(HttpMethodAny), uri(nullptr), args(0) {}
+        inline UriRequest(HttpMethod _method, const char* _uri) : method(_method), uri(_uri), args(0) {}
+        inline UriRequest(const UriRequest& copy) : method(copy.method), uri(copy.uri), args(copy.args) {}
+
+        inline UriRequest& operator=(const UriRequest& copy) {
+            method = copy.method;
+            uri = copy.uri;
+            args = copy.args;
+            return *this;
+        }
+    };
 
     template<class THandler, class TLiteral = Rest::Literal, class TArgumentType = Rest::Type>
     class NodeData {
@@ -21,6 +41,8 @@ namespace Rest {
         using LiteralType = Link<TLiteral, NodeData>;
         using ArgumentType = Link<TArgumentType, NodeData>;
         using HandlerType = THandler;
+
+        using External = std::function<THandler(UriRequest&)>;
 
         // if there is more input in parse stream
         LiteralType *literals;    // first try to match one of these literals
@@ -30,6 +52,8 @@ namespace Rest {
 
         // if no match is made, we can optionally call a wildcard handler
         NodeData *wild;
+
+        std::vector<External> externals;
 
         // if we are at the end of the URI then we can pass to one of the http verb handlers
         HandlerType GET, POST, PUT, PATCH, DELETE, OPTIONS;
@@ -73,6 +97,9 @@ namespace Rest {
             }
         }
 
+        void attach(External external) {
+            externals.insert(externals.begin(), external);
+        }
     };
 
     template<class TEndpoints>
@@ -91,6 +118,17 @@ namespace Rest {
         //        has_method<Super, attach_caller, void(HttpMethod method, THandler handler) >::value,
         //        "Node class should have attach method with signature void(HttpMethod,THandler)");
 
+        class Request : public UriRequest {
+        public:
+            Handler handler;
+            // todo: possibly make this derived class contain the conversions from class instance to static?
+
+            inline Request(HttpMethod _method, const char* _uri) : UriRequest(_method, _uri) {}
+            inline Request(const UriRequest& req) : UriRequest(req) {}
+
+            inline explicit operator bool() const { return handler==URL_MATCHED; }
+        };
+
         inline Node() : _endpoints(nullptr), _node(nullptr), _exception(URL_FAIL_NULL_ROOT) {}
         explicit inline Node(Endpoints* endpoints) : _endpoints(endpoints), _node(nullptr), _exception(0) {}
         explicit inline Node(Endpoints* endpoints, NodeData* node) : _endpoints(endpoints), _node(node), _exception(0) {}
@@ -105,7 +143,7 @@ namespace Rest {
             return *this;
         }
 
-        inline operator bool() const { return _node!=nullptr; }
+        inline explicit operator bool() const { return _node!=nullptr; }
 
         // can convert directly to the nodedata we point to
         inline operator const NodeData*() const { return _node; }
@@ -114,6 +152,43 @@ namespace Rest {
         // smartptr like operation
         inline const NodeData* operator->() const { return _node; }
         inline NodeData* operator->() { return _node; }
+
+        // resolve an external Endpoints collection and apply the instance object to the resolve handler
+        template<class I, class EP>
+        EP& with(I& inst, EP& ep) { // here klass is the handler's class type
+            // store the klass reference and endpoints reference together
+            // we resolve the klass member handler via endpoints, then bind the resolved handler to the klass reference
+            // thus making it a static call
+            _node->attach(
+                   [&inst,&ep](Rest::UriRequest& lhs_request) -> Handler {
+                       typename EP::Node rhs_node = ep.getRoot();
+                       typename EP::Node::Request rhs_request(lhs_request);
+                       return (rhs_node.resolve(rhs_request) == URL_MATCHED) && (rhs_request.handler!=nullptr)
+                            ? std::bind(rhs_request.handler, inst, std::placeholders::_1)    // todo: what if there is more than 1 argument in handler?
+                            : Handler();
+                       //return [&inst](RestRequest& rr) -> int { return inst.*h(rr); };
+                   }
+            );
+            return ep;
+        }
+
+        // resolve an external Endpoints collection (that has the same handler type)
+        template<class EP>
+        EP& with(EP& ep) { // here klass is the handler's class type
+            // store the klass reference and endpoints reference together
+            // we resolve the klass member handler via endpoints, then bind the resolved handler to the klass reference
+            // thus making it a static call
+            _node->attach(
+                    [&ep](Rest::UriRequest& lhs_request) -> Handler {
+                        typename EP::Node rhs_node = ep.getRoot();
+                        typename EP::Node::Request rhs_request(lhs_request);
+                        return (rhs_node.resolve(rhs_request) == URL_MATCHED && rhs_request.handler!=nullptr)
+                            ? rhs_request.handler
+                            : Handler();
+                    }
+            );
+            return ep;
+        }
 
         inline int error() const { return _exception; }
 
@@ -155,7 +230,7 @@ namespace Rest {
         }
 
         template<class HandlerT>
-        inline void attach(const char* expr, HttpMethod method, HandlerT handler ) {
+        void attach(const char* expr, HttpMethod method, HandlerT handler ) {
             if (_node != nullptr) {
                 Node r = on(expr);
                 r.attach(method, handler);
@@ -194,16 +269,14 @@ namespace Rest {
             }
         }
 
-        /// \brief Match a Uri against the compiled list of Uri expressions.
-        /// If a match is found with an associated http method handler, the resolved UriEndpoint object is filled in.
-        Endpoint resolve(HttpMethod method, const char *uri) {
+        int resolve(Request& request) {
             short rs;
             Parser parser(_endpoints);
 
             Argument args[_endpoints->maxUriArgs+1];
-            typename Parser::EvalState ev(&parser, _node, &uri);
+            typename Parser::EvalState ev(&parser, _node, &request.uri);
             if(ev.state<0)
-                return Endpoint(method, URL_FAIL_INTERNAL);
+                return URL_FAIL_SYNTAX;
             ev.mode = Parser::resolve;
             ev.szargs = _endpoints->maxUriArgs+1;
             ev.args = args;
@@ -211,17 +284,29 @@ namespace Rest {
             // parse the input
             if((rs=parser.parse( &ev )) >=URL_MATCHED) {
                 // successfully resolved the endpoint
-                Handler& handler = ev.ep->handle(method);
-                if(handler !=nullptr) {
-                    Endpoint endpoint(method, handler, URL_MATCHED, ev.args, ev.nargs);
-                    endpoint.name = ev.methodName;
-                    return endpoint;
-                } else {
-                    return Endpoint(method, URL_FAIL_NO_HANDLER);
-                }
+                request.handler = ev.ep->handle(request.method);
+                request.args = request.args.concat(ev.args, ev.args + ev.nargs);    // todo: improve request arg handling
+                return (request.handler != nullptr)
+                    ? URL_MATCHED
+                    : URL_FAIL_NO_HANDLER;
             } else {
+                if(rs == URL_FAIL_NO_ENDPOINT && !ev.ep->externals.empty()) {
+                    // try delegating to other endpoints
+                    for(auto b=ev.ep->externals.begin(), _b=ev.ep->externals.end(); b!=_b; b++) {
+                        request.args = request.args.concat(ev.args, ev.args + ev.nargs);    // todo: improve request arg handling
+                        Handler h = (*b)(request);
+                        if(h!=nullptr) {
+                            request.handler = h;
+                            return URL_MATCHED;
+                            /*Endpoint endpoint(request.method, h, URL_MATCHED, ev.args, ev.nargs);
+                            endpoint.name = ev.methodName;
+                            return endpoint;*/
+                        }
+                    }
+                }
+
                 // cannot resolve
-                return Endpoint(method, rs);
+                return rs;
             }
         }
 

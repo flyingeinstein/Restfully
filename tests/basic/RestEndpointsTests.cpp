@@ -289,3 +289,31 @@ TEST(endpoints_curry_using_bind) {
     ));
     return OK;
 }
+
+TEST(endpoints_curry_with_same)
+{
+    Endpoints endpoints1, endpoints2;
+    endpoints1
+            .on("/api")
+            .with(endpoints2)
+               .on("echo/:msg(string|integer)")
+               .GET(getbus);
+    return OK;
+}
+
+TEST(endpoints_with_same_resolve)
+{
+    Endpoints endpoints1, endpoints2;
+
+    endpoints1
+            .on("/api")
+            .with(endpoints2)
+            .on("echo/:msg(string|integer)")
+            .PUT(getbus);
+
+    Endpoints::Endpoint res = endpoints1.resolve(Rest::HttpPut, "/api/echo/johndoe");
+    if(res.method!=Rest::HttpPut || !check_response(res.handler.handler, getbus) || res.status!=URL_MATCHED)
+        return FAIL;
+
+    return OK;
+}

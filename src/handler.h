@@ -50,6 +50,7 @@ namespace Rest {
 
         inline bool operator==(std::nullptr_t v) const { return handler==v; }
         inline bool operator!=(std::nullptr_t v) const { return handler!=v; }
+        inline operator bool() const { return handler==nullptr; }
 
         F0 handler;
     };

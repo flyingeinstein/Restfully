@@ -50,6 +50,7 @@ public:
         inline Endpoint() :  Arguments(0), status(0), method(HttpMethodAny) {}
         inline Endpoint(HttpMethod _method, int _status) :  Arguments(0), status(_status), method(_method) {}
         inline Endpoint(HttpMethod _method, const Handler& _handler, int _status) :  Arguments(0), status(_status), method(_method), handler(_handler) {}
+        inline Endpoint(HttpMethod _method, const Handler& _handler, const Arguments& args, int _status) :  Arguments(args), status(_status), method(_method), handler(_handler) {}
 
         template<class ... TArgumentsArgs>
         inline Endpoint(HttpMethod _method, const Handler& _handler, int _status, TArgumentsArgs ... args )
@@ -98,7 +99,13 @@ public:
     }
 
     Endpoint resolve(HttpMethod method, const char* expression) {
-        return getRoot().resolve(method, expression);
+        int status;
+        typename Node::Request request(method, expression);
+        if(URL_MATCHED == (status = getRoot().resolve(request)) && request.handler!=nullptr) {
+            Endpoint ep(method, request.handler, request.args, URL_MATCHED);
+            return ep;
+        }
+        else return Endpoint(method, status);
     }
 
     inline Node getRoot() { return Node(this, ep_head); }

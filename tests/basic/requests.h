@@ -14,9 +14,17 @@ public:
     std::string uri;
     std::string request;
     std::string response;
-    Rest::Arguments& args;
+    Rest::Arguments args;
 
-    RestRequest(Rest::Arguments& _args) : args(_args), method(Rest::HttpMethodAny) {}
+    template<class TEndpoint>
+    RestRequest(TEndpoint ep)
+        : method(ep.method), args(ep)
+    {}
+
+    RestRequest(const Rest::Arguments& _args) : args(_args), method(Rest::HttpMethodAny) {}
+
+    inline const Rest::Argument& operator[](size_t idx) const { return args[idx]; }
+    inline const Rest::Argument& operator[](const char* name) const { return args[name]; }
 };
 
 

@@ -14,24 +14,174 @@ class VptrTest {
 public:
     std::string greeting;
 
+    using Handler = int(VptrTest::*)(RestRequest&);
+    using Endpoints = Rest::Endpoints< Handler >;
+
     VptrTest() : greeting("Hello") {}
 
+    virtual int echo(RestRequest& r) {
+        r.response = greeting + " " + (const char*)r["msg"];
+        return 200;
+    }
+
+    int echo2(RestRequest& r) {
+        r.response = "Greeting is " + greeting;
+        return 200;
+    }
+};
+
+class Vptr2Test : public VptrTest {
+public:
+    using Handler = int(Vptr2Test::*)(RestRequest&);
+    using Endpoints = Rest::Endpoints< Handler >;
+
     int echo(RestRequest& r) {
-        r.response = greeting + " " + (const char*)r.args["msg"];
+        r.response = "I say, " + greeting + " " + (const char*)r["msg"];
+        return 200;
+    }
+
+    int eko(RestRequest& r) {
+        r.response = "he said, " + greeting + " " + (const char*)r["msg"];
         return 200;
     }
 };
 
 //template<class Klass, class H> Rest::Handler<Klass*, H&> GET(int (Klass::*handler)(H&)) { return Rest::Handler<Klass*, H&>(HttpGet, std::function<int(Klass*, H&)>(handler)); }
 
-
-TEST(endpoints_vptr_on_echo)
+TEST(endpoints_vptr_decl)
 {
-    RestRequestVptrHandler<VptrTest, RestRequest> rest;
-    rest.on("/api/echo/:msg(string|integer)").GET(&VptrTest::echo);
+    VptrTest::Endpoints endpoints;
     return OK;
 }
 
+TEST(endpoints_vptr_on_echo)
+{
+    VptrTest::Endpoints endpoints;
+    endpoints.on("/api/echo/:msg(string|integer)").GET(&VptrTest::echo);
+    return OK;
+}
+
+TEST(endpoints_vptr_resolve_echo_class_member)
+{
+    std::string response;
+    VptrTest one;
+    VptrTest::Endpoints endpoints;
+
+    endpoints.on("/api/echo/:msg(string|integer)").GET(&VptrTest::echo);
+
+    auto endpoint = endpoints.resolve(HttpGet, "/api/echo/Maya");
+    if(endpoint) {
+        RestRequest rr(endpoint);
+        rr.args = endpoint;
+        VptrTest::Handler h = endpoint.handler;
+        if( (one.*h)(rr) !=200)
+            return FAIL;
+        if(rr.response !="Hello Maya")
+            return FAIL;
+    } else
+        return FAIL;    // handle returned fail
+
+    return OK;
+}
+
+TEST(endpoints_vptr_resolve_derived_echo_class_member)
+{
+    std::string response;
+    Vptr2Test one;
+    VptrTest::Endpoints endpoints;
+
+    endpoints.on("/api/echo/:msg(string|integer)").GET(&VptrTest::echo);
+
+    auto endpoint = endpoints.resolve(HttpGet, "/api/echo/Maya");
+    if(endpoint) {
+        RestRequest rr(endpoint);
+        rr.args = endpoint;
+        VptrTest::Handler h = endpoint.handler;
+        if( (one.*h)(rr) !=200)
+            return FAIL;
+        if(rr.response !="I say, Hello Maya")
+            return FAIL;
+    } else
+        return FAIL;    // handle returned fail
+
+    return OK;
+}
+
+#if 1
+TEST(endpoints_vptr_resolve_derived_eko)
+{
+    std::string response;
+    Vptr2Test one;
+    Vptr2Test::Endpoints endpoints;
+
+    endpoints.on("/api/echo/:msg(string|integer)").GET(&Vptr2Test::eko);
+
+    auto endpoint = endpoints.resolve(HttpGet, "/api/echo/Maya");
+    if(endpoint) {
+        RestRequest rr(endpoint);
+        rr.args = endpoint;
+        std::function<int(RestRequest&)> ff = std::bind(&Vptr2Test::eko, &one, std::placeholders::_1);
+        //if( (one.*(endpoint.handler) )(rr) !=200)
+        if( ff(rr) !=200)
+            return FAIL;
+        if(rr.response !="he said, Hello Maya")
+            return FAIL;
+    } else
+        return FAIL;    // handle returned fail
+
+    return OK;
+}
+#endif
+
+//using Handler = int(VptrTest::*)(RestRequest&);
+//using Endpoints = Rest::Endpoints< Handler >;
+
+TEST(endpoints_curry_with_class_method)
+{
+    using Handler1 = Rest::Handler<RestRequest&>;
+    using Endpoints1 = Rest::Endpoints< Handler1 >;
+
+    VptrTest one;
+    Endpoints1 endpoints1;
+    VptrTest::Endpoints endpoints2;
+    endpoints1
+            .on("/api")
+            .with(one, endpoints2)
+            .on("echo/:msg(string|integer)")
+            .GET(&VptrTest::echo);
+    return OK;
+}
+
+TEST(endpoints_curry_with_class_method_resolve)
+{
+    using Handler1 = Rest::Handler<RestRequest&>;
+    using Endpoints1 = Rest::Endpoints< Handler1 >;
+
+    Vptr2Test inst;
+    inst.greeting = "Bonjour";
+
+    Endpoints1 endpoints1;
+    VptrTest::Endpoints endpoints2;
+    endpoints1
+            .on("/api")
+            .with(inst, endpoints2)
+            .on("echo/:msg(string|integer)")
+            .GET(&VptrTest::echo2);
+
+    Endpoints1::Endpoint res = endpoints1.resolve(Rest::HttpGet, "/api/echo/johndoe");
+    if(res.method!=Rest::HttpGet || res.status!=URL_MATCHED)
+        return FAIL;
+
+    RestRequest r(res);
+    if(res.handler(r) >=0) {
+        if(r.response != "Greeting is Bonjour")
+            return FAIL;
+    }
+    return OK;
+}
+
+
+#if 0
 TEST(endpoints_vptr_resolve_echo)
 {
     std::string response;
@@ -86,7 +236,6 @@ TEST(endpoints_vptr_resolve_echo_instance)
 //template<class H> Rest::Handler<H&> GETT(std::function< int(H&) > handler) { return Rest::Handler<H&>(HttpGet, handler); }
 //Rest::Handler<RestRequest&> GETT(std::function< int(RestRequest&) > handler) { return Rest::Handler<RestRequest&>(HttpGet, handler); }
 
-#if 0
 TEST(endpoints_vptr_lambda)
 {
     RestRequestVptrHandler<VptrTest, RestRequest> rest;
