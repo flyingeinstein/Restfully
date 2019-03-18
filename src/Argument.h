@@ -78,7 +78,7 @@ namespace Rest {
         Argument(const Type& arg, bool _b) : Type(arg), type(ARG_MASK_BOOLEAN), b(_b) {}
         Argument(const Type& arg, const char* _s) : Type(arg), type(ARG_MASK_STRING), s(strdup(_s)) {}
 
-        ~Argument() { if(s && type == ARG_MASK_STRING) ::free(s); }
+        virtual ~Argument() { if(s && type == ARG_MASK_STRING) ::free(s); }
 
         Argument& operator=(const Argument& copy) {
             Type::operator=(copy);
@@ -91,6 +91,17 @@ namespace Rest {
                 ul = copy.ul;
             return *this;
         }
+
+        bool operator==(const Argument& rhs) const {
+            return (type == rhs.type) && (
+                    (type==ARG_MASK_STRING && strcmp(s, rhs.s)==0) ||
+                    (type==ARG_MASK_INTEGER && l==rhs.l) ||
+                    (type==ARG_MASK_UINTEGER && ul==rhs.ul) ||
+                    (type==ARG_MASK_NUMBER && d==rhs.d) ||
+                    (type==ARG_MASK_BOOLEAN && b==rhs.b)
+             );
+        }
+        inline bool operator!=(const Argument& rhs) const { return !operator==(rhs); }
 
         int isOneOf(std::initializer_list<const char*> enum_values, bool case_insensitive=true) {
             typeof(strcmp) *cmpfunc = case_insensitive
