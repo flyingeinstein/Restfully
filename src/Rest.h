@@ -38,42 +38,10 @@ public:
     using Literal = typename TNodeData::LiteralType;
     using ArgumentType = typename TNodeData::ArgumentType;
     using Argument = Rest::Argument;
+    using Node = Rest::Node< Endpoints >;
 
 public:
-    class Endpoint : public Arguments {
-    public:
-        int status;
-        std::string name;
-        HttpMethod method;
-        Handler handler;
-
-        inline Endpoint() :  Arguments(0), status(0), method(HttpMethodAny) {}
-        inline Endpoint(HttpMethod _method, int _status) :  Arguments(0), status(_status), method(_method) {}
-        inline Endpoint(HttpMethod _method, const Handler& _handler, int _status) :  Arguments(0), status(_status), method(_method), handler(_handler) {}
-        inline Endpoint(HttpMethod _method, const Handler& _handler, const Arguments& args, int _status) :  Arguments(args), status(_status), method(_method), handler(_handler) {}
-
-        template<class ... TArgumentsArgs>
-        inline Endpoint(HttpMethod _method, const Handler& _handler, int _status, TArgumentsArgs ... args )
-            :  Arguments(args...), status(_status), method(_method), handler(_handler) {
-        }
-
-        inline Endpoint(const Endpoint& copy) : Arguments(copy), status(copy.status), name(copy.name), method(copy.method), handler(copy.handler) {}
-
-        inline Endpoint& operator=(const Endpoint& copy) {
-            Arguments::operator=(copy);
-            status = copy.status;
-            name = copy.name;
-            method = copy.method;
-            handler = copy.handler;
-            return *this;
-        }
-
-        inline explicit operator bool() const { return status==URL_MATCHED; }
-
-        friend Endpoints;
-    };
-
-    using Node = Rest::Node< Endpoints >;
+    using Endpoint = typename Node::Request;
     using Exception = typename Node::Exception;
 
 public:
@@ -99,25 +67,17 @@ public:
     }
 
     Endpoint resolve(HttpMethod method, const char* expression) {
-        int status;
-        typename Node::Request request(method, expression);
-        if(URL_MATCHED == (status = getRoot().resolve(request)) && request.handler!=nullptr) {
-            Endpoint ep(method, request.handler, request.args, URL_MATCHED);
-            return ep;
-        }
-        else return Endpoint(method, status);
+        return getRoot().resolve(method, expression);
     }
 
     inline Node getRoot() { return Node(this, ep_head); }
 
-    Node newNode()
-    {
+    Node newNode() {
         assert(ep_tail < ep_end);
         return Node(this, new (ep_tail++) TNodeData());
     }
 
-    ArgumentType* newArgumentType(const char* name, unsigned short typemask)
-    {
+    ArgumentType* newArgumentType(const char* name, unsigned short typemask) {
         long nameid = binbag_insert_distinct(literals_index, name);
         return new ArgumentType(nameid, typemask);
     }

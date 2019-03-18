@@ -7,24 +7,22 @@
 
 #include <Rest.h>
 
-class RestRequest
+class RestRequest : public Rest::UriRequest
 {
 public:
-    Rest::HttpMethod method;
-    std::string uri;
     std::string request;
     std::string response;
-    Rest::Arguments args;
 
-    template<class TEndpoint>
-    RestRequest(TEndpoint ep)
-        : method(ep.method), args(ep)
+    RestRequest(const Rest::Arguments& _args) : Rest::UriRequest(Rest::HttpMethodAny, "") {
+        args = _args;
+    }
+
+    explicit RestRequest(const Rest::UriRequest& rr)
+        : Rest::UriRequest(rr)
     {}
 
-    RestRequest(const Rest::Arguments& _args) : args(_args), method(Rest::HttpMethodAny) {}
-
-    inline const Rest::Argument& operator[](size_t idx) const { return args[idx]; }
-    inline const Rest::Argument& operator[](const char* name) const { return args[name]; }
+    RestRequest(const RestRequest& copy) = default;
+    RestRequest& operator=(const RestRequest& copy) = default;
 };
 
 
@@ -54,8 +52,6 @@ public:
         typename Endpoints::Endpoint ep = endpoints.resolve(method, requestUri.c_str());
         if (ep) {
             RequestType request(ep);
-            request.method = method;
-            request.uri = requestUri;
             ep.handler(request);
             if(response_out)
                 *response_out = request.response;

@@ -50,7 +50,7 @@ std::function<int(RestRequest&)> dummy(std::string _response) {
     };;
 }
 
-bool check_response(std::function<int(RestRequest&)> x, std::function<int(RestRequest&)> y)
+bool check_response(const std::function<int(RestRequest&)>& x, const std::function<int(RestRequest&)>& y)
 {
     if(x==nullptr || y==nullptr)
         return false;
@@ -84,12 +84,12 @@ TEST(endpoints_partial_match_returns_no_handler) {
         : FAIL;
 }
 
-TEST(endpoints_wildcard_match_returns_handler) {        // todo: implement URL wildcards!!!
+TEST(endpoints_wildcard_match_returns_handler) {
     Endpoints endpoints;
     //Endpoints::Handler getbus("get i2c-bus");
     endpoints.on("/api/bus/i2c/:bus(integer)/*").GET(getbus);
     Endpoints::Endpoint r = endpoints.resolve(Rest::HttpGet, "/api/bus/i2c/5/config/display");
-    return (r.status==URL_MATCHED && check_response(r.handler.handler, getbus))
+    return (r.status==URL_MATCHED_WILDCARD && check_response(r.handler.handler, getbus))
            ? OK
            : FAIL;
 }

@@ -27,12 +27,11 @@ namespace Rest {
         inline UriRequest(HttpMethod _method, const char* _uri) : method(_method), uri(_uri), args(0) {}
         inline UriRequest(const UriRequest& copy) : method(copy.method), uri(copy.uri), args(copy.args) {}
 
-        inline UriRequest& operator=(const UriRequest& copy) {
-            method = copy.method;
-            uri = copy.uri;
-            args = copy.args;
-            return *this;
-        }
+        inline const Argument& operator[](size_t idx) const { return args.operator[](idx); }
+        inline const Argument& operator[](const char* name) const { return args.operator[](name); }
+
+        inline UriRequest& operator=(const UriRequest& copy)
+                = default;
     };
 
     template<class THandler, class TLiteral = Rest::Literal, class TArgumentType = Rest::Type>
@@ -108,9 +107,8 @@ namespace Rest {
         using Endpoints = TEndpoints;
         using NodeData = typename TEndpoints::NodeData;
         using Handler = typename TEndpoints::Handler;
-        using Endpoint = typename TEndpoints::Endpoint;
 
-        using Exception = Exception<Node>;
+        using Exception = Rest::Exception<Node>;
         using Parser = Rest::Parser< NodeData, Endpoints, Rest::Token >;
 
         // test to ensure the base class has an attach(HttpMethod, THandler) method
@@ -120,13 +118,15 @@ namespace Rest {
 
         class Request : public UriRequest {
         public:
+            int status;
+            std::string name;
             Handler handler;
             // todo: possibly make this derived class contain the conversions from class instance to static?
 
-            inline Request(HttpMethod _method, const char* _uri) : UriRequest(_method, _uri) {}
-            inline Request(const UriRequest& req) : UriRequest(req) {}
+            inline Request(HttpMethod _method, const char* _uri) : UriRequest(_method, _uri), status(0), handler(nullptr) {}
+            inline Request(const UriRequest& req) : UriRequest(req), status(0), handler(nullptr) {}
 
-            inline explicit operator bool() const { return handler==URL_MATCHED; }
+            inline explicit operator bool() const { return status==URL_MATCHED && handler!=nullptr; }
         };
 
         inline Node() : _endpoints(nullptr), _node(nullptr), _exception(URL_FAIL_NULL_ROOT) {}
@@ -163,7 +163,7 @@ namespace Rest {
                    [&inst,&ep](Rest::UriRequest& lhs_request) -> Handler {
                        typename EP::Node rhs_node = ep.getRoot();
                        typename EP::Node::Request rhs_request(lhs_request);
-                       return (rhs_node.resolve(rhs_request) == URL_MATCHED) && (rhs_request.handler!=nullptr)
+                       return rhs_node.resolve(rhs_request) && (rhs_request.handler!=nullptr)
                             ? std::bind(rhs_request.handler, inst, std::placeholders::_1)    // todo: what if there is more than 1 argument in handler?
                             : Handler();
                        //return [&inst](RestRequest& rr) -> int { return inst.*h(rr); };
@@ -182,7 +182,7 @@ namespace Rest {
                     [&ep](Rest::UriRequest& lhs_request) -> Handler {
                         typename EP::Node rhs_node = ep.getRoot();
                         typename EP::Node::Request rhs_request(lhs_request);
-                        return (rhs_node.resolve(rhs_request) == URL_MATCHED && rhs_request.handler!=nullptr)
+                        return (rhs_node.resolve(rhs_request) && rhs_request.handler!=nullptr)
                             ? rhs_request.handler
                             : Handler();
                     }
@@ -269,8 +269,13 @@ namespace Rest {
             }
         }
 
-        int resolve(Request& request) {
-            short rs;
+        Request resolve(HttpMethod method, const char* uri) {
+            Request request(method, uri);
+            resolve(request);
+            return request;
+        }
+
+        bool resolve(Request& request) {
             Parser parser(_endpoints);
 
             Argument args[_endpoints->maxUriArgs+1];
@@ -282,32 +287,28 @@ namespace Rest {
             ev.args = args;
 
             // parse the input
-            if((rs=parser.parse( &ev )) >=URL_MATCHED) {
+            if((request.status=parser.parse( &ev )) >=URL_MATCHED) {
                 // successfully resolved the endpoint
                 request.handler = ev.ep->handle(request.method);
-                request.args = request.args.concat(ev.args, ev.args + ev.nargs);    // todo: improve request arg handling
-                return (request.handler != nullptr)
-                    ? URL_MATCHED
-                    : URL_FAIL_NO_HANDLER;
-            } else {
-                if(rs == URL_FAIL_NO_ENDPOINT && !ev.ep->externals.empty()) {
-                    // try delegating to other endpoints
-                    for(auto b=ev.ep->externals.begin(), _b=ev.ep->externals.end(); b!=_b; b++) {
-                        request.args = request.args.concat(ev.args, ev.args + ev.nargs);    // todo: improve request arg handling
-                        Handler h = (*b)(request);
-                        if(h!=nullptr) {
-                            request.handler = h;
-                            return URL_MATCHED;
-                            /*Endpoint endpoint(request.method, h, URL_MATCHED, ev.args, ev.nargs);
-                            endpoint.name = ev.methodName;
-                            return endpoint;*/
-                        }
+                if(request.handler != nullptr) {
+                    request.name = ev.methodName;   // todo: make method name a vector of binbag IDs (maybe a high bit for param)
+                    request.args = request.args.concat(ev.args, ev.args + ev.nargs);    // todo: improve request arg handling
+                } else
+                    request.status = URL_FAIL_NO_HANDLER;
+                return true;
+            } else if(request.status == URL_FAIL_NO_ENDPOINT && !ev.ep->externals.empty()) {
+                // try any externals
+                for(auto b=ev.ep->externals.begin(), _b=ev.ep->externals.end(); b!=_b; b++) {
+                    request.args = request.args.concat(ev.args, ev.args + ev.nargs);    // todo: improve request arg handling
+                    Handler h = (*b)(request);
+                    if(h!=nullptr) {
+                        request.handler = h;
+                        request.status = URL_MATCHED;
+                        return true;
                     }
                 }
-
-                // cannot resolve
-                return rs;
             }
+            return false;       // cannot resolve
         }
 
     protected:

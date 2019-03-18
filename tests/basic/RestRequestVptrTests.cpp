@@ -72,7 +72,6 @@ TEST(endpoints_vptr_resolve_echo_class_member)
     auto endpoint = endpoints.resolve(HttpGet, "/api/echo/Maya");
     if(endpoint) {
         RestRequest rr(endpoint);
-        rr.args = endpoint;
         VptrTest::Handler h = endpoint.handler;
         if( (one.*h)(rr) !=200)
             return FAIL;
@@ -95,7 +94,6 @@ TEST(endpoints_vptr_resolve_derived_echo_class_member)
     auto endpoint = endpoints.resolve(HttpGet, "/api/echo/Maya");
     if(endpoint) {
         RestRequest rr(endpoint);
-        rr.args = endpoint;
         VptrTest::Handler h = endpoint.handler;
         if( (one.*h)(rr) !=200)
             return FAIL;
@@ -119,7 +117,6 @@ TEST(endpoints_vptr_resolve_derived_eko)
     auto endpoint = endpoints.resolve(HttpGet, "/api/echo/Maya");
     if(endpoint) {
         RestRequest rr(endpoint);
-        rr.args = endpoint;
         std::function<int(RestRequest&)> ff = std::bind(&Vptr2Test::eko, &one, std::placeholders::_1);
         //if( (one.*(endpoint.handler) )(rr) !=200)
         if( ff(rr) !=200)
