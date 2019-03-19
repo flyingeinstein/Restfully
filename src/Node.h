@@ -172,16 +172,37 @@ namespace Rest {
             return ep;
         }
 
+        // resolve an external Endpoints collection and apply the instance object to the resolve handler
+        template<class I, class EP=typename TEndpoints::template ClassEndpoints<I> >
+        EP with(I& inst) { // here klass is the handler's class type
+            // store the klass reference and endpoints reference together using std::shared_ptr which gets stored in
+            // the lambda class type.
+            auto ep = std::make_shared<EP>();
+            _node->attach(
+                    [&inst, ep](Rest::UriRequest& lhs_request) -> Handler {
+                        typename EP::Node rhs_node = ep->getRoot();
+                        typename EP::Node::Request rhs_request(lhs_request);
+                        return rhs_node.resolve(rhs_request) && (rhs_request.handler!=nullptr)
+                               ? std::bind(rhs_request.handler, inst, std::placeholders::_1)    // todo: what if there is more than 1 argument in handler?
+                               : Handler();
+                    }
+            );
+
+            // would make some sense to return shared_ptr here, but then the with().on() method chaining changes
+            // to -> operator, which is inconsistent. The life of the shared_ptr is assured for as long as the chain.
+            return *ep;
+        }
+
         // resolve an external Endpoints collection (that has the same handler type)
-        template<class EP>
-        EP& with(EP& ep) { // here klass is the handler's class type
+        //template<typename HH, typename NN>
+        TEndpoints& with(TEndpoints& ep) { // here klass is the handler's class type
             // store the klass reference and endpoints reference together
             // we resolve the klass member handler via endpoints, then bind the resolved handler to the klass reference
             // thus making it a static call
             _node->attach(
                     [&ep](Rest::UriRequest& lhs_request) -> Handler {
-                        typename EP::Node rhs_node = ep.getRoot();
-                        typename EP::Node::Request rhs_request(lhs_request);
+                        typename TEndpoints::Node rhs_node = ep.getRoot();
+                        typename TEndpoints::Node::Request rhs_request(lhs_request);
                         return (rhs_node.resolve(rhs_request) && rhs_request.handler!=nullptr)
                             ? rhs_request.handler
                             : Handler();

@@ -40,6 +40,11 @@ public:
     using Argument = Rest::Argument;
     using Node = Rest::Node< Endpoints >;
 
+    using HandlerTraits = Rest::function_traits<THandler>;
+
+    template<class Klass>
+    using ClassEndpoints = Endpoints< typename HandlerTraits::template CVFunctionType<Klass> >;
+
 public:
     using Endpoint = typename Node::Request;
     using Exception = typename Node::Exception;

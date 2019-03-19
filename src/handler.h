@@ -206,19 +206,11 @@ namespace Rest {
 
     // std::function
     template<typename FunctionT>
-    struct function_traits
-    {
-        using arguments = typename tuple_tail<typename function_traits<decltype( & FunctionT::operator() )>::arguments>::type;
+    struct function_traits: function_traits<decltype( & FunctionT::operator() )>{
+    };
 
-        static constexpr std::size_t arity = std::tuple_size<arguments>::value;
-
-        template<std::size_t N>
-        using argument_type = typename std::tuple_element<N, arguments>::type;
-
-        using return_type = typename function_traits<decltype( & FunctionT::operator())>::return_type;
-
-        using HandlerType = typename function_traits<decltype( & FunctionT::operator())>::HandlerType ;
-        using FunctionType = typename function_traits<decltype( & FunctionT::operator())>::FunctionType ;
+    template<typename FunctionT>
+    struct function_traits< Handler<FunctionT> >: function_traits<decltype( & Handler<FunctionT>::F0::operator() )> {
     };
 
     // Free functions
@@ -236,6 +228,8 @@ namespace Rest {
 
         typedef Rest::Handler<Args...> HandlerType;
         typedef std::function<return_type(Args...)> FunctionType;
+
+        template<class X> using CVFunctionType = return_type(X::*)(Args...);
 
     };
 

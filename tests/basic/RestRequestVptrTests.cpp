@@ -160,8 +160,8 @@ TEST(endpoints_curry_with_class_method_resolve)
     Endpoints1 endpoints1;
     VptrTest::Endpoints endpoints2;
     endpoints1
-            .on("/api")
-            .with(inst, endpoints2)
+        .on("/api")
+        .with(inst, endpoints2)
             .on("echo/:msg(string|integer)")
             .GET(&VptrTest::echo2);
 
@@ -177,6 +177,33 @@ TEST(endpoints_curry_with_class_method_resolve)
     return OK;
 }
 
+TEST(endpoints_curry_with_anonymous_class_method_resolve)
+{
+    using Handler1 = Rest::Handler<RestRequest&>;
+    using Endpoints1 = Rest::Endpoints< Handler1 >;
+
+    VptrTest inst;
+    inst.greeting = "Howdy";
+
+    Endpoints1 endpoints1;
+    endpoints1
+        .on("/api")
+        .with(inst)
+            .on("echo/:msg(string|integer)")
+            .GET(&VptrTest::echo2);
+
+    Endpoints1::Endpoint res = endpoints1.resolve(Rest::HttpGet, "/api/echo/johndoe");
+    if(res.method!=Rest::HttpGet || res.status!=URL_MATCHED)
+        return FAIL;
+
+    RestRequest r(res);
+    if(res.handler(r) >=0) {
+        if(r.response != "Greeting is Howdy")
+            return FAIL;
+    }
+
+    return OK;
+}
 
 #if 0
 TEST(endpoints_vptr_resolve_echo)
