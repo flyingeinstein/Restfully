@@ -193,6 +193,30 @@ namespace Rest {
             return *ep;
         }
 
+        // resolve an external Endpoints collection and apply the instance object to the resolve handler
+        template<class I, class EP=typename TEndpoints::template ClassEndpoints<I> >
+        EP with( std::function< I&(Rest::UriRequest&) > resolver) { // here klass is the handler's class type
+            // store the klass reference and endpoints reference together using std::shared_ptr which gets stored in
+            // the lambda class type.
+            auto ep = std::make_shared<EP>();
+            _node->attach(
+                    [&resolver, ep](Rest::UriRequest& lhs_request) -> Handler {
+                        typename EP::Node rhs_node = ep->getRoot();
+                        typename EP::Node::Request rhs_request(lhs_request);
+                        if(rhs_node.resolve(rhs_request) && (rhs_request.handler!=nullptr)) {
+                            I& inst = resolver(rhs_request);
+                            return std::bind(rhs_request.handler, inst,
+                                      std::placeholders::_1);    // todo: what if there is more than 1 argument in handler?
+                        }
+                        else return Handler();
+                    }
+            );
+
+            // would make some sense to return shared_ptr here, but then the with().on() method chaining changes
+            // to -> operator, which is inconsistent. The life of the shared_ptr is assured for as long as the chain.
+            return *ep;
+        }
+
         // resolve an external Endpoints collection (that has the same handler type)
         //template<typename HH, typename NN>
         TEndpoints& with(TEndpoints& ep) { // here klass is the handler's class type
@@ -299,12 +323,13 @@ namespace Rest {
         bool resolve(Request& request) {
             Parser parser(_endpoints);
 
-            Argument args[_endpoints->maxUriArgs+1];
+            size_t szargs = _endpoints->maxUriArgs+1+5; // todo: externals means Arguments must be able to grow
+            Argument args[szargs];
             typename Parser::EvalState ev(&parser, _node, &request.uri);
             if(ev.state<0)
                 return URL_FAIL_SYNTAX;
             ev.mode = Parser::resolve;
-            ev.szargs = _endpoints->maxUriArgs+1;
+            ev.szargs = szargs;
             ev.args = args;
 
             // parse the input

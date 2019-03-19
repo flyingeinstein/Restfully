@@ -40,7 +40,7 @@ to the class object and also know how to invoke the class method.
 - [x] For instances Y whose handler is a class method, the node must store a lambda that
 converts the external handler into a static one that is bound to the object instance.
 I used std::bind to convert the member function into a static invokable.
-- [ ] User can supply a data instance object or a callback function that returns a data 
+- [x] User can supply a data instance object or a callback function that returns a data
 instance. Callback has access to URL arguments up to the point of callback so it can 
 return a data instance dynamically based on a URL argument.
 - [x] SFINAE should be able to provide compatible `with(...)` methods

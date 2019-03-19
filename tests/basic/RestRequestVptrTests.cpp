@@ -182,13 +182,13 @@ TEST(endpoints_curry_with_anonymous_class_method_resolve)
     using Handler1 = Rest::Handler<RestRequest&>;
     using Endpoints1 = Rest::Endpoints< Handler1 >;
 
-    VptrTest inst;
-    inst.greeting = "Howdy";
+    VptrTest cowboy;
+    cowboy.greeting = "Howdy";
 
     Endpoints1 endpoints1;
     endpoints1
-        .on("/api")
-        .with(inst)
+            .on("/api")
+            .with(cowboy)
             .on("echo/:msg(string|integer)")
             .GET(&VptrTest::echo2);
 
@@ -202,6 +202,73 @@ TEST(endpoints_curry_with_anonymous_class_method_resolve)
             return FAIL;
     }
 
+    return OK;
+}
+
+TEST(endpoints_curry_with_anonymous_class_method_inst_resolver)
+{
+    using Handler1 = Rest::Handler<RestRequest&>;
+    using Endpoints1 = Rest::Endpoints< Handler1 >;
+
+    VptrTest cowboy, pirate, damsel;
+    cowboy.greeting = "Howdy";
+    pirate.greeting = "Ahoy";
+    damsel.greeting = "Big Boy";
+
+    std::function<VptrTest&(Rest::UriRequest&)> resolve_instance = [&cowboy, &pirate, &damsel](Rest::UriRequest& rr) -> VptrTest& {
+        int idx = rr["idx"];
+        switch(idx) {
+            case 0: return cowboy;
+            case 1: return pirate;
+            default: return damsel;
+        }
+    };
+
+    Endpoints1 endpoints1;
+    endpoints1
+        .on("/api")
+        .with(resolve_instance)
+            .on("echo/:idx(integer)/:msg(string|integer)")
+            .GET(&VptrTest::echo2);
+
+    // Pirate
+    {
+        Endpoints1::Endpoint res = endpoints1.resolve(Rest::HttpGet, "/api/echo/1/johndoe");
+        if (res.method != Rest::HttpGet || res.status != URL_MATCHED)
+            return FAIL;
+
+        RestRequest r(res);
+        if (res.handler(r) >= 0) {
+            if (r.response != "Greeting is Ahoy")
+                return FAIL;
+        }
+    }
+
+    // Cowboy
+    {
+        Endpoints1::Endpoint res = endpoints1.resolve(Rest::HttpGet, "/api/echo/0/johndoe");
+        if (res.method != Rest::HttpGet || res.status != URL_MATCHED)
+            return FAIL;
+
+        RestRequest r(res);
+        if (res.handler(r) >= 0) {
+            if (r.response != "Greeting is Howdy")
+                return FAIL;
+        }
+    }
+
+    // Damsel
+    {
+        Endpoints1::Endpoint res = endpoints1.resolve(Rest::HttpGet, "/api/echo/2/johndoe");
+        if (res.method != Rest::HttpGet || res.status != URL_MATCHED)
+            return FAIL;
+
+        RestRequest r(res);
+        if (res.handler(r) >= 0) {
+            if (r.response != "Greeting is Big Boy")
+                return FAIL;
+        }
+    }
     return OK;
 }
 

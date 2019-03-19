@@ -230,6 +230,8 @@ namespace Rest {
         typedef std::function<return_type(Args...)> FunctionType;
 
         template<class X> using CVFunctionType = return_type(X::*)(Args...);
+        template<class RT> using MakeFunction = RT(Args...);
+        template<class RT, class Klass> using MakeMemberFunction = RT(Klass::*)(Args...);
 
     };
 
