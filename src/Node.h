@@ -123,7 +123,7 @@ namespace Rest {
             Handler handler;
             // todo: possibly make this derived class contain the conversions from class instance to static?
 
-            inline Request(HttpMethod _method, const char* _uri) : UriRequest(_method, _uri), status(0), handler(nullptr) {}
+            inline Request(HttpMethod _method, const char* _uri, int _status=0) : UriRequest(_method, _uri), status(_status), handler(nullptr) {}
             inline Request(const UriRequest& req) : UriRequest(req), status(0), handler(nullptr) {}
 
             inline explicit operator bool() const { return status==URL_MATCHED && handler!=nullptr; }
@@ -174,7 +174,7 @@ namespace Rest {
 
         // resolve an external Endpoints collection and apply the instance object to the resolve handler
         template<class I, class EP=typename TEndpoints::template ClassEndpoints<I> >
-        EP with(I& inst) { // here klass is the handler's class type
+        EP& with(I& inst) { // here klass is the handler's class type
             // store the klass reference and endpoints reference together using std::shared_ptr which gets stored in
             // the lambda class type.
             auto ep = std::make_shared<EP>();
@@ -195,7 +195,7 @@ namespace Rest {
 
         // resolve an external Endpoints collection and apply the instance object to the resolve handler
         template<class I, class EP=typename TEndpoints::template ClassEndpoints<I> >
-        EP with( std::function< I&(Rest::UriRequest&) > resolver) { // here klass is the handler's class type
+        EP& with( std::function< I&(Rest::UriRequest&) >& resolver) { // here klass is the handler's class type
             // store the klass reference and endpoints reference together using std::shared_ptr which gets stored in
             // the lambda class type.
             auto ep = std::make_shared<EP>();
