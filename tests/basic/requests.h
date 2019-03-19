@@ -49,7 +49,7 @@ public:
 
     virtual bool handle(HttpMethod requestMethod, std::string requestUri, std::string* response_out=NULL) {
         Rest::HttpMethod method = (Rest::HttpMethod)requestMethod;
-        typename Endpoints::Endpoint ep = endpoints.resolve(method, requestUri.c_str());
+        typename Endpoints::Request ep = endpoints.resolve(method, requestUri.c_str());
         if (ep) {
             RequestType request(ep);
             ep.handler(request);

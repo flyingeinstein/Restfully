@@ -68,7 +68,7 @@ TEST(endpoints_simple)
 
     // add some endpoints
     endpoints.on("/api/devices").GET(getbus);
-    Endpoints::Endpoint res = endpoints.resolve(Rest::HttpGet, "/api/devices");
+    Endpoints::Request res = endpoints.resolve(Rest::HttpGet, "/api/devices");
     return (res.method==Rest::HttpGet && check_response(res.handler.handler, getbus) && res.status==URL_MATCHED)
        ? OK
        : FAIL;
@@ -78,7 +78,7 @@ TEST(endpoints_partial_match_returns_no_handler) {
     Endpoints endpoints;
     //Endpoints::Handler getbus("get i2c-bus");
     endpoints.on("/api/bus/i2c/:bus(integer)/devices").GET(getbus);
-    Endpoints::Endpoint r = endpoints.resolve(Rest::HttpGet, "/api/bus/i2c");
+    Endpoints::Request r = endpoints.resolve(Rest::HttpGet, "/api/bus/i2c");
     return (r.status==URL_FAIL_NO_HANDLER)
         ? OK
         : FAIL;
@@ -88,7 +88,7 @@ TEST(endpoints_wildcard_match_returns_handler) {
     Endpoints endpoints;
     //Endpoints::Handler getbus("get i2c-bus");
     endpoints.on("/api/bus/i2c/:bus(integer)/*").GET(getbus);
-    Endpoints::Endpoint r = endpoints.resolve(Rest::HttpGet, "/api/bus/i2c/5/config/display");
+    Endpoints::Request r = endpoints.resolve(Rest::HttpGet, "/api/bus/i2c/5/config/display");
     return (r.status==URL_MATCHED_WILDCARD && check_response(r.handler.handler, getbus))
            ? OK
            : FAIL;
@@ -98,7 +98,7 @@ TEST(endpoints_int_argument)
 {
     Endpoints endpoints;
     endpoints.on("/api/bus/i2c/:bus(integer)/devices").GET(getbus);
-    Endpoints::Endpoint r_1 = endpoints.resolve(Rest::HttpGet, "/api/bus/i2c/3/devices");
+    Endpoints::Request r_1 = endpoints.resolve(Rest::HttpGet, "/api/bus/i2c/3/devices");
     return (r_1.status==URL_MATCHED && check_response(r_1.handler.handler, getbus) && r_1["bus"].isInteger() && 3==(long)r_1["bus"])
        ? OK
        : FAIL;
@@ -108,7 +108,7 @@ TEST(endpoints_real_argument)
 {
     Endpoints endpoints;
     endpoints.on("/api/bus/i2c/:bus(real)/devices").GET(getbus);
-    Endpoints::Endpoint r_1 = endpoints.resolve(Rest::HttpGet, "/api/bus/i2c/3.14/devices");
+    Endpoints::Request r_1 = endpoints.resolve(Rest::HttpGet, "/api/bus/i2c/3.14/devices");
     return (r_1.status==URL_MATCHED && check_response(r_1.handler.handler, getbus) && r_1["bus"].isNumber() && 3.14==(double)r_1["bus"])
         ? OK
         : FAIL;
@@ -118,7 +118,7 @@ TEST(endpoints_string_argument)
 {
     Endpoints endpoints;
     endpoints.on("/api/bus/i2c/:bus(string)/devices").GET(getbus);
-    Endpoints::Endpoint r_1 = endpoints.resolve(Rest::HttpGet, "/api/bus/i2c/default/devices");
+    Endpoints::Request r_1 = endpoints.resolve(Rest::HttpGet, "/api/bus/i2c/default/devices");
     return (r_1.status==URL_MATCHED && check_response(r_1.handler.handler, getbus) && r_1["bus"].isString() && strcmp("default", (const char*)r_1["bus"])==0)
         ? OK
         : FAIL;
@@ -154,15 +154,15 @@ TEST_DISABLED(endpoints_many)
         });
 
     // resolve some endpoints
-    Endpoints::Endpoint rb1 = endpoints.resolve(Rest::HttpGet, "/api/devices/5/slots");
+    Endpoints::Request rb1 = endpoints.resolve(Rest::HttpGet, "/api/devices/5/slots");
     if(rb1.status!=URL_MATCHED)
         return FAIL;
 
-    Endpoints::Endpoint rb2 = endpoints.resolve(Rest::HttpGet, "/api/devices/i2c/slots");
+    Endpoints::Request rb2 = endpoints.resolve(Rest::HttpGet, "/api/devices/i2c/slots");
     if(rb2.status!=URL_MATCHED)
         return FAIL;
 
-    Endpoints::Endpoint rc1 = endpoints.resolve(Rest::HttpPut, "/api/devices/i2c/slot/96/meta");
+    Endpoints::Request rc1 = endpoints.resolve(Rest::HttpPut, "/api/devices/i2c/slot/96/meta");
     if(rc1.status!=URL_MATCHED)
         return FAIL;
     const char* devid = rc1["dev"];
@@ -172,7 +172,7 @@ TEST_DISABLED(endpoints_many)
     if(!rc1["slot"].isInteger() || 96!=(long)rc1["slot"])
         return FAIL;
 
-    Endpoints::Endpoint r_1 = endpoints.resolve(Rest::HttpPut, "/api/bus/i2c/3/devices");
+    Endpoints::Request r_1 = endpoints.resolve(Rest::HttpPut, "/api/bus/i2c/3/devices");
     if(r_1.status!=URL_MATCHED || !r_1["bus"].isInteger() || 3!=(long)r_1["bus"])
         return FAIL;
 
@@ -187,7 +187,7 @@ TEST(endpoints_subnode_simple)
     Endpoints::Node devs = endpoints.on("/api/devices");
     devs.on("lights").GET(getbus);
 
-    Endpoints::Endpoint res = endpoints.resolve(Rest::HttpGet, "/api/devices/lights");
+    Endpoints::Request res = endpoints.resolve(Rest::HttpGet, "/api/devices/lights");
     if(res.method!=Rest::HttpGet || !check_response(res.handler.handler, getbus) || res.status!=URL_MATCHED)
         return FAIL;
 
@@ -209,7 +209,7 @@ TEST(endpoints_subnode_three)
         .error() !=0)
             return FAIL;
 
-    Endpoints::Endpoint res = endpoints.resolve(Rest::HttpPut, "/api/devices/lights");
+    Endpoints::Request res = endpoints.resolve(Rest::HttpPut, "/api/devices/lights");
     if(res.method!=Rest::HttpPut || !check_response(res.handler.handler, devices) || res.status!=URL_MATCHED)
         return FAIL;
 
@@ -311,7 +311,7 @@ TEST(endpoints_with_same_resolve)
             .on("echo/:msg(string|integer)")
             .PUT(getbus);
 
-    Endpoints::Endpoint res = endpoints1.resolve(Rest::HttpPut, "/api/echo/johndoe");
+    Endpoints::Request res = endpoints1.resolve(Rest::HttpPut, "/api/echo/johndoe");
     if(res.method!=Rest::HttpPut || !check_response(res.handler.handler, getbus) || res.status!=URL_MATCHED)
         return FAIL;
 

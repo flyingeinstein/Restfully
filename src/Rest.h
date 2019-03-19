@@ -46,7 +46,7 @@ public:
     using ClassEndpoints = Endpoints< typename HandlerTraits::template CVFunctionType<Klass> >;
 
 public:
-    using Endpoint = typename Node::Request;
+    using Request = typename Node::Request;
     using Exception = typename Node::Exception;
 
 public:
@@ -71,7 +71,7 @@ public:
         return getRoot().on(expression);
     }
 
-    Endpoint resolve(HttpMethod method, const char* expression) {
+    Request resolve(HttpMethod method, const char* expression) {
         return getRoot().resolve(method, expression);
     }
 

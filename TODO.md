@@ -59,7 +59,6 @@ Endpoints.on("...")
 
 # Memory Optimizations
 - [x] All instances of Endpoints share the same text binbag. I can't see a downside, for endpoints objects that get created for each instance of a user's class this means the literals are not duplicated in memory.
-- [ ] Argument class uses the text binbag for argument name instead of strdup(). Less memory, and copies will be faster with less memory. name() still returns the string value.
 - [ ] Improve the Pool template class. It's currently just malloc'ing a fixed size.
     - beware memory fragmentation on small devices. Possibly have Pool template for large and micro hardware.
     - add a pack function?

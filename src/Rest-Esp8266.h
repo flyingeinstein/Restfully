@@ -76,7 +76,7 @@ namespace Rest {
 
             virtual bool handle(WebServerType& server, HTTPMethod requestMethod, String requestUri) {
               Rest::HttpMethod method = (Rest::HttpMethod)requestMethod;
-              typename Endpoints::Endpoint ep = endpoints.resolve(method, requestUri.c_str());
+              typename Endpoints::Request ep = endpoints.resolve(method, requestUri.c_str());
               if (ep) {
                 RequestType request(server, ep);
                 //request.endpoint = ep;
@@ -106,7 +106,7 @@ namespace Rest {
 
             virtual int defer(Endpoints& endpoints, TRestRequest& parent) {
                 String _uri_rest = parent["_url"];  // contains the remaining part of the URL
-                typename Endpoints::Endpoint ep = endpoints.resolve(parent.method, _uri_rest.c_str());
+                typename Endpoints::Request ep = endpoints.resolve(parent.method, _uri_rest.c_str());
                 if (ep) {
                     RequestType request(parent);
 #if 0

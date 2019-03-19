@@ -165,7 +165,7 @@ TEST(endpoints_curry_with_class_method_resolve)
             .on("echo/:msg(string|integer)")
             .GET(&VptrTest::echo2);
 
-    Endpoints1::Endpoint res = endpoints1.resolve(Rest::HttpGet, "/api/echo/johndoe");
+    Endpoints1::Request res = endpoints1.resolve(Rest::HttpGet, "/api/echo/johndoe");
     if(res.method!=Rest::HttpGet || res.status!=URL_MATCHED)
         return FAIL;
 
@@ -192,7 +192,7 @@ TEST(endpoints_curry_with_anonymous_class_method_resolve)
             .on("echo/:msg(string|integer)")
             .GET(&VptrTest::echo2);
 
-    Endpoints1::Endpoint res = endpoints1.resolve(Rest::HttpGet, "/api/echo/johndoe");
+    Endpoints1::Request res = endpoints1.resolve(Rest::HttpGet, "/api/echo/johndoe");
     if(res.method!=Rest::HttpGet || res.status!=URL_MATCHED)
         return FAIL;
 
@@ -233,7 +233,7 @@ TEST(endpoints_curry_with_anonymous_class_method_inst_resolver)
 
     // Pirate
     {
-        Endpoints1::Endpoint res = endpoints1.resolve(Rest::HttpGet, "/api/echo/1/johndoe");
+        Endpoints1::Request res = endpoints1.resolve(Rest::HttpGet, "/api/echo/1/johndoe");
         if (res.method != Rest::HttpGet || res.status != URL_MATCHED)
             return FAIL;
 
@@ -246,7 +246,7 @@ TEST(endpoints_curry_with_anonymous_class_method_inst_resolver)
 
     // Cowboy
     {
-        Endpoints1::Endpoint res = endpoints1.resolve(Rest::HttpGet, "/api/echo/0/johndoe");
+        Endpoints1::Request res = endpoints1.resolve(Rest::HttpGet, "/api/echo/0/johndoe");
         if (res.method != Rest::HttpGet || res.status != URL_MATCHED)
             return FAIL;
 
@@ -259,7 +259,7 @@ TEST(endpoints_curry_with_anonymous_class_method_inst_resolver)
 
     // Damsel
     {
-        Endpoints1::Endpoint res = endpoints1.resolve(Rest::HttpGet, "/api/echo/2/johndoe");
+        Endpoints1::Request res = endpoints1.resolve(Rest::HttpGet, "/api/echo/2/johndoe");
         if (res.method != Rest::HttpGet || res.status != URL_MATCHED)
             return FAIL;
 
