@@ -189,7 +189,7 @@ namespace Rest {
             if(n>0) {
                 // copy the given array of arguments
                 args = new Argument[nargs];
-                for(int i=0; i<nargs; i++)
+                for(decltype(nargs) i=0; i<nargs; i++)
                     args[i] = _args[i];
             }
         }
@@ -199,7 +199,7 @@ namespace Rest {
         {
             if(nargs>0) {
                 args = new Argument[nargs];
-                for (size_t i = 0; i < nargs; i++)
+                for (decltype(nargs) i = 0; i < nargs; i++)
                     args[i] = copy.args[i];
             }
         }
@@ -211,7 +211,7 @@ namespace Rest {
             nargs = copy.nargs;
             if(nargs>0) {
                 args = new Argument[nargs];
-                for (size_t i = 0; i < nargs; i++)
+                for (decltype(nargs) i = 0; i < nargs; i++)
                     args[i] = copy.args[i];
             } else
                 args = nullptr;
@@ -219,7 +219,7 @@ namespace Rest {
         }
 
         Arguments operator+(const Arguments& rhs) {
-            size_t i, j;
+            decltype(nargs) i, j;
             Arguments a(nargs + rhs.nargs);
             for(i=0; i<nargs; i++)
                 a.args[i] = args[i];
@@ -229,7 +229,7 @@ namespace Rest {
         }
 
         Arguments concat(const Argument* _begin, const Argument* _end) {
-            size_t i;
+            decltype(nargs) i;
             size_t cnt = _end - _begin;
             Arguments a(nargs + cnt);
             for(i=0; i<nargs; i++)
@@ -246,7 +246,7 @@ namespace Rest {
         }
 
         const Argument& operator[](const char* _name) const {
-            for(size_t i=0; i<nargs; i++) {
+            for(decltype(nargs) i=0; i<nargs; i++) {
                 if (strcmp(_name, args[i].name()) == 0)
                     return args[i];
             }
