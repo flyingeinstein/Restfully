@@ -52,13 +52,20 @@ public:
 public:
     /// \brief Initialize an empty UriExpression with a maximum number of code size.
     Endpoints()
-            : ep_head(nullptr), ep_tail(nullptr), ep_end(nullptr), sznodes(32), maxUriArgs(0)
+        : ep_head(nullptr), ep_tail(nullptr), ep_end(nullptr), sznodes(32), maxUriArgs(0)
     {
     }
 
     /// \brief Move constructor
     /// moves endpoints and resources from one Endpoints instance to another.
-    Endpoints(const Endpoints&& other) {
+    Endpoints(Endpoints&& other) noexcept
+        : ep_head(other.ep_head), ep_tail(other.ep_tail), ep_end(other.ep_end), sznodes(other.sznodes), maxUriArgs(other.maxUriArgs) {
+        other.free(false);
+    }
+
+    /// \brief Move assignment operator
+    /// moves endpoints and resources from one Endpoints instance to another.
+    Endpoints& operator=(Endpoints&& other) noexcept {
         ep_head = other.ep_head;
         ep_tail = other.ep_tail;
         ep_end = other.ep_end;
