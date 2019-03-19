@@ -37,14 +37,14 @@ to the class object and also know how to invoke the class method.
 - how is method handler returned as a static function? using std::bind()?
 
 *Implementation*
-- [ ] For instances Y whose handler is a class method, the node must store a lambda that 
+- [x] For instances Y whose handler is a class method, the node must store a lambda that
 converts the external handler into a static one that is bound to the object instance.
 I used std::bind to convert the member function into a static invokable.
 - [ ] User can supply a data instance object or a callback function that returns a data 
 instance. Callback has access to URL arguments up to the point of callback so it can 
 return a data instance dynamically based on a URL argument.
-- [ ] SFINAE should be able to provide compatible `with(...)` methods
-- [ ] _Auto owned Class Endpoints_ - the with(instance) could take the existing Endpoints 
+- [x] SFINAE should be able to provide compatible `with(...)` methods
+- [x] _Auto owned Class Endpoints_ - the with(instance) could take the existing Endpoints
 type and construct one with a cv-ptr and return it. Thus something like the following 
 would create essentially anonymous types stored in the parent Endpoints. The fact no 
 Endpoints argument is given implies the NodeData must hold ownership of the EP not a ref 
@@ -71,5 +71,4 @@ Endpoints.on("...")
     - For simplicity, can we remove it and Endpoints<> takes any object or function as handler.
 
 # Todo
-- [ ] refactor Node::resolve() to only return handler not Endpoint. Endpoints<> class can convert handler into Endpoint.
-- [ ] In Node resolve, Change `const char* url` into UriRequest that contains Url string and arguments. Endpoints::resolve() can still be a const char*
+- [x] In Node resolve, Change `const char* url` into UriRequest that contains Url string and arguments. Endpoints::resolve() can still be a const char*
