@@ -7,16 +7,22 @@
 
 #include <Rest.h>
 
-class RestRequest
+class RestRequest : public Rest::UriRequest
 {
 public:
-    Rest::HttpMethod method;
-    std::string uri;
     std::string request;
     std::string response;
-    Rest::Arguments& args;
 
-    RestRequest(Rest::Arguments& _args) : args(_args), method(Rest::HttpMethodAny) {}
+    RestRequest(const Rest::Arguments& _args) : Rest::UriRequest(Rest::HttpMethodAny, "") {
+        args = _args;
+    }
+
+    explicit RestRequest(const Rest::UriRequest& rr)
+        : Rest::UriRequest(rr)
+    {}
+
+    RestRequest(const RestRequest& copy) = default;
+    RestRequest& operator=(const RestRequest& copy) = default;
 };
 
 
@@ -43,11 +49,9 @@ public:
 
     virtual bool handle(HttpMethod requestMethod, std::string requestUri, std::string* response_out=NULL) {
         Rest::HttpMethod method = (Rest::HttpMethod)requestMethod;
-        typename Endpoints::Endpoint ep = endpoints.resolve(method, requestUri.c_str());
+        typename Endpoints::Request ep = endpoints.resolve(method, requestUri.c_str());
         if (ep) {
             RequestType request(ep);
-            request.method = method;
-            request.uri = requestUri;
             ep.handler(request);
             if(response_out)
                 *response_out = request.response;

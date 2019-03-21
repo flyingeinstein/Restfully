@@ -38,79 +38,84 @@ public:
     using Literal = typename TNodeData::LiteralType;
     using ArgumentType = typename TNodeData::ArgumentType;
     using Argument = Rest::Argument;
+    using Node = Rest::Node< Endpoints >;
+
+    using HandlerTraits = Rest::function_traits<THandler>;
+
+    template<class Klass>
+    using ClassEndpoints = Endpoints< typename HandlerTraits::template CVFunctionType<Klass> >;
 
 public:
-    class Endpoint : public Arguments {
-    public:
-        int status;
-        std::string name;
-        HttpMethod method;
-        Handler handler;
-
-        inline Endpoint() :  Arguments(0), status(0), method(HttpMethodAny) {}
-        inline Endpoint(HttpMethod _method, int _status) :  Arguments(0), status(_status), method(_method) {}
-        inline Endpoint(HttpMethod _method, const Handler& _handler, int _status) :  Arguments(0), status(_status), method(_method), handler(_handler) {}
-
-        template<class ... TArgumentsArgs>
-        inline Endpoint(HttpMethod _method, const Handler& _handler, int _status, TArgumentsArgs ... args )
-            :  Arguments(args...), status(_status), method(_method), handler(_handler) {
-        }
-
-        inline Endpoint(const Endpoint& copy) : Arguments(copy), status(copy.status), name(copy.name), method(copy.method), handler(copy.handler) {}
-
-        inline Endpoint& operator=(const Endpoint& copy) {
-            Arguments::operator=(copy);
-            status = copy.status;
-            name = copy.name;
-            method = copy.method;
-            handler = copy.handler;
-            return *this;
-        }
-
-        inline explicit operator bool() const { return status==URL_MATCHED; }
-
-        friend Endpoints;
-    };
-
-    using Node = Rest::Node< Endpoints >;
+    using Request = typename Node::Request;
     using Exception = typename Node::Exception;
 
 public:
     /// \brief Initialize an empty UriExpression with a maximum number of code size.
     Endpoints()
-            : sznodes(32), maxUriArgs(0)
+        : ep_head(nullptr), ep_tail(nullptr), ep_end(nullptr), sznodes(32), maxUriArgs(0)
     {
-        ep_head = ep_tail =  (TNodeData*)calloc(sznodes, sizeof(TNodeData));
-        ep_end = ep_head + sznodes;
-        if(literals_index == nullptr) {
-            literals_index = binbag_create(128, 1.5);
-        }
-        newNode();  // create the root node
     }
+
+    /// \brief Move constructor
+    /// moves endpoints and resources from one Endpoints instance to another.
+    Endpoints(Endpoints&& other) noexcept
+        : ep_head(other.ep_head), ep_tail(other.ep_tail), ep_end(other.ep_end), sznodes(other.sznodes), maxUriArgs(other.maxUriArgs) {
+        other.free(false);
+    }
+
+    /// \brief Move assignment operator
+    /// moves endpoints and resources from one Endpoints instance to another.
+    Endpoints& operator=(Endpoints&& other) noexcept {
+        ep_head = other.ep_head;
+        ep_tail = other.ep_tail;
+        ep_end = other.ep_end;
+        sznodes = other.sznodes;
+        maxUriArgs = other.maxUriArgs;
+        other.free(false);
+    }
+
+    /// \brief Copy constructor (not allowed)
+    /// You should not be copying endpoints, this is a sign that you forgot to pass an Endpoints instance by reference
+    /// and your code is probably going to fail desired behavior.
+    Endpoints(const Endpoints& copy) = delete;
+
+    /// \brief Copy assignment (not allowed)
+    /// You should not be copying endpoints, this is a sign that you forgot to pass an Endpoints instance by reference
+    /// and your code is probably going to fail desired behavior.
+    Endpoints& operator=(const Endpoints&) = delete;
 
     /// \brief Destroys the RestUriExpression and releases memory
     virtual ~Endpoints() {
-        ::free(ep_head);
+        free(true);
     }
 
     Node on(const char* expression) {
+        if(ep_head == nullptr) alloc();
         return getRoot().on(expression);
     }
 
-    Endpoint resolve(HttpMethod method, const char* expression) {
-        return getRoot().resolve(method, expression);
+    Request resolve(HttpMethod method, const char* expression) {
+        return (ep_head == nullptr)
+            ? Request(method, expression, URL_FAIL_NULL_ROOT)
+            : getRoot().resolve(method, expression);
     }
 
-    inline Node getRoot() { return Node(this, ep_head); }
-
-    Node newNode()
-    {
+    Node newNode() {
+        if(ep_head == nullptr) alloc();
         assert(ep_tail < ep_end);
         return Node(this, new (ep_tail++) TNodeData());
     }
 
-    ArgumentType* newArgumentType(const char* name, unsigned short typemask)
-    {
+    inline Node getRoot() {
+        if(ep_head == nullptr) alloc();
+        return Node(this, ep_head);
+    }
+
+
+
+    // todo: hide the Endpoints argument, node and literal building methods behind a Builder interface.
+
+    ArgumentType* newArgumentType(const char* name, unsigned short typemask) {
         long nameid = binbag_insert_distinct(literals_index, name);
         return new ArgumentType(nameid, typemask);
     }
@@ -180,6 +185,37 @@ public:
     // some statistics on the endpoints
     // todo: move this into a stats structure that is public
     size_t maxUriArgs;       // maximum number of embedded arguments on any one endpoint expression
+
+protected:
+    void alloc() {
+        if(ep_head == nullptr) {
+            ep_head = ep_tail = (TNodeData *) calloc(sznodes, sizeof(TNodeData));
+            ep_end = ep_head + sznodes;
+
+            if(literals_index == nullptr) {
+                literals_index = binbag_create(128, 1.5);
+            }
+
+            // create the root node
+            new (ep_tail++) TNodeData();
+        }
+    }
+
+    void  free(bool dealloc=true) {
+        if (dealloc && ep_head!= nullptr) {
+            // call destructor on all nodes
+            TNodeData *n = ep_head;
+            while (n < ep_tail) {
+                n->~TNodeData();
+                n++;
+            }
+            // free all memory
+            ::free(ep_head);
+        }
+        ep_head = ep_tail = ep_end = nullptr;
+        sznodes = 32;
+        maxUriArgs = 0;
+    }
 };
 
 

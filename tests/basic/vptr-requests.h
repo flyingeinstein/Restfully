@@ -53,7 +53,7 @@ public:
         if(instance== nullptr)
             return false;
 
-        typename Endpoints::Endpoint ep = endpoints.resolve(method, requestUri.c_str());
+        typename Endpoints::Request ep = endpoints.resolve(method, requestUri.c_str());
         if (ep) {
             RequestType request(ep);
             request.method = method;
