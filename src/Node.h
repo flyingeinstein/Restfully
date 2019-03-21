@@ -303,7 +303,7 @@ namespace Rest {
             ev.mode = Parser::expand;         // tell the parser we are adding this endpoint
 
             if((rs = parser.parse(&ev)) <URL_MATCHED) {
-                return Node(_endpoints, URL_FAIL_SYNTAX);
+                return Node(_endpoints, rs);
             } else {
                 // if we encountered more args than we did before, then save the new value
                 if(ev.nargs > _endpoints->maxUriArgs)

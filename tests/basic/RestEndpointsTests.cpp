@@ -19,6 +19,12 @@ std::function<int(RestRequest&, std::string)> _dummy = [](RestRequest &request, 
     return 200;
 };
 
+int echo(RestRequest &request) {
+    request.response += "Hello ";
+    request.response += (const char*)request["msg"];
+    return 200;
+};
+
 int getbus(RestRequest &request) {
     request.response += uri_method_to_string(request.method);
     request.response += " i2c-bus";
@@ -72,6 +78,22 @@ TEST(endpoints_simple)
     return (res.method==Rest::HttpGet && check_response(res.handler.handler, getbus) && res.status==URL_MATCHED)
        ? OK
        : FAIL;
+}
+
+TEST(endpoints_echo)
+{
+    Endpoints endpoints;
+
+    // add some endpoints
+    endpoints.on("/api/echo/:msg(string)").GET(echo);
+    Endpoints::Request res = endpoints.resolve(Rest::HttpGet, "/api/echo/Colin MacKenzie");
+    if (res.method!=Rest::HttpGet || res.status!=URL_MATCHED)
+        return FAIL;
+
+    RestRequest rr(res);
+    return (res.handler(rr)==200 && rr.response=="Hello Colin MacKenzie")
+        ? OK
+        : FAIL;
 }
 
 TEST(endpoints_partial_match_returns_no_handler) {

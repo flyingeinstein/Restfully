@@ -46,7 +46,7 @@ namespace Rest {
 
 #define GOTO_STATE(st) { ev->state = st; goto rescan; }
 #define NEXT_STATE(st) { ev->state = st; }
-#define SCAN { ev->t.clear(); ev->t.swap( ev->peek ); if(ev->t.id!=TID_EOF) ev->peek.scan(&ev->uri, 1); }
+#define SCAN { ev->t.clear(); ev->t.swap( ev->peek ); if(ev->t.id!=TID_EOF) ev->peek.scan(&ev->uri, ev->mode == expand); if(ev->peek.id==TID_ERROR) return URL_FAIL_SYNTAX; }
 
     template<
             class TNode,

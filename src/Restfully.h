@@ -1,11 +1,12 @@
 
 #pragma once
 
-#include "Rest-Esp8266.h"
+#include "Platforms/platform.h"
 
-
-typedef Esp8266RestRequestHandler RestRequestHandler;
-typedef Esp8266RestRequest RestRequest;  // RestRequestHandler::RequestType RestRequest;
-typedef typename RestRequestHandler::HandlerType HandlerType;
-typedef typename RestRequestHandler::Endpoints Endpoints;
-
+// The platform include should hopefully have detected what platform and hardware we are compiling on
+// and automatically define the DefaultPlatform type.
+#if defined(RESTFULLY_DEFAULT_PLATFORM)
+using Endpoints = Rest::Platforms::Default::Endpoints;
+using RestRequest = Rest::Platforms::Default::Request;
+using RestRequestHandler = Rest::Platforms::Default::WebServerRequestHandler;
+#endif

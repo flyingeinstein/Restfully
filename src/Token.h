@@ -176,6 +176,7 @@ class Token {
         goto done;
       }
 
+      // todo: probably we should be reading all chars up to next / token then interpreting the type as number, boolean, identifier or string.
 
       // check for literal float
       if (input[0] == '.') {
@@ -228,6 +229,7 @@ class Token {
         i = 1;
         goto done;
       }
+#if 0
       // check for identifier
       else if (isalpha(*input) || *input == '_') {
         // pull out an identifier match
@@ -239,6 +241,32 @@ class Token {
         set(ident, p, input);
         goto done;
       }
+#else
+      // assume an identifier but if we find a non-identifier char then change to string
+      else {
+        short ident = TID_IDENTIFIER;
+        const char* p = input;
+        while( *input && *input!='/' ) {
+          if(!isalnum(*input) && *input != '_' && *input != '-') {
+            // encountered non-alpha character
+            if(!allow_parameters) {
+              // we can interpret as string since we arent limited to expression syntax
+              ident = TID_STRING;
+            } else {
+              // only identifiers allowed, so we stop here
+              break;
+            }
+          }
+          input++;
+        }
+
+        // success if we consumed 1 or more characters
+        if(input > p) {
+          set(ident, p, input);
+          goto done;
+        }
+      }
+#endif
 
       sprintf(error, "syntax error, unexpected '%c' in input", *input);
       input++;
