@@ -12,6 +12,7 @@
 // be pretty simple to define a new Config type for the new hardware.
 #if defined(ARDUINO)
 #include "Esp8266.h"
+#include "Esp32.h"
 #endif
 
 #endif //RESTFULLY_PLATFORM_H
