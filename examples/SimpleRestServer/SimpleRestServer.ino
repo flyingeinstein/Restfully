@@ -131,9 +131,8 @@ void setup() {
   server.onNotFound(handleNotFound);
   
   // binding a handler in the form of int(RestRequest&) to an endpoint
-  // when using the restHandler's -> operator it will return the Endpoints object, or you
-  // can access your endpoints using the restHandler.endpoints member.
-  restHandler->on("/api/echo/:msg(string|integer)").GET(handleEcho);
+  restHandler.on("/api/echo/:msg(string|integer)")
+    .GET(handleEcho);
 
   // read the state of a digital pin
   // uses a lambda function held within a std::function
@@ -159,14 +158,14 @@ void setup() {
     return 200;
   };
   // now bind the handlers to the digital pin endpoint
-  restHandler->on("/api/digital/pin/:pin(integer)").GET(ReadDigitalPin);
+  restHandler.on("/api/digital/pin/:pin(integer)").GET(ReadDigitalPin);
 
-  restHandler->on("/api/digital/pin/:pin(integer)/set/:value(integer|string)").PUT(WriteDigitalPin);
+  restHandler.on("/api/digital/pin/:pin(integer)/set/:value(integer|string)").PUT(WriteDigitalPin);
 
 #if !defined(ARDUINO_ARCH_ESP32) // no analogWrite() on ESP32
   // read or write the state of an analog pin
   // uses direct lambda expression
-  restHandler->on("/api/analog/pin/:pin(integer)") 
+  restHandler.on("/api/analog/pin/:pin(integer)") 
     .GET([](RestRequest& request) {
       int pin = request["pin"]; // note: automatic conversion from Argument to integer
       request.response["value"] = analogRead(pin);
@@ -191,7 +190,7 @@ void setup() {
     request.response["led"] = digitalRead(LED_BUILTIN) ? "off":"on";
     return 200;
   };
-  restHandler->on("/api/led")
+  restHandler.on("/api/led")
     .PUT("off", std::bind(SetLed, 
         std::placeholders::_1,     // RestRequest placeholder,
         HIGH                      // High=Off, specified and bound as constant

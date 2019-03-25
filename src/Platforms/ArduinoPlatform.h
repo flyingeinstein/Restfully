@@ -55,8 +55,9 @@ namespace Rest {
             using RequestType = TRequest;
             using WebServerType = TWebServer;
 
-            typedef Handler<TRequest &> HandlerType;
-            typedef Rest::Endpoints<HandlerType> Endpoints;  // is really correct (it was RequestHandler)? endpoints reference self type???
+            using HandlerType = Handler<TRequest &>;
+            using Endpoints = Rest::Endpoints<HandlerType>;  // is really correct (it was RequestHandler)? endpoints reference self type???
+            using EndpointNode = typename Endpoints::Node;
 
             // the collection of Rest handlers
             Endpoints endpoints;
@@ -126,7 +127,12 @@ namespace Rest {
                 return 404;
             }
 
+            // deprecated: this operator will probably disappear soon
             Endpoints *operator->() { return &endpoints; }
+
+            // inline delegate calls to Endpoints class
+            inline EndpointNode on(const char* expression) { return endpoints.on(expression); }
+
         };
 
 
