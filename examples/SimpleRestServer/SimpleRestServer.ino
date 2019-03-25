@@ -63,10 +63,14 @@ void handleNotFound() {
   message += server.uri();
   message += "\nMethod: ";
   switch(server.method()) {
+    case HTTP_ANY: message += "ANY"; break;
     case HTTP_GET: message += "GET"; break;
     case HTTP_POST: message += "POST"; break;
     case HTTP_PUT: message += "PUT"; break;
     case HTTP_PATCH: message += "PATCH"; break;
+    case HTTP_DELETE: message += "DELETE"; break;
+    case HTTP_OPTIONS: message += "OPTIONS"; break;
+    case HTTP_HEAD: message += "HEAD"; break;
   }
   message += "\nArguments: ";
   message += server.args();
@@ -196,10 +200,9 @@ void setup() {
         std::placeholders::_1,     // RestRequest placeholder,
         LOW                      // Low=On, specified and bound as constant
     ))
-    .PUT("toggle", [](RestRequest& request) {
+    .PUT("toggle", [&SetLed](RestRequest& request) {
         pinMode(LED_BUILTIN, OUTPUT);
-        digitalWrite(LED_BUILTIN, ! digitalRead(LED_BUILTIN));    // toggle LED state
-        return 200;
+        return SetLed(request, ! digitalRead(LED_BUILTIN)); // toggles pin state
     })
     .GET([](RestRequest& request) {
         request.response["pin"] = LED_BUILTIN;
@@ -208,7 +211,9 @@ void setup() {
     });
   
   WiFi.mode(WIFI_STA);
+#if !defined(ARDUINO_ARCH_ESP32)
   WiFi.hostname(hostname);
+#endif
   WiFi.begin(ssid, password);
   while (WiFi.waitForConnectResult() != WL_CONNECTED) {
     Serial.println("Connection Failed! Rebooting...");
