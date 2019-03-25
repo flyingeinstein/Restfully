@@ -68,7 +68,19 @@ namespace Rest {
             }
 
             virtual bool handle(WebServerType &server, HTTPMethod requestMethod, String requestUri) {
-                Rest::HttpMethod method = (Rest::HttpMethod) requestMethod;
+                // convert our Http method enumeration
+                Rest::HttpMethod method;
+                switch(requestMethod) {
+                    case HTTP_ANY: method = HttpMethodAny; break;
+                    case HTTP_GET: method = HttpGet; break;
+                    case HTTP_POST: method = HttpPost; break;
+                    case HTTP_PUT: method = HttpPut; break;
+                    case HTTP_PATCH: method = HttpPatch; break;
+                    case HTTP_DELETE: method = HttpDelete; break;
+                    case HTTP_OPTIONS: method = HttpOptions; break;
+                    default: return false;
+                }
+
                 typename Endpoints::Request ep = endpoints.resolve(method, requestUri.c_str());
                 if (ep) {
                     RequestType request(server, ep);

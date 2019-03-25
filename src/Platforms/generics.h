@@ -68,7 +68,7 @@ namespace Rest {
             {}
 #endif
             Request(WebServerType& _server, const TUriRequestFragment& uri_request )
-                    : server(_server), TUriRequestFragment(uri_request),
+                    : TUriRequestFragment(uri_request), server(_server),
                       contentType(nullptr), timestamp(0), httpStatus(0)
             {}
 
