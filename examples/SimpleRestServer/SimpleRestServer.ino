@@ -12,14 +12,23 @@ const char* ssid = "MyRouter";
 const char* password = "mypassword";
 
 
+#ifdef ARDUINO_ARCH_ESP8266
 #include <ESP8266WiFi.h>
 #include <ESP8266mDNS.h>
 #include <ESP8266WebServer.h>
 #include <ESP8266HTTPClient.h>
 
+using WebServer = ESP8266WebServer;
+#else
+#include <WiFi.h>
+#include <mDNS.h>
+#include <WebServer.h>
+#include <HTTPClient.h>
+#endif
+
 #include <Restfully.h>
 
-ESP8266WebServer server(80);
+WebServer server(80);
 RestRequestHandler restHandler;
 
 
@@ -53,7 +62,12 @@ void handleNotFound() {
   message += "URI: ";
   message += server.uri();
   message += "\nMethod: ";
-  message += (server.method() == HTTP_GET) ? "GET" : "POST";
+  switch(server.method()) {
+    case HTTP_GET: message += "GET"; break;
+    case HTTP_POST: message += "POST"; break;
+    case HTTP_PUT: message += "PUT"; break;
+    case HTTP_PATCH: message += "PATCH"; break;
+  }
   message += "\nArguments: ";
   message += server.args();
   message += "\n";
@@ -63,7 +77,7 @@ void handleNotFound() {
   server.send(404, "text/plain", message);
 }
 
-/* Most browsers require a response to OPTIONS requests or they will deny requests due to CORS policy.
+/* Most browsers require a responst to OPTIONS requests or they will deny requests due to CORS policy.
  * We simply answer all requests with the appropriate Access-Control-* headers for testing.
 */
 class OptionsRequestHandler : public RequestHandler
@@ -71,7 +85,7 @@ class OptionsRequestHandler : public RequestHandler
     virtual bool canHandle(HTTPMethod method, String uri) {
       return method == HTTP_OPTIONS;
     }
-    virtual bool handle(ESP8266WebServer& server, HTTPMethod requestMethod, String requestUri) {
+    virtual bool handle(WebServer& server, HTTPMethod requestMethod, String requestUri) {
       SendHeaders();
       server.send(200, "application/json; charset=utf-8", "");
       return true;
@@ -145,6 +159,7 @@ void setup() {
 
   restHandler->on("/api/digital/pin/:pin(integer)/set/:value(integer|string)").PUT(WriteDigitalPin);
 
+#if !defined(ARDUINO_ARCH_ESP32) // no analogWrite() on ESP32
   // read or write the state of an analog pin
   // uses direct lambda expression
   restHandler->on("/api/analog/pin/:pin(integer)") 
@@ -160,6 +175,7 @@ void setup() {
       request.response["value"] = analogRead(pin);
       return 200;
     });
+#endif
 
   // set the state of the BuiltIn User LED
   // uses a lambda function but in this case we have an extra argument 'value' which will be passed to digitalWrite, we
