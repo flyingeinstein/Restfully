@@ -1,10 +1,14 @@
 
 # Restfully
 Arduino library for making Rest compliant APIs on the ESP8266 and ESP32. This libary currently supports the
-ESP8266WebServer and the ArduinoJSON library for handling the parsing of the Request and building of the Response. The
-core library is WebServer, protocol and json library agnostic so future versions will support more alternatives and
-other platforms. At it's core this library mainly handles parsing of the URI and extraction of the embedded arguments, 
-and then calling the bound function or lambda to handle the request.
+generic WebServer and ESP8266WebServer along with the ArduinoJSON library for handling the parsing of the Request 
+and building of the Response. The core primarily handles parsing of the URI and extraction of the embedded arguments
+and provides a simple interface to the coder using callback functions, class methods, std::functions or lambdas to 
+handle the Rest endpoint request.
+
+The core library is WebServer, protocol and json library agnostic so future versions will support more alternatives 
+and other platforms. There is currently a CMake file for compiling on GCC and Clang so you could use for any C++ project 
+if you write the interface between your web server and Restfully core (see src/Platforms folder for examples). 
 
 ## Installation
 
@@ -73,7 +77,7 @@ restHandler.on("/api/digital/pin/:pin(integer)")
 
 Internally these endpoint URIs are parsed into a search tree so matching URIs during run-time are efficient. The following
 code would produce the same URI search tree as above and therefor the same performance. Only difference being
-the extra memory used by the redundant strings.
+the extra flash memory used by the redundant strings.
 ```C
 restHandler.on("/api/digital/pin/:pin(integer)").GET(GpioGetHandler);
 restHandler.on("/api/digital/pin/:pin(integer)").PUT(GpioPutHandler);
@@ -82,28 +86,28 @@ restHandler.on("/api/digital/pin/:pin(integer)").OPTIONS(GpioOptionsHandler);
 Using the same Endpoint declaration is fine if the bound HTTP verb is different but it would be invalid to try to attach
 a method handler to the same Endpoint and to the same HTTP verb.
 
-Since matching of URIs are efficient, you can use this to make code your method simpler especially for arguments we 
+Since matching of URIs are efficient, you can use this to make code for your handler simpler; especially for arguments we 
 typically think of as as an enumeration or command, such as {start, stop, status} or {on, off, toggle}. Take this example
 that controls the User LED:
 ```C
 restHandler.on("/api/led/:command(string)").GET(GetLED).PUT(SetLED);
 ```
 Although brief there are a few issues here. Assuming we expect the :command argument to be one of either {on, off, status)
-then Restfully would have no issue passing /api/led/status to SetLED if the user did a PUT request. Or vice versa, it 
-could pass /api/led/on for a GET request. Also /api/led/explode would invoke your handler. You would have to handle the
+then Restfully would have no issue passing the "status" command to SetLED if the user did a PUT request when it should be a
+GET. Or vice versa, you could pass the "on" command for a GET request and this isnt good Rest form. Also /api/led/explode
+would still invoke your handler leaving you to require coding guards against invalid values. You would have to handle the
 logic of returning a 404 or 400 error code in your method logic along with a performance hit of some string comparisons.
 Instead, use multiple on(...) calls to let Restfully do the logic for you.
 ```C
 restHandler
-    .on("/api/led")
-       .PUT("on", SetLED_On);
-       .PUT("off", SetLED_Off);
-       .GET(GetLED);            // LED status
+    .on("/api/led")                // start all subsequent calls at this Endpoint node
+       .PUT("on", SetLED_On);      // ON action (PUT)
+       .PUT("off", SetLED_Off);    // OFF action (PUT)
+       .GET(GetLED);               // LED status (GET)
 ```
 The Restfully parser will create the /api/led node of the URI, then bind the on and off actions to their handlers, and
-finally the status handler to the /api/led node. No logic needed in the method handlers, they are one-liners. For more
-complex handlers than just setting an LED you might not like that the SetLED function is split/duplicated, see the use
-of std::bind() in *Better Enumerations* below for an example of getting around this.
+finally the status handler to the /api/led node. No logic needed in the method handlers, they are one-liners. Also see
+the use of std::bind() in *Better Enumerations* for a way to combine the SetLED on/off methods into one handler.
 
 ## Handler functions
 
@@ -224,6 +228,7 @@ restHandler.on("/api/system/status")
 You can also define an Endpoints class that holds class method handlers instead of static functions. This example code 
 creates endpoints for turning LEDs on and off and the LED's identifier is given as part of the URI.
 ```C
+// define a simple LED class
 class LED {
 public:
     int on(Rest::Request& r);
@@ -234,9 +239,10 @@ public:
     inline LED(int p) : pin(p) {}
 }
 
-// both of these 
-using LEDHandlerType = decltype(Klass::echo); // same as int(LED::*)(Rest::Request&)
+// define the type of our handlers
+using LEDHandlerType = decltype(Klass::echo); // defined as int(LED::*)(Rest::Request&) but easy to just use decltype operator
 
+// Define our Rest endpoints as method handlers of the LED class
 Rest::Endpoints< LEDHandlerType > indicator_endpoints;
 endpoints.on('/led/:id')
     .PUT("on", &LED::on)
@@ -247,16 +253,19 @@ However the restHandler that is pre-defined by Restfully has already defined End
 to mix endpoints types would obviously be a C++ type mismatch. If only there was a way to attach method endpoints to
 static ones, like this:
 ```C
+// create a collection of LED indicators
 std::map<int, LED> indicators;
-indicators.insert(indicators.begin(), LED(5) );
-indicators.insert(indicators.begin(), LED(7) );
+indicators.insert(indicators.begin(), LED(5) );  // LED0 on pin 5
+indicators.insert(indicators.begin(), LED(7) );  // LED1 on pin 7
 
-auto indicator_context = [&indicators](Rest::UriRequest& rr) { 
+// implement a function callback that given a Rest request (with 'id' argument) returns an LED object instance
+auto indicator_context = [&indicators](Rest::UriRequest& rr) -> LED& { 
     // lookup id in collection and return a reference
     // FYI we should be gaurding against the returned iterator being invalid
     return *indicators.find( (int)rr["id"] );   // id argument is found in URL. ex. /led/5/on
 }
 
+// now attach our LED endpoints to the restHandler's static endpoint node using `.with(<callback>, <method-endpoints>)`
 restHandler.on('/api')
     .with( 
         indicator_context,      // a function that will resolve the ID in a list of LEDs
@@ -264,11 +273,10 @@ restHandler.on('/api')
     )
 ```
 
-
-In the example above we used a function to resolve the LED class instance based on the :id URI parameter. You can also
-simply supply a single class instance. The class instance is bound to the handler function during API request time and
-the bound function can then be called with the restHandler like a static handler. Obviously, Objects must stay alive
-but like this example the indicators collection is free to grow or shrink.
+In the example above we used a function to resolve the LED object instance based on the :id URI parameter into a std::map
+collection. You can also simply supply a single class instance instead of a callback function. The class instance is bound
+to the handler function during API request time and the bound function can then be called with the restHandler like a 
+static handler. Obviously, Objects must stay alive but like in this example the indicators collection is free to grow or shrink.
 
 If you really need to store class method handlers and not join like above you'll need to handle the resolving of URIs 
 using the `Node.resolve(HttpMethod, const char* Uri)` function and then call the handler using the C++ .* operator. 
