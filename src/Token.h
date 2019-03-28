@@ -247,7 +247,7 @@ class Token {
         short ident = TID_IDENTIFIER;
         const char* p = input;
         while( *input && *input!='/' ) {
-          if(!isalnum(*input) && *input != '_' && *input != '-') {
+          if(!isalnum(*input) && *input != '_' && *input != '-' && *input != '.') {
             // encountered non-alpha character
             if(!allow_parameters) {
               // we can interpret as string since we arent limited to expression syntax
