@@ -55,6 +55,7 @@ namespace Rest {
 
             /// content type of the incoming request (should always be application/json)
             String contentType;
+            bool hasJson;
 
             unsigned long long timestamp;   // timestamp request was received, set by framework
 
@@ -69,12 +70,13 @@ namespace Rest {
 #endif
             Request(WebServerType& _server, const TUriRequestFragment& uri_request )
                     : TUriRequestFragment(uri_request), server(_server),
-                      timestamp(0), httpStatus(0)
+                      hasJson(false), timestamp(0), httpStatus(0)
             {}
 
             Request(Request& copy)
                 : TRequestFragment(copy), TResponseFragment(copy),
-                  server(copy.server), contentType(copy.contentType), timestamp(copy.timestamp), httpStatus(copy.httpStatus)
+                  server(copy.server), contentType(copy.contentType), hasJson(copy.hasJson),
+                  timestamp(copy.timestamp), httpStatus(copy.httpStatus)
             {}
 
             // these methods map directly to the WebServer methods

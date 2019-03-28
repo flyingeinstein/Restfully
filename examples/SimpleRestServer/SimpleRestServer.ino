@@ -70,7 +70,6 @@ void handleNotFound() {
     case HTTP_PATCH: message += "PATCH"; break;
     case HTTP_DELETE: message += "DELETE"; break;
     case HTTP_OPTIONS: message += "OPTIONS"; break;
-    case HTTP_HEAD: message += "HEAD"; break;
   }
   message += "\nArguments: ";
   message += server.args();
@@ -98,20 +97,37 @@ class OptionsRequestHandler : public RequestHandler
 
 int handleEcho(RestRequest& request) {
   String s("Hello ");
-    auto msg = request["msg"];
-    if(msg.isString())
-      s += msg.toString();
-    else {
-      s += '#';
-      s += (long)msg;
+
+  // if we have a json body, perhaps we have a greeting parameter
+  if(request.hasJson) {
+    auto root = request.body.as<JsonObject>();  // expect request is a Json object not array
+    auto greeting = root.get<const char*>("greeting");  // NULL if this argument doesnt exist
+    if(greeting) {
+      s = greeting; // default to Hello if greeting argument wasnt supplied
+      s += ' ';
     }
-    request.response["reply"] = s;
-    return 200;
+  }
+  
+  // add the greeting name
+  auto msg = request["msg"];
+  if(msg.isString())
+    s += msg.toString();
+  else {
+    s += '#';
+    s += (long)msg;
+  }
+  request.response["reply"] = s;
+  return 200;
 }
 
 void setup() {
   Serial.begin(230400);
   Serial.println("SimpleRestServer");
+
+  // have the server collect the content-type header for us
+  const char * headerkeys[] = {"Content-Type"} ;
+  size_t headerkeyssize = sizeof(headerkeys)/sizeof(char*);
+  server.collectHeaders( headerkeys, headerkeyssize );
 
   server.on("/", handleRoot);
 
@@ -132,7 +148,8 @@ void setup() {
   
   // binding a handler in the form of int(RestRequest&) to an endpoint
   restHandler.on("/api/echo/:msg(string|integer)")
-    .GET(handleEcho);
+    .GET(handleEcho)
+    .POST(handleEcho);
 
   // read the state of a digital pin
   // uses a lambda function held within a std::function

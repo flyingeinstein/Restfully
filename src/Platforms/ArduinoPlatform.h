@@ -103,7 +103,8 @@ namespace Rest {
                                     String("expected Json in POST data : ")+error.c_str()     // error string from json parse
                                     );
                             return true;
-                        }
+                        } else
+                            request.hasJson = true;
                     }
 
                     int rs = ep.handler(request);
