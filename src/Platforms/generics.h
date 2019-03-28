@@ -54,7 +54,7 @@ namespace Rest {
             WebServerType& server;
 
             /// content type of the incoming request (should always be application/json)
-            const char* contentType;
+            String contentType;
 
             unsigned long long timestamp;   // timestamp request was received, set by framework
 
@@ -69,13 +69,20 @@ namespace Rest {
 #endif
             Request(WebServerType& _server, const TUriRequestFragment& uri_request )
                     : TUriRequestFragment(uri_request), server(_server),
-                      contentType(nullptr), timestamp(0), httpStatus(0)
+                      timestamp(0), httpStatus(0)
             {}
 
             Request(Request& copy)
                 : TRequestFragment(copy), TResponseFragment(copy),
                   server(copy.server), contentType(copy.contentType), timestamp(copy.timestamp), httpStatus(copy.httpStatus)
             {}
+
+            // these methods map directly to the WebServer methods
+            inline const String& query(String name) const { return server.arg(name); }
+            inline const String& query(int i) const { return server.arg(i); }
+            inline const String& queryArgName(int i) const { return server.argName(i); }
+            inline int queryArgs() const { return server.args(); }
+            inline bool hasQueryArg(const String& name) const { return server.hasArg(name); }
         };
 
     } // Rest::Generics

@@ -12,14 +12,12 @@ namespace Rest {
         class Request {
         public:
             Request() {
-                request = requestDoc.to<JsonObject>();
             }
 
             Request(const Request &copy) = default;
 
             /// The parsed POST as Json if the content-type was application/json
-            DynamicJsonDocument requestDoc { 2048 };
-            JsonObject request;
+            DynamicJsonDocument body { 2048 };
         };
 
         class Response {
@@ -85,8 +83,28 @@ namespace Rest {
                 typename Endpoints::Request ep = endpoints.resolve(method, requestUri.c_str());
                 if (ep) {
                     RequestType request(server, ep);
-                    request.contentType = "application/json";
                     request.timestamp = millis();
+
+                    if(request.server.hasHeader("content-type"))
+                        request.contentType = request.server.header("content-type");
+
+                    // check for POST data and parse if it exists
+                    if(request.contentType=="application/json" && server.hasArg("plain")) {
+                        DeserializationError error = deserializeJson(
+                                request.body,
+                                server.arg("plain")
+                        );
+                        if(error) {
+                            // generate an error response
+                            request.httpStatus = 400;
+                            request.server.send(
+                                    400,              // Bad Request
+                                    "text/plain",     // plain text error
+                                    String("expected Json in POST data : ")+error.c_str()     // error string from json parse
+                                    );
+                            return true;
+                        }
+                    }
 
                     int rs = ep.handler(request);
                     if (request.httpStatus == 0) {
