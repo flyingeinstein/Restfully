@@ -17,7 +17,7 @@ namespace Rest {
             Request(const Request &copy) = default;
 
             /// The parsed POST as Json if the content-type was application/json
-            DynamicJsonDocument body { 2048 };
+            DynamicJsonDocument body { 256 };
         };
 
         class Response {
@@ -32,7 +32,7 @@ namespace Rest {
             /// output response object built by Rest method handler.
             /// This object is empty when the method handler is called and is up to the method handler to populate with the
             /// exception of standard errors, warnings and status output which is added when the method handler returns.
-            DynamicJsonDocument responseDoc { 2048 };
+            DynamicJsonDocument responseDoc { 512 };
             JsonObject response;
 
             // todo: we should have a << operator here to output to server Stream
