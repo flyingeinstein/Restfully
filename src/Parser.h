@@ -87,11 +87,6 @@ namespace Rest {
 
             Node* ep;      // current endpoint evaluated
 
-            // holds the current method name
-            // the name is generated as we are parsing the URL
-            char methodName[2048];
-            char *pmethodName;
-
             // will contain the arguments embedded in the URL.
             // when adding, will contain argument type info
             // when resolving, will contain argument values
@@ -102,11 +97,10 @@ namespace Rest {
 
             EvalState(Parser* _expr, Node* _ep, const char** _uri)
                     : mode(resolve), uri(nullptr), state(expectPathPartOrSep), level(0), ep( _ep ),
-                      pmethodName(methodName), argtypes(nullptr), args(nullptr), nargs(0), szargs(0)
+                      argtypes(nullptr), args(nullptr), nargs(0), szargs(0)
             {
                 assert(ep);
                 assert(_expr);
-                methodName[0]=0;
                 if(_uri != nullptr) {
                     // scan first token
                     if (!t.scan(_uri, 1))
@@ -157,9 +151,6 @@ namespace Rest {
                         if(ev->t.id=='/') {
                             NEXT_STATE( (ev->mode==resolve) ? expectPathPart : expectPathPartOrParam);
 
-                            // add seperator to method name
-                            if(ev->pmethodName > ev->methodName && *(ev->pmethodName-1)!='/')
-                                *ev->pmethodName++ = '/';
                         } else if(ev->t.id == TID_EOF) {
                             // safe place to end
                             goto done;
@@ -181,8 +172,7 @@ namespace Rest {
                             } else {
                                 ev->ep = epc->wild;
                             }
-                            *ev->pmethodName++ = '*';
-                            *ev->pmethodName = 0;
+
                             return ev->peek.is(TID_EOF)
                                 ? UriMatchedWildcard
                                 : URL_FAIL_SYNTAX;
@@ -213,10 +203,6 @@ namespace Rest {
                                         // match wildcard
                                         ev->ep = epc->wild;
 
-                                        // complete method name
-                                        *ev->pmethodName++ = '*';
-                                        *ev->pmethodName = 0;
-
                                         // add remaining URL as argument
                                         ev->args[ev->nargs++] = Argument(Type("_url", ARG_MASK_STRING), ev->t.original);
 
@@ -229,9 +215,6 @@ namespace Rest {
 
                             NEXT_STATE( expectPathSep );
 
-                            // add component to method name
-                            strcpy(ev->pmethodName, ev->t.s);
-                            ev->pmethodName += strlen(ev->t.s);
                         } else if(ev->mode == resolve) {
                             GOTO_STATE(expectParameterValue);
                         } else
@@ -266,13 +249,6 @@ namespace Rest {
                             _typename = "boolean";
                         } else
                         NEXT_STATE( errorExpectedIdentifierOrString ); // no match by type
-
-                        // add component to method name
-                        *ev->pmethodName++ = '<';
-                        strcpy(ev->pmethodName, _typename);
-                        ev->pmethodName += strlen(_typename);
-                        *ev->pmethodName++ = '>';
-                        *ev->pmethodName = 0;
 
                         // successful match, jump to next endpoint node
                         NEXT_STATE( expectPathSep );
@@ -420,11 +396,6 @@ namespace Rest {
                 // next token
                 SCAN;
             }
-
-            // set the method name
-            if (*(ev->pmethodName - 1) == '/')
-                ev->pmethodName--;
-            *ev->pmethodName = 0;
 
             done:
             return UriMatched;

@@ -337,7 +337,6 @@ namespace Rest {
                 // successfully resolved the endpoint
                 request.handler = ev.ep->handle(request.method);
                 if(request.handler != nullptr) {
-                    request.name = ev.methodName;   // todo: make method name a vector of binbag IDs (maybe a high bit for param)
                     request.args = request.args.concat(ev.args, ev.args + ev.nargs);    // todo: improve request arg handling
                 } else
                     request.status = NoHandler;
