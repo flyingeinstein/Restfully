@@ -6,24 +6,29 @@
 
 #include "Token.h"
 
-#define URL_MATCHED                         0
-#define URL_MATCHED_WILDCARD                1
-#define URL_FAIL_NO_ENDPOINT                (-1)
-#define URL_FAIL_NO_HANDLER                 (-2)
-#define URL_FAIL_INVALID_HANDLER            (-3)
-#define URL_FAIL_DUPLICATE                  (-4)
-#define URL_FAIL_PARAMETER_TYPE             (-5)
-#define URL_FAIL_MISSING_PARAMETER          (-6)
-#define URL_FAIL_AMBIGUOUS_PARAMETER        (-7)
-#define URL_FAIL_EXPECTED_PATH_SEPARATOR    (-8)
-#define URL_FAIL_EXPECTED_EOF               (-9)
-#define URL_FAIL_INVALID_TYPE               (-10)
-#define URL_FAIL_SYNTAX                     (-11)
-#define URL_FAIL_INTERNAL                   (-15)
-#define URL_FAIL_INTERNAL_BAD_STRING        (-16)
-#define URL_FAIL_NULL_ROOT                  (-17)
 
 namespace Rest {
+
+    typedef enum {
+        UriMatched                          = 0,
+        UriMatchedWildcard                  = 1,
+        NoEndpoint                          = -1,
+        NoHandler                           = -2,
+        InvalidHandler                      = -3,
+        Duplicate                           = -4,
+        InvalidParameterType                = -5,
+        MissingParameter                    = -6,
+        URL_FAIL_AMBIGUOUS_PARAMETER        = -7,
+        URL_FAIL_EXPECTED_PATH_SEPARATOR    = -8,
+        URL_FAIL_EXPECTED_EOF               = -9,
+        URL_FAIL_INVALID_TYPE               = -10,
+        URL_FAIL_SYNTAX                     = -11,
+        URL_FAIL_INTERNAL                   = -15,
+        URL_FAIL_INTERNAL_BAD_STRING        = -16,
+        URL_FAIL_NULL_ROOT                  = -17,
+        URL_FAIL_EXPECTED_IDENTIFIER        = -18,
+        URL_FAIL_EXPECTED_STRING            = -19
+    } ParseResult;
 
     /// \brief Convert a return value to a string.
     /// Typically use this to get a human readable string for an error result.
@@ -126,9 +131,9 @@ namespace Rest {
         /// \brief Parses a url and either adds or resolves within the expression tree
         /// The Url and parse mode are set in ParseData and determine if parse() returns when expression tree hits a dead-end
         /// or if it starts expanding the expression tree.
-        short parse(EvalState* ev)
+        ParseResult parse(EvalState* ev)
         {
-            short rv;
+            ParseResult rv;
             long wid;
             Node* epc = ev->ep;
             LiteralType* lit;
@@ -163,7 +168,7 @@ namespace Rest {
                     case expectHtmlSuffix: {
                         if(ev->t.is(TID_STRING , TID_IDENTIFIER)) {
                             if(strcasecmp(ev->t.s, "html") !=0) {
-                                return URL_FAIL_NO_ENDPOINT;    // only supports no suffix, or html suffix
+                                return NoEndpoint;    // only supports no suffix, or html suffix
                             } else
                             NEXT_STATE(expectEof);  // always expect eof after suffix
                         }
@@ -179,7 +184,7 @@ namespace Rest {
                             *ev->pmethodName++ = '*';
                             *ev->pmethodName = 0;
                             return ev->peek.is(TID_EOF)
-                                ? URL_MATCHED_WILDCARD
+                                ? UriMatchedWildcard
                                 : URL_FAIL_SYNTAX;
                         }
                         else if(ev->t.is(TID_STRING, TID_IDENTIFIER)) {
@@ -215,9 +220,9 @@ namespace Rest {
                                         // add remaining URL as argument
                                         ev->args[ev->nargs++] = Argument(Type("_url", ARG_MASK_STRING), ev->t.original);
 
-                                        return URL_MATCHED_WILDCARD;
+                                        return UriMatchedWildcard;
                                     } else
-                                        return URL_FAIL_NO_ENDPOINT;
+                                        return NoEndpoint;
                                 }
                             } else
                                 ev->ep = lit->next;
@@ -397,19 +402,19 @@ namespace Rest {
                             // recursively call parse so we can add more code at the end of this match
                             if((rv=parse(ev))!=0)
                                 return rv;
-                            return 0;   // inner recursive call would have completed call, so we are done too
+                            return UriMatched;   // inner recursive call would have completed call, so we are done too
 
                         }
                     } break;
 
                     case expectEof:
                         return (ev->t.id !=TID_EOF)
-                               ? (short)URL_FAIL_NO_ENDPOINT
-                               : (short)0;
+                               ? NoEndpoint
+                               : UriMatched;
                     case errorExpectedIdentifier:
-                        return -2;
+                        return URL_FAIL_EXPECTED_IDENTIFIER;
                     case errorExpectedIdentifierOrString:
-                        return -3;
+                        return URL_FAIL_EXPECTED_STRING;
                 }
 
                 // next token
@@ -422,7 +427,7 @@ namespace Rest {
             *ev->pmethodName = 0;
 
             done:
-            return URL_MATCHED;
+            return UriMatched;
         }
     };
 }

@@ -126,7 +126,7 @@ namespace Rest {
             inline Request(HttpMethod _method, const char* _uri, int _status=0) : UriRequest(_method, _uri), status(_status), handler(nullptr) {}
             inline Request(const UriRequest& req) : UriRequest(req), status(0), handler(nullptr) {}
 
-            inline explicit operator bool() const { return status==URL_MATCHED && handler!=nullptr; }
+            inline explicit operator bool() const { return status==UriMatched && handler!=nullptr; }
         };
 
         inline Node() : _endpoints(nullptr), _node(nullptr), _exception(URL_FAIL_NULL_ROOT) {}
@@ -302,7 +302,7 @@ namespace Rest {
             ev.szargs = 20;
             ev.mode = Parser::expand;         // tell the parser we are adding this endpoint
 
-            if((rs = parser.parse(&ev)) <URL_MATCHED) {
+            if((rs = parser.parse(&ev)) <UriMatched) {
                 return Node(_endpoints, rs);
             } else {
                 // if we encountered more args than we did before, then save the new value
@@ -333,23 +333,23 @@ namespace Rest {
             ev.args = args;
 
             // parse the input
-            if((request.status=parser.parse( &ev )) >=URL_MATCHED) {
+            if((request.status=parser.parse( &ev )) >=UriMatched) {
                 // successfully resolved the endpoint
                 request.handler = ev.ep->handle(request.method);
                 if(request.handler != nullptr) {
                     request.name = ev.methodName;   // todo: make method name a vector of binbag IDs (maybe a high bit for param)
                     request.args = request.args.concat(ev.args, ev.args + ev.nargs);    // todo: improve request arg handling
                 } else
-                    request.status = URL_FAIL_NO_HANDLER;
+                    request.status = NoHandler;
                 return true;
-            } else if(request.status == URL_FAIL_NO_ENDPOINT && !ev.ep->externals.empty()) {
+            } else if(request.status == NoEndpoint && !ev.ep->externals.empty()) {
                 // try any externals
                 for(auto b=ev.ep->externals.begin(), _b=ev.ep->externals.end(); b!=_b; b++) {
                     request.args = request.args.concat(ev.args, ev.args + ev.nargs);    // todo: improve request arg handling
                     Handler h = (*b)(request);
                     if(h!=nullptr) {
                         request.handler = h;
-                        request.status = URL_MATCHED;
+                        request.status = UriMatched;
                         return true;
                     }
                 }

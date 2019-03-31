@@ -54,12 +54,12 @@ const char* uri_method_to_string(HttpMethod method) {
 
 const char* uri_result_to_string(short result) {
     switch(result) {
-        case URL_MATCHED: return "matched";
-        case URL_FAIL_NO_ENDPOINT: return "no matching endpoint";
-        case URL_FAIL_NO_HANDLER: return "endpoint doesnt support requests for given http verb";
-        case URL_FAIL_DUPLICATE: return "endpoint already exists";
-        case URL_FAIL_PARAMETER_TYPE: return "parameter type mismatch";
-        case URL_FAIL_MISSING_PARAMETER: return "missing expected parameter";
+        case UriMatched: return "matched";
+        case NoEndpoint: return "no matching endpoint";
+        case NoHandler: return "endpoint doesnt support requests for given http verb";
+        case Duplicate: return "endpoint already exists";
+        case InvalidParameterType: return "parameter type mismatch";
+        case MissingParameter: return "missing expected parameter";
         case URL_FAIL_AMBIGUOUS_PARAMETER: return "ambiguous parameter type in endpoint declaration";
         case URL_FAIL_EXPECTED_PATH_SEPARATOR: return "expected path separator";
         case URL_FAIL_EXPECTED_EOF: return "expected end of input";
