@@ -103,7 +103,7 @@ TEST(endpoints_echo_with_dot)
     // add some endpoints
     endpoints.on("/api/v1.0/echo/:msg(string)").GET(echo);
     Endpoints::Request res = endpoints.resolve(Rest::HttpGet, "/api/v1.0/echo/Colin MacKenzie");
-    if (res.method!=Rest::HttpGet || res.status!=URL_MATCHED)
+    if (res.method!=Rest::HttpGet || res.status!=Rest::UriMatched)
         return FAIL;
 
     RestRequest rr(res);

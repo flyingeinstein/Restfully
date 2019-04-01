@@ -287,7 +287,6 @@ namespace Rest {
         /// \brief Parse and add single Uri Endpoint expressions to our list of Endpoints
         Node on(const char *endpoint_expression) {
             short rs;
-            Parser parser(_endpoints);
 
             if(_node==nullptr || _endpoints==nullptr)
                 return Node(_endpoints, _exception = URL_FAIL_NULL_ROOT);   // invalid NodeRef
@@ -297,11 +296,13 @@ namespace Rest {
                 // change to expression from absolute root node
                 return _endpoints->getRoot().on(endpoint_expression+1);
 
-
-            typename Parser::EvalState ev(_node, &endpoint_expression);
+            // create new parser state
+            ParserState ev(&endpoint_expression);
             ev.szargs = 20;
             ev.mode = ParserState::expand;         // tell the parser we are adding this endpoint
 
+            // parse the Uri expression
+            Parser parser(_node, _endpoints);
             if((rs = parser.parse(&ev)) <UriMatched) {
                 return Node(_endpoints, rs);
             } else {
@@ -310,7 +311,7 @@ namespace Rest {
                     _endpoints->maxUriArgs = ev.nargs;
 
                 // attach the handler to this endpoint
-                return Node(_endpoints, ev.ep);
+                return Node(_endpoints, parser.context);
             }
         }
 
@@ -321,11 +322,12 @@ namespace Rest {
         }
 
         bool resolve(Request& request) {
-            Parser parser(_endpoints);
 
             size_t szargs = _endpoints->maxUriArgs+1+5; // todo: externals means Arguments must be able to grow
             Argument args[szargs];
-            typename Parser::EvalState ev(_node, &request.uri);
+
+            // initialize new parser state
+            ParserState ev(&request.uri);
             if(ev.state<0)
                 return URL_FAIL_SYNTAX;
             ev.mode = ParserState::resolve;
@@ -333,17 +335,18 @@ namespace Rest {
             ev.args = args;
 
             // parse the input
+            Parser parser(_node, _endpoints);
             if((request.status=parser.parse( &ev )) >=UriMatched) {
                 // successfully resolved the endpoint
-                request.handler = ev.ep->handle(request.method);
+                request.handler = parser.context->handle(request.method);
                 if(request.handler != nullptr) {
                     request.args = request.args.concat(ev.args, ev.args + ev.nargs);    // todo: improve request arg handling
                 } else
                     request.status = NoHandler;
                 return true;
-            } else if(request.status == NoEndpoint && !ev.ep->externals.empty()) {
+            } else if(request.status == NoEndpoint && !parser.context->externals.empty()) {
                 // try any externals
-                for(auto b=ev.ep->externals.begin(), _b=ev.ep->externals.end(); b!=_b; b++) {
+                for(auto b=parser.context->externals.begin(), _b=parser.context->externals.end(); b!=_b; b++) {
                     request.args = request.args.concat(ev.args, ev.args + ev.nargs);    // todo: improve request arg handling
                     Handler h = (*b)(request);
                     if(h!=nullptr) {

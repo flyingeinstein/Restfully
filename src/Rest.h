@@ -157,7 +157,7 @@ public:
     }
 
 
-    Literal* addLiteralString(TNodeData* ep, const char* literal_value)
+    Literal* newLiteralString(TNodeData* ep, const char* literal_value)
     {
         Literal lit;
         lit.isNumeric = false;
@@ -167,7 +167,7 @@ public:
         return newLiteral(ep, &lit);
     }
 
-    Literal* addLiteralNumber(TNodeData* ep, ssize_t literal_value)
+    Literal* newLiteralNumber(TNodeData* ep, ssize_t literal_value)
     {
         Literal lit;
         lit.isNumeric = true;

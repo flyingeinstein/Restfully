@@ -193,7 +193,7 @@ TEST(endpoints_curry_with_anonymous_class_method_resolve)
             .GET(&VptrTest::echo2);
 
     Endpoints1::Request res = endpoints1.resolve(Rest::HttpGet, "/api/echo/johndoe");
-    if(res.method!=Rest::HttpGet || res.status!=UriMatched)
+    if(res.method!=Rest::HttpGet || res.status!=Rest::UriMatched)
         return FAIL;
 
     RestRequest r(res);
