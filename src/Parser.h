@@ -49,9 +49,55 @@ namespace Rest {
         expectEof
     };
 
+    /// \brief Contains state for resolving or expanding a Url expression tree
+    class ParserState {
+    public:
+        typedef enum {
+            expand = 1,           // indicates adding a new endpoint/handler
+            resolve = 2        // indicates we are resolving a URL to a defined handler
+        } mode_e;
+
+        ParserState(const char** _uri)
+                : mode(resolve), uri(nullptr), state(expectPathPartOrSep),
+                  argtypes(nullptr), args(nullptr), nargs(0), szargs(0)
+        {
+            if(_uri != nullptr) {
+                // scan first token
+                if (!t.scan(_uri, 1))
+                    goto bad_eval;
+                peek.scan(_uri, 1);
+            }
+            uri = *_uri;
+            return;
+            bad_eval:
+            state = -1;
+        }
+
+    public:
+        // indicates if we are parsing to resolve or to add an endpoint
+        mode_e mode;
+
+        // parser input string (gets eaten as parsing occurs)
+        const char *uri;
+
+        // current token 't' and look-ahead token 'peek' pulled from the input string 'uri' (above)
+        Token t, peek;
+
+        // parser state machine current state
+        int state;
+
+        // will contain the arguments embedded in the URL.
+        // when adding, will contain argument type info
+        // when resolving, will contain argument values
+        Rest::Type* argtypes;       // todo: not used currently, we can probably get rid of it
+        Argument* args;
+        size_t nargs;
+        size_t szargs;
+    };
+
 #define GOTO_STATE(st) { ev->state = st; goto rescan; }
 #define NEXT_STATE(st) { ev->state = st; }
-#define SCAN { ev->t.clear(); ev->t.swap( ev->peek ); if(ev->t.id!=TID_EOF) ev->peek.scan(&ev->uri, ev->mode == expand); if(ev->peek.id==TID_ERROR) return URL_FAIL_SYNTAX; }
+#define SCAN { ev->t.clear(); ev->t.swap( ev->peek ); if(ev->t.id!=TID_EOF) ev->peek.scan(&ev->uri, ev->mode == ParserState::expand); if(ev->peek.id==TID_ERROR) return URL_FAIL_SYNTAX; }
 
     template<
             class TNode,
@@ -68,50 +114,16 @@ namespace Rest {
         typedef TToken Token;
 
 
-        typedef enum {
-            expand = 1,           // indicates adding a new endpoint/handler
-            resolve = 2        // indicates we are resolving a URL to a defined handler
-        } mode_e;
-
-        /// \brief Contains state for resolving or expanding a Url expression tree
-        class EvalState {
+        class EvalState : public ParserState
+        {
         public:
-            mode_e mode;   // indicates if we are parsing to resolve or to add an endpoint
-
-            // parser data
-            const char *uri;    // parser input string (gets eaten as parsing occurs)
-            Token t, peek;      // current token 't' and look-ahead token 'peek'
-
-            int state;          // parser state machine current state
-            int level;          // level of evaluation, typically 1 level per path separation
-
-            Node* ep;      // current endpoint evaluated
-
-            // will contain the arguments embedded in the URL.
-            // when adding, will contain argument type info
-            // when resolving, will contain argument values
-            ArgumentType** argtypes;
-            Argument* args;
-            size_t nargs;
-            size_t szargs;
-
-            EvalState(Parser* _expr, Node* _ep, const char** _uri)
-                    : mode(resolve), uri(nullptr), state(expectPathPartOrSep), level(0), ep( _ep ),
-                      argtypes(nullptr), args(nullptr), nargs(0), szargs(0)
-            {
-                assert(ep);
-                assert(_expr);
-                if(_uri != nullptr) {
-                    // scan first token
-                    if (!t.scan(_uri, 1))
-                        goto bad_eval;
-                    peek.scan(_uri, 1);
-                }
-                uri = *_uri;
-                return;
-                bad_eval:
-                state = -1;
+            EvalState(Node* _ep, const char** _uri)
+                : ParserState(_uri), ep(_ep) {
             }
+
+        public:
+            // current endpoint node being evaluated
+            Node* ep;
         };
 
     protected:
@@ -149,7 +161,7 @@ namespace Rest {
                     case expectPathSep: {
                         // expect a slash or end of URL
                         if(ev->t.id=='/') {
-                            NEXT_STATE( (ev->mode==resolve) ? expectPathPart : expectPathPartOrParam);
+                            NEXT_STATE( (ev->mode==ParserState::resolve) ? expectPathPart : expectPathPartOrParam);
 
                         } else if(ev->t.id == TID_EOF) {
                             // safe place to end
@@ -165,7 +177,7 @@ namespace Rest {
                         }
                     } break;
                     case expectPathPart: {
-                        if(ev->mode == expand && ev->t.is(TID_WILDCARD)) {
+                        if(ev->mode == ParserState::expand && ev->t.is(TID_WILDCARD)) {
                             // encountered wildcard, must be last token
                             if(epc->wild==nullptr) {
                                 ev->ep = epc->wild = pool->newNode();
@@ -192,11 +204,11 @@ namespace Rest {
 
                             // add the new literal if we didnt find an existing one
                             if(lit==nullptr) {
-                                if(ev->mode == expand) {
+                                if(ev->mode == ParserState::expand) {
                                     // regular URI word, add to lexicon and generate code
                                     lit = pool->addLiteralString(ev->ep, ev->t.s);
                                     ev->ep = lit->next = pool->newNode();
-                                } else if(ev->mode == resolve && epc->string!=nullptr) {
+                                } else if(ev->mode == ParserState::resolve && epc->string!=nullptr) {
                                     GOTO_STATE(expectParameterValue);
                                 } else {
                                     if(epc->wild != nullptr) {
@@ -215,7 +227,7 @@ namespace Rest {
 
                             NEXT_STATE( expectPathSep );
 
-                        } else if(ev->mode == resolve) {
+                        } else if(ev->mode == ParserState::resolve) {
                             GOTO_STATE(expectParameterValue);
                         } else
                             NEXT_STATE( errorExpectedIdentifierOrString );
@@ -367,10 +379,9 @@ namespace Rest {
                             // save arg to EV data
                             if(arg != nullptr) {
                                 if(ev->argtypes == nullptr)
-                                    ev->argtypes = (ArgumentType**)calloc(ev->szargs, sizeof(ArgumentType));
+                                    ev->argtypes = (Rest::Type*)calloc(ev->szargs, sizeof(Rest::Type));
                                 assert(ev->nargs < ev->szargs);
-                                ev->argtypes[ev->nargs++] = arg;    // add to list of args we encountered
-
+                                ev->argtypes[ev->nargs++] = *arg;    // add to list of args we encountered
                             }
 
                             NEXT_STATE( expectPathSep );

@@ -298,9 +298,9 @@ namespace Rest {
                 return _endpoints->getRoot().on(endpoint_expression+1);
 
 
-            typename Parser::EvalState ev(&parser, _node, &endpoint_expression);
+            typename Parser::EvalState ev(_node, &endpoint_expression);
             ev.szargs = 20;
-            ev.mode = Parser::expand;         // tell the parser we are adding this endpoint
+            ev.mode = ParserState::expand;         // tell the parser we are adding this endpoint
 
             if((rs = parser.parse(&ev)) <UriMatched) {
                 return Node(_endpoints, rs);
@@ -325,10 +325,10 @@ namespace Rest {
 
             size_t szargs = _endpoints->maxUriArgs+1+5; // todo: externals means Arguments must be able to grow
             Argument args[szargs];
-            typename Parser::EvalState ev(&parser, _node, &request.uri);
+            typename Parser::EvalState ev(_node, &request.uri);
             if(ev.state<0)
                 return URL_FAIL_SYNTAX;
-            ev.mode = Parser::resolve;
+            ev.mode = ParserState::resolve;
             ev.szargs = szargs;
             ev.args = args;
 
