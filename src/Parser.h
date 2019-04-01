@@ -6,6 +6,7 @@
 
 #include "Token.h"
 
+#include <algorithm>
 
 namespace Rest {
 
@@ -59,7 +60,7 @@ namespace Rest {
 
         ParserState(const char** _uri)
                 : mode(resolve), uri(nullptr), state(expectPathPartOrSep),
-                  argtypes(nullptr), args(nullptr), nargs(0), szargs(0)
+                  args(nullptr), nargs(0), szargs(0)
         {
             if(_uri != nullptr) {
                 // scan first token
@@ -71,6 +72,40 @@ namespace Rest {
             return;
             bad_eval:
             state = -1;
+        }
+
+        ParserState(const ParserState& copy)
+            : mode(copy.mode), uri(copy.uri), t(copy.t), peek(copy.peek), state(copy.state),
+              args(nullptr), nargs(copy.nargs), szargs(copy.szargs)
+        {
+            if(copy.args) {
+                args = (Argument *) calloc(szargs, sizeof(Argument));
+                for (int i = 0; i < nargs; i++)
+                    new(&args[i]) Argument(copy.args[i]);
+            }
+        }
+
+        ParserState& operator=(const ParserState& copy) {
+            mode = copy.mode;
+            uri = copy.uri;
+            t = copy.t;
+            peek = copy.peek;
+            state = copy.state;
+            nargs = copy.nargs;
+
+            // copy arguments
+            if(args) {
+                if(szargs != copy.szargs) {
+                    szargs = copy.szargs;
+                    args = (Argument *) calloc(szargs, sizeof(Argument));
+                }
+            } else {
+                szargs = copy.szargs;
+                args = (Argument *) calloc(szargs, sizeof(Argument));
+            }
+            for(int i=0; i < nargs; i++)
+                new (&args[i]) Argument(copy.args[i]);
+            return *this;
         }
 
     public:
@@ -89,11 +124,11 @@ namespace Rest {
         // will contain the arguments embedded in the URL.
         // when adding, will contain argument type info
         // when resolving, will contain argument values
-        Rest::Type* argtypes;       // todo: not used currently, we can probably get rid of it
         Argument* args;
         size_t nargs;
         size_t szargs;
     };
+
 
 #define GOTO_STATE(st) { ev->state = st; goto rescan; }
 #define NEXT_STATE(st) { ev->state = st; }
@@ -120,6 +155,10 @@ namespace Rest {
             EvalState(Node* _ep, const char** _uri)
                 : ParserState(_uri), ep(_ep) {
             }
+
+            EvalState(const ParserState& copy, Node* _ep = nullptr)
+                : ParserState(copy), ep(_ep)
+            {}
 
         public:
             // current endpoint node being evaluated
@@ -376,13 +415,16 @@ namespace Rest {
                                 }
                             }
 
-                            // save arg to EV data
+                            // mark that we encountered a new argument
+                            ev->nargs++;
+#if 0 // going away
                             if(arg != nullptr) {
                                 if(ev->argtypes == nullptr)
                                     ev->argtypes = (Rest::Type*)calloc(ev->szargs, sizeof(Rest::Type));
                                 assert(ev->nargs < ev->szargs);
                                 ev->argtypes[ev->nargs++] = *arg;    // add to list of args we encountered
                             }
+#endif
 
                             NEXT_STATE( expectPathSep );
 

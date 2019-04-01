@@ -36,13 +36,6 @@
 namespace Rest {
 
 class Token {
-  private:
-    // seems strange to not allow copy or assignment but we dont need it
-    // we use swap() instead to pass the peek token to the current token (its more efficient)
-    Token(const Token& copy);
-    Token& operator=(const Token& copy);
-
-
   public:
     short id;
     char *s;        // todo: make BinBag token type and store string ID in 'i'
@@ -53,6 +46,25 @@ class Token {
     const char* original;
 
     inline Token() : id(0), s(nullptr), i(0), d(0), original(nullptr) {}
+
+    Token(const Token& copy)
+        : id(copy.id), s(nullptr), i(copy.i), d(copy.d), original(copy.original)
+    {
+      if(copy.s && copy.id >= 500) {
+        s = strdup(copy.s);
+      }
+    }
+
+    Token& operator=(const Token& copy) {
+      id = copy.id;
+      i = copy.i;
+      d = copy.d;
+      original = copy.original;
+      if(copy.s && copy.id >= 500) {
+        s = strdup(copy.s);
+      }
+      return *this;
+    }
 
     ~Token() {
       clear();
