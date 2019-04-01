@@ -100,3 +100,13 @@ TEST(endpoints_split_collection)
 
     return OK;
 }
+
+TEST(endpoints_path_with_dot)
+{
+    RestRequestHandler<RestRequest> rest;
+    rest.on("/api/v1.0/echo/:msg(string|integer)").GET([](RestRequest &request) {
+        request.response = "Hello World!";
+        return 200;
+    });
+    return OK;
+}
