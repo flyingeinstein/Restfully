@@ -96,6 +96,22 @@ TEST(endpoints_echo)
         : FAIL;
 }
 
+TEST(endpoints_echo_with_dot)
+{
+    Endpoints endpoints;
+
+    // add some endpoints
+    endpoints.on("/api/v1.0/echo/:msg(string)").GET(echo);
+    Endpoints::Request res = endpoints.resolve(Rest::HttpGet, "/api/v1.0/echo/Colin MacKenzie");
+    if (res.method!=Rest::HttpGet || res.status!=URL_MATCHED)
+        return FAIL;
+
+    RestRequest rr(res);
+    return (res.handler(rr)==200 && rr.response=="Hello Colin MacKenzie")
+           ? OK
+           : FAIL;
+}
+
 TEST(endpoints_partial_match_returns_no_handler) {
     Endpoints endpoints;
     //Endpoints::Handler getbus("get i2c-bus");
