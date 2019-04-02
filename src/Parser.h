@@ -5,13 +5,15 @@
 #pragma once
 
 #include "Token.h"
+#include "handler.h"
+#include "Argument.h"
 
 #include <algorithm>
 
 namespace Rest {
 
     typedef enum {
-        UriMatched                          = 0,
+        UriMatched                          = 0,    // todo: change this to 1, and wildcard to 2
         UriMatchedWildcard                  = 1,
         NoEndpoint                          = -1,
         NoHandler                           = -2,
@@ -50,6 +52,23 @@ namespace Rest {
         expectEof
     };
 
+    class UriRequest {
+    public:
+        HttpMethod method;
+        const char* uri;
+        Arguments args;
+
+        inline UriRequest() :  method(HttpMethodAny), uri(nullptr), args(0) {}
+        inline UriRequest(HttpMethod _method, const char* _uri) : method(_method), uri(_uri), args(0) {}
+        inline UriRequest(const UriRequest& copy) : method(copy.method), uri(copy.uri), args(copy.args) {}
+
+        inline const Argument& operator[](size_t idx) const { return args.operator[](idx); }
+        inline const Argument& operator[](const char* name) const { return args.operator[](name); }
+
+        inline UriRequest& operator=(const UriRequest& copy)
+        = default;
+    };
+
     /// \brief Contains state for resolving or expanding a Url expression tree
     class ParserState {
     public:
@@ -58,25 +77,24 @@ namespace Rest {
             resolve = 2        // indicates we are resolving a URL to a defined handler
         } mode_e;
 
-        ParserState(const char** _uri)
-                : mode(resolve), uri(nullptr), state(expectPathPartOrSep),
-                  args(nullptr), nargs(0), szargs(0)
+        ParserState(const UriRequest& _request)
+                : mode(resolve), request(_request), state(expectPathPartOrSep),
+                  args(nullptr), nargs(0), szargs(0), result(0)
         {
-            if(_uri != nullptr) {
+            if(request.uri != nullptr) {
                 // scan first token
-                if (!t.scan(_uri, 1))
+                if (!t.scan(&request.uri, 1))
                     goto bad_eval;
-                peek.scan(_uri, 1);
+                peek.scan(&request.uri, 1);
             }
-            uri = *_uri;
             return;
-            bad_eval:
+        bad_eval:
             state = -1;
         }
 
         ParserState(const ParserState& copy)
-            : mode(copy.mode), uri(copy.uri), t(copy.t), peek(copy.peek), state(copy.state),
-              args(nullptr), nargs(copy.nargs), szargs(copy.szargs)
+            : mode(copy.mode), request(copy.request), t(copy.t), peek(copy.peek), state(copy.state),
+              args(nullptr), nargs(copy.nargs), szargs(copy.szargs), result(copy.result)
         {
             if(copy.args) {
                 args = (Argument *) calloc(szargs, sizeof(Argument));
@@ -87,11 +105,12 @@ namespace Rest {
 
         ParserState& operator=(const ParserState& copy) {
             mode = copy.mode;
-            uri = copy.uri;
+            request = copy.request;
             t = copy.t;
             peek = copy.peek;
             state = copy.state;
             nargs = copy.nargs;
+            result = copy.result;
 
             // copy arguments
             if(args) {
@@ -113,7 +132,8 @@ namespace Rest {
         mode_e mode;
 
         // parser input string (gets eaten as parsing occurs)
-        const char *uri;
+        //const char *uri;
+        UriRequest request;
 
         // current token 't' and look-ahead token 'peek' pulled from the input string 'uri' (above)
         Token t, peek;
@@ -127,12 +147,15 @@ namespace Rest {
         Argument* args;
         size_t nargs;
         size_t szargs;
+
+        // parse result
+        int result;
     };
 
 
 #define GOTO_STATE(st) { ev->state = st; goto rescan; }
 #define NEXT_STATE(st) { ev->state = st; }
-#define SCAN { ev->t.clear(); ev->t.swap( ev->peek ); if(ev->t.id!=TID_EOF) ev->peek.scan(&ev->uri, ev->mode == ParserState::expand); if(ev->peek.id==TID_ERROR) return URL_FAIL_SYNTAX; }
+#define SCAN { ev->t.clear(); ev->t.swap( ev->peek ); if(ev->t.id!=TID_EOF) ev->peek.scan(&ev->request.uri, ev->mode == ParserState::expand); if(ev->peek.id==TID_ERROR) return URL_FAIL_SYNTAX; }
 
     template<
             class TNode,
@@ -145,49 +168,37 @@ namespace Rest {
         using LiteralType = typename TNode::LiteralType;
         using ArgumentType = typename TNode::ArgumentType;
 
-        typedef TNode Node;
-        typedef TToken Token;
+        using Node = TNode;
+        using Token = TToken;
 
-
-        class EvalState : public ParserState
-        {
-        public:
-            EvalState(Node* _ep, const char** _uri)
-                : ParserState(_uri), ep(_ep) {
-            }
-
-            EvalState(const ParserState& copy, Node* _ep = nullptr)
-                : ParserState(copy), ep(_ep)
-            {}
-
-        public:
-            // current endpoint node being evaluated
-            Node* ep;
-        };
-
-    protected:
+        /// The pool from which to create new endpoint nodes, literals or arguments
+        /// Usually this is a Endpoints<> class, but any class that supports newNode, newLiteralString, newLiteralNumber, newArgumentType will work.
         TPool* pool;
 
+        /// the node context we are currently parsing
+        /// This updates as path nodes are parsed
+        Node* context;
+
     public:
-        Parser(TPool* _pool) : pool(_pool)
+        Parser(Node* _context, TPool* _pool) : pool(_pool), context(_context)
         {
         }
 
         /// \brief Parses a url and either adds or resolves within the expression tree
         /// The Url and parse mode are set in ParseData and determine if parse() returns when expression tree hits a dead-end
         /// or if it starts expanding the expression tree.
-        ParseResult parse(EvalState* ev)
+        ParseResult parse(ParserState* ev)
         {
             ParseResult rv;
             long wid;
-            Node* epc = ev->ep;
+            Node* epc = context;
             LiteralType* lit;
             ArgumentType* arg;
 
             // read datatype or decl type
             while(ev->t.id!=TID_EOF) {
                 rescan:
-                epc = ev->ep;
+                epc = context;
 
                 switch(ev->state) {
                     case expectPathPartOrSep:
@@ -219,9 +230,9 @@ namespace Rest {
                         if(ev->mode == ParserState::expand && ev->t.is(TID_WILDCARD)) {
                             // encountered wildcard, must be last token
                             if(epc->wild==nullptr) {
-                                ev->ep = epc->wild = pool->newNode();
+                                context = epc->wild = pool->newNode();
                             } else {
-                                ev->ep = epc->wild;
+                                context = epc->wild;
                             }
 
                             return ev->peek.is(TID_EOF)
@@ -245,14 +256,14 @@ namespace Rest {
                             if(lit==nullptr) {
                                 if(ev->mode == ParserState::expand) {
                                     // regular URI word, add to lexicon and generate code
-                                    lit = pool->addLiteralString(ev->ep, ev->t.s);
-                                    ev->ep = lit->next = pool->newNode();
+                                    lit = pool->newLiteralString(context, ev->t.s);
+                                    context = lit->next = pool->newNode();
                                 } else if(ev->mode == ParserState::resolve && epc->string!=nullptr) {
                                     GOTO_STATE(expectParameterValue);
                                 } else {
                                     if(epc->wild != nullptr) {
                                         // match wildcard
-                                        ev->ep = epc->wild;
+                                        context = epc->wild;
 
                                         // add remaining URL as argument
                                         ev->args[ev->nargs++] = Argument(Type("_url", ARG_MASK_STRING), ev->t.original);
@@ -262,7 +273,7 @@ namespace Rest {
                                         return NoEndpoint;
                                 }
                             } else
-                                ev->ep = lit->next;
+                                context = lit->next;
 
                             NEXT_STATE( expectPathSep );
 
@@ -281,22 +292,22 @@ namespace Rest {
                             // we can match by string argument type (parameter match)
                             assert(ev->args);
                             ev->args[ev->nargs++] = Argument(*epc->string, ev->t.s);
-                            ev->ep = epc->string->next;
+                            context = epc->string->next;
                             _typename = "string";
                         } else if(ev->t.id==TID_INTEGER && epc->numeric!=nullptr) {
                             // numeric argument
                             ev->args[ev->nargs++] = Argument(*epc->numeric, (long)ev->t.i);
-                            ev->ep = epc->numeric->next;
+                            context = epc->numeric->next;
                             _typename = "int";
                         } else if(ev->t.id==TID_FLOAT && epc->numeric!=nullptr) {
                             // numeric argument
                             ev->args[ev->nargs++] = Argument(*epc->numeric, ev->t.d);
-                            ev->ep = epc->numeric->next;
+                            context = epc->numeric->next;
                             _typename = "float";
                         } else if(ev->t.id==TID_BOOL && epc->boolean!=nullptr) {
                             // numeric argument
                             ev->args[ev->nargs++] = Argument(*epc->boolean, ev->t.i>0);
-                            ev->ep = epc->boolean->next;
+                            context = epc->boolean->next;
                             _typename = "boolean";
                         } else
                         NEXT_STATE( errorExpectedIdentifierOrString ); // no match by type
@@ -381,7 +392,7 @@ namespace Rest {
                                     assert(tm>0); // must have gotten at least some typemask then
                                     if(tm == _typemask) {
                                         // exact match, we can jump to the endpoint
-                                        ev->ep = x->next;
+                                        context = x->next;
                                         arg = x;
                                     } else if((tm & _typemask) >0) {
                                         // uh-oh, user specified a rest endpoint that handles the same type but has differing
@@ -396,7 +407,7 @@ namespace Rest {
                             if(arg == nullptr) {
                                 // add the argument to the Endpoint
                                 arg = pool->newArgumentType(name, typemask);
-                                ev->ep = arg->next = pool->newNode();
+                                context = arg->next = pool->newNode();
 
                                 if ((typemask & ARG_MASK_NUMBER) > 0) {
                                     // int or real

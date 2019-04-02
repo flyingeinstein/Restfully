@@ -7,32 +7,13 @@
 
 #include "Link.h"
 #include "Exception.h"
-#include "handler.h"
 #include "Literal.h"
-#include "Argument.h"
 #include "Parser.h"
 
 #include <vector>   // todo: stop using stl vector
 
 
 namespace Rest {
-
-    class UriRequest {
-    public:
-        HttpMethod method;
-        const char* uri;
-        Arguments args;
-
-        inline UriRequest() :  method(HttpMethodAny), uri(nullptr), args(0) {}
-        inline UriRequest(HttpMethod _method, const char* _uri) : method(_method), uri(_uri), args(0) {}
-        inline UriRequest(const UriRequest& copy) : method(copy.method), uri(copy.uri), args(copy.args) {}
-
-        inline const Argument& operator[](size_t idx) const { return args.operator[](idx); }
-        inline const Argument& operator[](const char* name) const { return args.operator[](name); }
-
-        inline UriRequest& operator=(const UriRequest& copy)
-                = default;
-    };
 
     template<class THandler, class TLiteral = Rest::Literal, class TArgumentType = Rest::Type>
     class NodeData {
@@ -41,7 +22,7 @@ namespace Rest {
         using ArgumentType = Link<TArgumentType, NodeData>;
         using HandlerType = THandler;
 
-        using External = std::function<THandler(UriRequest&)>;
+        using External = std::function<THandler(ParserState&)>;
 
         // if there is more input in parse stream
         LiteralType *literals;    // first try to match one of these literals
@@ -119,7 +100,6 @@ namespace Rest {
         class Request : public UriRequest {
         public:
             int status;
-            std::string name;
             Handler handler;
             // todo: possibly make this derived class contain the conversions from class instance to static?
 
@@ -160,11 +140,13 @@ namespace Rest {
             // we resolve the klass member handler via endpoints, then bind the resolved handler to the klass reference
             // thus making it a static call
             _node->attach(
-                   [&inst,&ep](Rest::UriRequest& lhs_request) -> Handler {
+                   [&inst,&ep](ParserState& lhs_request) -> Handler {
                        typename EP::Node rhs_node = ep.getRoot();
-                       typename EP::Node::Request rhs_request(lhs_request);
-                       return rhs_node.resolve(rhs_request) && (rhs_request.handler!=nullptr)
-                            ? std::bind(rhs_request.handler, inst, std::placeholders::_1)    // todo: what if there is more than 1 argument in handler?
+
+                       ParserState rhs_request(lhs_request);
+                       typename EP::Handler handler = rhs_node.resolve(rhs_request);
+                       return (handler!=nullptr)
+                            ? std::bind(handler, inst, std::placeholders::_1)    // todo: what if there is more than 1 argument in handler?
                             : Handler();
                        //return [&inst](RestRequest& rr) -> int { return inst.*h(rr); };
                    }
@@ -179,11 +161,13 @@ namespace Rest {
             // the lambda class type.
             auto ep = std::make_shared<EP>();
             _node->attach(
-                    [&inst, ep](Rest::UriRequest& lhs_request) -> Handler {
+                    [&inst, ep](ParserState& lhs_request) -> Handler {
                         typename EP::Node rhs_node = ep->getRoot();
-                        typename EP::Node::Request rhs_request(lhs_request);
-                        return rhs_node.resolve(rhs_request) && (rhs_request.handler!=nullptr)
-                               ? std::bind(rhs_request.handler, inst, std::placeholders::_1)    // todo: what if there is more than 1 argument in handler?
+
+                        ParserState rhs_request(lhs_request);
+                        typename EP::Handler handler = rhs_node.resolve(rhs_request);
+                        return (handler!=nullptr)
+                               ? std::bind(handler, inst, std::placeholders::_1)    // todo: what if there is more than 1 argument in handler?
                                : Handler();
                     }
             );
@@ -200,15 +184,24 @@ namespace Rest {
             // the lambda class type.
             auto ep = std::make_shared<EP>();
             _node->attach(
-                    [&resolver, ep](Rest::UriRequest& lhs_request) -> Handler {
+                    // this lambda is the 'external', it holds the internally stored Endpoints object, along with the
+                    // resolver function and when invoked will call resolve() on the this internal Endpoints to get
+                    // the instance handler and convert it to static using the instance resolver function.
+                    [&resolver, ep](ParserState& lhs_request) -> Handler {
                         typename EP::Node rhs_node = ep->getRoot();
-                        typename EP::Node::Request rhs_request(lhs_request);
-                        if(rhs_node.resolve(rhs_request) && (rhs_request.handler!=nullptr)) {
-                            I& inst = resolver(rhs_request);
-                            return std::bind(rhs_request.handler, inst,
+                        ParserState rhs_request(lhs_request);
+
+                        // try to resolve the rest of the endpoint Uri and get an instance handler
+                        typename EP::Handler handler = rhs_node.resolve(rhs_request);
+                        if(handler!=nullptr) {
+                            // resolved an instance handler, now call the instance resolver to get an object instance (this pointer)
+                            I& inst = resolver(rhs_request.request);
+
+                            // now bind the instance to the handler thus creating a static invokable function
+                            return std::bind(handler, inst,
                                       std::placeholders::_1);    // todo: what if there is more than 1 argument in handler?
                         }
-                        else return Handler();
+                        else return Handler();  // external did not resolve handler
                     }
             );
 
@@ -224,12 +217,12 @@ namespace Rest {
             // we resolve the klass member handler via endpoints, then bind the resolved handler to the klass reference
             // thus making it a static call
             _node->attach(
-                    [&ep](Rest::UriRequest& lhs_request) -> Handler {
+                    [&ep](ParserState& lhs_request) -> Handler {
                         typename TEndpoints::Node rhs_node = ep.getRoot();
-                        typename TEndpoints::Node::Request rhs_request(lhs_request);
-                        return (rhs_node.resolve(rhs_request) && rhs_request.handler!=nullptr)
-                            ? rhs_request.handler
-                            : Handler();
+                        ParserState rhs_request(lhs_request);
+
+                        // try to resolve the rest of the endpoint Uri
+                        return rhs_node.resolve(rhs_request);
                     }
             );
             return ep;
@@ -287,7 +280,6 @@ namespace Rest {
         /// \brief Parse and add single Uri Endpoint expressions to our list of Endpoints
         Node on(const char *endpoint_expression) {
             short rs;
-            Parser parser(_endpoints);
 
             if(_node==nullptr || _endpoints==nullptr)
                 return Node(_endpoints, _exception = URL_FAIL_NULL_ROOT);   // invalid NodeRef
@@ -297,11 +289,13 @@ namespace Rest {
                 // change to expression from absolute root node
                 return _endpoints->getRoot().on(endpoint_expression+1);
 
-
-            typename Parser::EvalState ev(_node, &endpoint_expression);
+            // create new parser state
+            ParserState ev( UriRequest(HttpMethodAny, endpoint_expression) );
             ev.szargs = 20;
             ev.mode = ParserState::expand;         // tell the parser we are adding this endpoint
 
+            // parse the Uri expression
+            Parser parser(_node, _endpoints);
             if((rs = parser.parse(&ev)) <UriMatched) {
                 return Node(_endpoints, rs);
             } else {
@@ -310,7 +304,7 @@ namespace Rest {
                     _endpoints->maxUriArgs = ev.nargs;
 
                 // attach the handler to this endpoint
-                return Node(_endpoints, ev.ep);
+                return Node(_endpoints, parser.context);
             }
         }
 
@@ -321,39 +315,47 @@ namespace Rest {
         }
 
         bool resolve(Request& request) {
-            Parser parser(_endpoints);
 
-            size_t szargs = _endpoints->maxUriArgs+1+5; // todo: externals means Arguments must be able to grow
+            size_t szargs = _endpoints->maxUriArgs + 1 + 5; // todo: externals means Arguments must be able to grow
             Argument args[szargs];
-            typename Parser::EvalState ev(_node, &request.uri);
-            if(ev.state<0)
+
+            // initialize new parser state
+            ParserState ev(request);
+            if (ev.state < 0)
                 return URL_FAIL_SYNTAX;
             ev.mode = ParserState::resolve;
             ev.szargs = szargs;
             ev.args = args;
 
+            Handler h = resolve(ev);
+            request.handler = h;
+            request.status = ev.result;
+            return ev.result >=0;
+        }
+
+        Handler resolve(ParserState& ev) {
             // parse the input
-            if((request.status=parser.parse( &ev )) >=UriMatched) {
+            Parser parser(_node, _endpoints);
+            if((ev.result=parser.parse( &ev )) >=UriMatched) {  // todo: parser.parse() should probably now set status
                 // successfully resolved the endpoint
-                request.handler = ev.ep->handle(request.method);
-                if(request.handler != nullptr) {
-                    request.args = request.args.concat(ev.args, ev.args + ev.nargs);    // todo: improve request arg handling
+                Handler handler = parser.context->handle(ev.request.method);
+                if(handler != nullptr) {
+                    ev.request.args = ev.request.args.concat(ev.args, ev.args + ev.nargs);    // todo: we shouldnt have to copy this anymore, confirm
                 } else
-                    request.status = NoHandler;
-                return true;
-            } else if(request.status == NoEndpoint && !ev.ep->externals.empty()) {
+                    ev.result = NoHandler;
+                return handler;
+            } else if(ev.result == NoEndpoint && !parser.context->externals.empty()) {
                 // try any externals
-                for(auto b=ev.ep->externals.begin(), _b=ev.ep->externals.end(); b!=_b; b++) {
-                    request.args = request.args.concat(ev.args, ev.args + ev.nargs);    // todo: improve request arg handling
-                    Handler h = (*b)(request);
+                for(auto b=parser.context->externals.begin(), _b=parser.context->externals.end(); b!=_b; b++) {
+                    ev.request.args = ev.request.args.concat(ev.args, ev.args + ev.nargs);    // todo: we shouldnt have to copy args like this anymore
+                    Handler h = (*b)(ev);
                     if(h!=nullptr) {
-                        request.handler = h;
-                        request.status = UriMatched;
-                        return true;
+                        ev.result = UriMatched;
+                        return h;
                     }
                 }
             }
-            return false;       // cannot resolve
+            return Handler();    // cannot resolve
         }
 
     protected:
