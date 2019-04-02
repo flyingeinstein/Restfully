@@ -5,13 +5,15 @@
 #pragma once
 
 #include "Token.h"
+#include "handler.h"
+#include "Argument.h"
 
 #include <algorithm>
 
 namespace Rest {
 
     typedef enum {
-        UriMatched                          = 0,
+        UriMatched                          = 0,    // todo: change this to 1, and wildcard to 2
         UriMatchedWildcard                  = 1,
         NoEndpoint                          = -1,
         NoHandler                           = -2,
@@ -50,6 +52,23 @@ namespace Rest {
         expectEof
     };
 
+    class UriRequest {
+    public:
+        HttpMethod method;
+        const char* uri;
+        Arguments args;
+
+        inline UriRequest() :  method(HttpMethodAny), uri(nullptr), args(0) {}
+        inline UriRequest(HttpMethod _method, const char* _uri) : method(_method), uri(_uri), args(0) {}
+        inline UriRequest(const UriRequest& copy) : method(copy.method), uri(copy.uri), args(copy.args) {}
+
+        inline const Argument& operator[](size_t idx) const { return args.operator[](idx); }
+        inline const Argument& operator[](const char* name) const { return args.operator[](name); }
+
+        inline UriRequest& operator=(const UriRequest& copy)
+        = default;
+    };
+
     /// \brief Contains state for resolving or expanding a Url expression tree
     class ParserState {
     public:
@@ -58,25 +77,24 @@ namespace Rest {
             resolve = 2        // indicates we are resolving a URL to a defined handler
         } mode_e;
 
-        ParserState(const char** _uri)
-                : mode(resolve), uri(nullptr), state(expectPathPartOrSep),
-                  args(nullptr), nargs(0), szargs(0)
+        ParserState(const UriRequest& _request)
+                : mode(resolve), request(_request), state(expectPathPartOrSep),
+                  args(nullptr), nargs(0), szargs(0), result(0)
         {
-            if(_uri != nullptr) {
+            if(request.uri != nullptr) {
                 // scan first token
-                if (!t.scan(_uri, 1))
+                if (!t.scan(&request.uri, 1))
                     goto bad_eval;
-                peek.scan(_uri, 1);
+                peek.scan(&request.uri, 1);
             }
-            uri = *_uri;
             return;
-            bad_eval:
+        bad_eval:
             state = -1;
         }
 
         ParserState(const ParserState& copy)
-            : mode(copy.mode), uri(copy.uri), t(copy.t), peek(copy.peek), state(copy.state),
-              args(nullptr), nargs(copy.nargs), szargs(copy.szargs)
+            : mode(copy.mode), request(copy.request), t(copy.t), peek(copy.peek), state(copy.state),
+              args(nullptr), nargs(copy.nargs), szargs(copy.szargs), result(copy.result)
         {
             if(copy.args) {
                 args = (Argument *) calloc(szargs, sizeof(Argument));
@@ -87,11 +105,12 @@ namespace Rest {
 
         ParserState& operator=(const ParserState& copy) {
             mode = copy.mode;
-            uri = copy.uri;
+            request = copy.request;
             t = copy.t;
             peek = copy.peek;
             state = copy.state;
             nargs = copy.nargs;
+            result = copy.result;
 
             // copy arguments
             if(args) {
@@ -113,7 +132,8 @@ namespace Rest {
         mode_e mode;
 
         // parser input string (gets eaten as parsing occurs)
-        const char *uri;
+        //const char *uri;
+        UriRequest request;
 
         // current token 't' and look-ahead token 'peek' pulled from the input string 'uri' (above)
         Token t, peek;
@@ -127,12 +147,15 @@ namespace Rest {
         Argument* args;
         size_t nargs;
         size_t szargs;
+
+        // parse result
+        int result;
     };
 
 
 #define GOTO_STATE(st) { ev->state = st; goto rescan; }
 #define NEXT_STATE(st) { ev->state = st; }
-#define SCAN { ev->t.clear(); ev->t.swap( ev->peek ); if(ev->t.id!=TID_EOF) ev->peek.scan(&ev->uri, ev->mode == ParserState::expand); if(ev->peek.id==TID_ERROR) return URL_FAIL_SYNTAX; }
+#define SCAN { ev->t.clear(); ev->t.swap( ev->peek ); if(ev->t.id!=TID_EOF) ev->peek.scan(&ev->request.uri, ev->mode == ParserState::expand); if(ev->peek.id==TID_ERROR) return URL_FAIL_SYNTAX; }
 
     template<
             class TNode,
