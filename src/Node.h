@@ -291,7 +291,6 @@ namespace Rest {
 
             // create new parser state
             ParserState ev( UriRequest(HttpMethodAny, endpoint_expression) );
-            ev.szargs = 20;
             ev.mode = ParserState::expand;         // tell the parser we are adding this endpoint
 
             // parse the Uri expression
@@ -316,18 +315,15 @@ namespace Rest {
 
         bool resolve(Request& request) {
 
-            size_t szargs = _endpoints->maxUriArgs + 1 + 5; // todo: externals means Arguments must be able to grow
-            Argument args[szargs];
-
             // initialize new parser state
             ParserState ev(request);
             if (ev.state < 0)
                 return URL_FAIL_SYNTAX;
             ev.mode = ParserState::resolve;
-            ev.szargs = szargs;
-            ev.args = args;
+            ev.request.args.reserve(_endpoints->maxUriArgs);
 
             Handler h = resolve(ev);
+            request.args = ev.request.args; // todo: can we get rid of this Args copy?
             request.handler = h;
             request.status = ev.result;
             return ev.result >=0;
@@ -339,15 +335,12 @@ namespace Rest {
             if((ev.result=parser.parse( &ev )) >=UriMatched) {  // todo: parser.parse() should probably now set status
                 // successfully resolved the endpoint
                 Handler handler = parser.context->handle(ev.request.method);
-                if(handler != nullptr) {
-                    ev.request.args = ev.request.args.concat(ev.args, ev.args + ev.nargs);    // todo: we shouldnt have to copy this anymore, confirm
-                } else
+                if(handler == nullptr)
                     ev.result = NoHandler;
                 return handler;
             } else if(ev.result == NoEndpoint && !parser.context->externals.empty()) {
                 // try any externals
                 for(auto b=parser.context->externals.begin(), _b=parser.context->externals.end(); b!=_b; b++) {
-                    ev.request.args = ev.request.args.concat(ev.args, ev.args + ev.nargs);    // todo: we shouldnt have to copy args like this anymore
                     Handler h = (*b)(ev);
                     if(h!=nullptr) {
                         ev.result = UriMatched;

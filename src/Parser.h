@@ -58,8 +58,8 @@ namespace Rest {
         const char* uri;
         Arguments args;
 
-        inline UriRequest() :  method(HttpMethodAny), uri(nullptr), args(0) {}
-        inline UriRequest(HttpMethod _method, const char* _uri) : method(_method), uri(_uri), args(0) {}
+        inline UriRequest() :  method(HttpMethodAny), uri(nullptr) {}
+        inline UriRequest(HttpMethod _method, const char* _uri) : method(_method), uri(_uri) {}
         inline UriRequest(const UriRequest& copy) : method(copy.method), uri(copy.uri), args(copy.args) {}
 
         inline const Argument& operator[](size_t idx) const { return args.operator[](idx); }
@@ -79,7 +79,7 @@ namespace Rest {
 
         ParserState(const UriRequest& _request)
                 : mode(resolve), request(_request), state(expectPathPartOrSep),
-                  args(nullptr), nargs(0), szargs(0), result(0)
+                  nargs(0), result(0)
         {
             if(request.uri != nullptr) {
                 // scan first token
@@ -94,13 +94,8 @@ namespace Rest {
 
         ParserState(const ParserState& copy)
             : mode(copy.mode), request(copy.request), t(copy.t), peek(copy.peek), state(copy.state),
-              args(nullptr), nargs(copy.nargs), szargs(copy.szargs), result(copy.result)
+              nargs(copy.nargs), result(copy.result)
         {
-            if(copy.args) {
-                args = (Argument *) calloc(szargs, sizeof(Argument));
-                for (int i = 0; i < nargs; i++)
-                    new(&args[i]) Argument(copy.args[i]);
-            }
         }
 
         ParserState& operator=(const ParserState& copy) {
@@ -111,19 +106,6 @@ namespace Rest {
             state = copy.state;
             nargs = copy.nargs;
             result = copy.result;
-
-            // copy arguments
-            if(args) {
-                if(szargs != copy.szargs) {
-                    szargs = copy.szargs;
-                    args = (Argument *) calloc(szargs, sizeof(Argument));
-                }
-            } else {
-                szargs = copy.szargs;
-                args = (Argument *) calloc(szargs, sizeof(Argument));
-            }
-            for(int i=0; i < nargs; i++)
-                new (&args[i]) Argument(copy.args[i]);
             return *this;
         }
 
@@ -132,7 +114,6 @@ namespace Rest {
         mode_e mode;
 
         // parser input string (gets eaten as parsing occurs)
-        //const char *uri;
         UriRequest request;
 
         // current token 't' and look-ahead token 'peek' pulled from the input string 'uri' (above)
@@ -144,9 +125,7 @@ namespace Rest {
         // will contain the arguments embedded in the URL.
         // when adding, will contain argument type info
         // when resolving, will contain argument values
-        Argument* args;
         size_t nargs;
-        size_t szargs;
 
         // parse result
         int result;
@@ -266,7 +245,7 @@ namespace Rest {
                                         context = epc->wild;
 
                                         // add remaining URL as argument
-                                        ev->args[ev->nargs++] = Argument(Type("_url", ARG_MASK_STRING), ev->t.original);
+                                        ev->request.args.add( Argument(Type("_url", ARG_MASK_STRING), ev->t.original) );
 
                                         return UriMatchedWildcard;
                                     } else
@@ -284,29 +263,28 @@ namespace Rest {
                     } break;
                     case expectParameterValue: {
                         const char* _typename=nullptr;
-                        assert(ev->args);   // must have collection of args
-                        assert(ev->nargs < ev->szargs);
+                        //assert(ev->args);   // must have collection of args
+                        //assert(ev->nargs < ev->szargs);
 
                         // try to match a parameter by type
                         if(ev->t.is(TID_STRING, TID_IDENTIFIER) && epc->string!=nullptr) {
                             // we can match by string argument type (parameter match)
-                            assert(ev->args);
-                            ev->args[ev->nargs++] = Argument(*epc->string, ev->t.s);
+                            ev->request.args.add( Argument(*epc->string, ev->t.s) );
                             context = epc->string->next;
                             _typename = "string";
                         } else if(ev->t.id==TID_INTEGER && epc->numeric!=nullptr) {
                             // numeric argument
-                            ev->args[ev->nargs++] = Argument(*epc->numeric, (long)ev->t.i);
+                            ev->request.args.add( Argument(*epc->numeric, (long)ev->t.i) );
                             context = epc->numeric->next;
                             _typename = "int";
                         } else if(ev->t.id==TID_FLOAT && epc->numeric!=nullptr) {
                             // numeric argument
-                            ev->args[ev->nargs++] = Argument(*epc->numeric, ev->t.d);
+                            ev->request.args.add( Argument(*epc->numeric, ev->t.d) );
                             context = epc->numeric->next;
                             _typename = "float";
                         } else if(ev->t.id==TID_BOOL && epc->boolean!=nullptr) {
                             // numeric argument
-                            ev->args[ev->nargs++] = Argument(*epc->boolean, ev->t.i>0);
+                            ev->request.args.add( Argument(*epc->boolean, ev->t.i>0) );
                             context = epc->boolean->next;
                             _typename = "boolean";
                         } else

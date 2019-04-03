@@ -175,60 +175,58 @@ namespace Rest {
     };
 
     class Arguments {
+        using _size_t = short;
+
     public:
-        Arguments(size_t n)
-            : args(nullptr), nargs(n)
+        Arguments()
+            : args(nullptr), szargs(0), nargs(0)
+        {}
+
+        Arguments(_size_t _capacity)
+            : args(nullptr), szargs(0), nargs(0)    // todo: rename these members 'capacity' and 'count'
         {
-            if(n>0)
-                args = new Argument[nargs];
+            alloc(_capacity);
         }
 
-        Arguments(Argument* _args, size_t n)
-                : args(nullptr), nargs(n)
+        Arguments(Argument* _args, _size_t n)
+                : args(nullptr), szargs(0), nargs(0)
         {
-            if(n>0) {
-                // copy the given array of arguments
-                args = new Argument[nargs];
-                for(decltype(nargs) i=0; i<nargs; i++)
-                    args[i] = _args[i];
-            }
+            copy(_args, _args + n);
         }
 
-        Arguments(const Arguments& copy)
-            : args(nullptr), nargs(copy.nargs)
+        Arguments(Argument* _args, _size_t n, _size_t _capacity)
+                : args(nullptr), szargs(0), nargs(0)
         {
-            if(nargs>0) {
-                args = new Argument[nargs];
-                for (decltype(nargs) i = 0; i < nargs; i++)
-                    args[i] = copy.args[i];
-            }
+            if(_capacity<n) _capacity = n;
+            alloc(_capacity);
+            copy(_args, _args + n);
         }
 
-        virtual ~Arguments() { delete [] args; }
+        Arguments(const Arguments& _copy)
+            : args(nullptr), szargs(0), nargs(0)
+        {
+            alloc(_copy.szargs);
+            copy(_copy.args, _copy.args + _copy.nargs);
+        }
 
-        inline Arguments& operator=(const Arguments& copy) {
-            delete [] args; // no need to check null
-            nargs = copy.nargs;
-            if(nargs>0) {
-                args = new Argument[nargs];
-                for (decltype(nargs) i = 0; i < nargs; i++)
-                    args[i] = copy.args[i];
-            } else
-                args = nullptr;
+        virtual ~Arguments() { free(); }
+
+        inline Arguments& operator=(const Arguments& _copy) {
+            free();
+            alloc(_copy.szargs);
+            copy(_copy.args, _copy.args + _copy.nargs);
             return *this;
         }
 
         Arguments operator+(const Arguments& rhs) {
-            decltype(nargs) i, j;
+            _size_t i, j;
             Arguments a(nargs + rhs.nargs);
-            for(i=0; i<nargs; i++)
-                a.args[i] = args[i];
-            for(j=0; j<rhs.nargs; j++)
-                a.args[i+j] = args[j];
+            a.copy(args, args + nargs);                         // left
+            a.copy(rhs.args, rhs.args + rhs.nargs, a.nargs);    // right
             return a;
         }
 
-        Arguments concat(const Argument* _begin, const Argument* _end) {
+        /*Arguments concat(const Argument* _begin, const Argument* _end) {
             decltype(nargs) i;
             size_t cnt = _end - _begin;
             Arguments a(nargs + cnt);
@@ -237,9 +235,9 @@ namespace Rest {
             while(_begin < _end)
                 a.args[i++] = *_begin++;
             return a;
-        }
+        }*/
 
-        const Argument& operator[](size_t idx) const {
+        const Argument& operator[](int idx) const {
             return (idx<nargs)
                    ? args[idx]
                    : Argument::null;
@@ -253,9 +251,70 @@ namespace Rest {
             return Argument::null;
         }
 
+        Argument& add(Type& t) {
+            // ensure we have room to add
+            if(nargs >= szargs)
+                alloc(szargs+1);
+            assert(nargs < szargs);
+
+            // add the argument
+            Argument* arg = new (&args[nargs++]) Argument(t);    // placement copy constructor
+            assert(arg);
+            return *arg;
+        }
+
+        Argument& add(const Argument& t) {
+            // ensure we have room to add
+            if(nargs >= szargs)
+                alloc(szargs+1);
+            assert(nargs < szargs);
+
+            // add the argument
+            Argument* arg = new (&args[nargs++]) Argument(t);    // placement copy constructor
+            assert(arg);
+            return *arg;
+        }
+
+        inline void reserve(_size_t _count) { alloc(_count); }
+
+        inline _size_t count() const { return nargs; }
+
+        inline _size_t capacity() const { return szargs; }
+
     protected:
         Argument* args;
-        size_t nargs;
+        _size_t nargs;
+        _size_t szargs;
+
+        void alloc(size_t _count) {
+            if(_count != szargs) {
+                szargs = _count;
+                args = (args != nullptr)
+                    ? (Argument*)realloc(args, szargs * sizeof(Argument))
+                    : (Argument*)calloc(szargs, sizeof(Argument));
+            }
+        }
+
+        void free() {
+            if(args) {
+                //for(Argument *a = args, *_a=args+nargs; a < _a; a++)
+                //    a->~Argument();
+                ::free(args);
+                args = nullptr;
+            }
+        }
+
+        void copy(Argument* begin, Argument* end, _size_t dest_index=0) {
+            size_t n = end - begin;
+            if(szargs < n)
+                alloc( n );
+
+            Argument* dest = args + dest_index;
+            while(begin < end) {
+                new(dest++) Argument(*begin++);    // placement copy constructor
+                nargs++;
+            }
+        }
     };
 
 
