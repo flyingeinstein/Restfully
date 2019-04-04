@@ -13,8 +13,8 @@
 namespace Rest {
 
     typedef enum {
-        UriMatched                          = 0,    // todo: change this to 1, and wildcard to 2
-        UriMatchedWildcard                  = 1,
+        UriMatched                          = 1,
+        UriMatchedWildcard                  = 2,
         NoEndpoint                          = -1,
         NoHandler                           = -2,
         InvalidHandler                      = -3,
