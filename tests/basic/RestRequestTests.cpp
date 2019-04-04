@@ -36,9 +36,6 @@ TEST(endpoints_function)
     return OK;
 }
 
-//template<class H> Rest::Handler<H&> GETT(std::function< int(H&) > handler) { return Rest::Handler<H&>(HttpGet, handler); }
-//Rest::Handler<RestRequest&> GETT(std::function< int(RestRequest&) > handler) { return Rest::Handler<RestRequest&>(HttpGet, handler); }
-
 TEST(endpoints_lambda)
 {
     RestRequestHandler<RestRequest> rest;
