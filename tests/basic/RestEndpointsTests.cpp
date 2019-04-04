@@ -6,7 +6,7 @@
 #include <utility>
 
 #include <tests.h>
-#include <Rest.h>
+#include <Endpoints.h>
 #include "requests.h"
 
 typedef Rest::Handler< RestRequest& > RequestHandler;

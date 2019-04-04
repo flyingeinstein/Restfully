@@ -5,7 +5,7 @@
 #ifndef NIMBLE_REQUESTS_H
 #define NIMBLE_REQUESTS_H
 
-#include <Rest.h>
+#include <Endpoints.h>
 
 class RestRequest : public Rest::UriRequest
 {

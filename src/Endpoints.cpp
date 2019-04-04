@@ -2,7 +2,7 @@
 // Created by ineoquest on 2/2/18.
 //
 
-#include "Rest.h"
+#include "Endpoints.h"
 
 
 #include <string.h>
