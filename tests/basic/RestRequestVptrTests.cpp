@@ -6,8 +6,8 @@
 #include <utility>
 
 #include <tests.h>
-#include "vptr-requests.h"
 
+#include "requests.h"
 
 
 class VptrTest {
