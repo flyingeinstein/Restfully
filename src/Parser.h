@@ -264,7 +264,7 @@ namespace Rest {
                     case expectParameterValue: {
                         const char* _typename=nullptr;
                         //assert(ev->args);   // must have collection of args
-                        //assert(ev->nargs < ev->szargs);
+                        //assert(ev->nargs < ev->_capacity);
 
                         // try to match a parameter by type
                         if(ev->t.is(TID_STRING, TID_IDENTIFIER) && epc->string!=nullptr) {
@@ -409,8 +409,8 @@ namespace Rest {
 #if 0 // going away
                             if(arg != nullptr) {
                                 if(ev->argtypes == nullptr)
-                                    ev->argtypes = (Rest::Type*)calloc(ev->szargs, sizeof(Rest::Type));
-                                assert(ev->nargs < ev->szargs);
+                                    ev->argtypes = (Rest::Type*)calloc(ev->_capacity, sizeof(Rest::Type));
+                                assert(ev->nargs < ev->_capacity);
                                 ev->argtypes[ev->nargs++] = *arg;    // add to list of args we encountered
                             }
 #endif

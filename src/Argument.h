@@ -179,23 +179,23 @@ namespace Rest {
 
     public:
         Arguments()
-            : args(nullptr), szargs(0), nargs(0)
+            : args(nullptr), _capacity(0), _count(0)
         {}
 
         Arguments(_size_t _capacity)
-            : args(nullptr), szargs(0), nargs(0)    // todo: rename these members 'capacity' and 'count'
+            : args(nullptr), _capacity(0), _count(0)
         {
             alloc(_capacity);
         }
 
         Arguments(Argument* _args, _size_t n)
-                : args(nullptr), szargs(0), nargs(0)
+                : args(nullptr), _capacity(0), _count(0)
         {
             copy(_args, _args + n);
         }
 
         Arguments(Argument* _args, _size_t n, _size_t _capacity)
-                : args(nullptr), szargs(0), nargs(0)
+                : args(nullptr), _capacity(0), _count(0)
         {
             if(_capacity<n) _capacity = n;
             alloc(_capacity);
@@ -203,26 +203,26 @@ namespace Rest {
         }
 
         Arguments(const Arguments& _copy)
-            : args(nullptr), szargs(0), nargs(0)
+            : args(nullptr), _capacity(0), _count(0)
         {
-            alloc(_copy.szargs);
-            copy(_copy.args, _copy.args + _copy.nargs);
+            alloc(_copy._capacity);
+            copy(_copy.args, _copy.args + _copy._count);
         }
 
         virtual ~Arguments() { free(); }
 
         inline Arguments& operator=(const Arguments& _copy) {
             free();
-            alloc(_copy.szargs);
-            copy(_copy.args, _copy.args + _copy.nargs);
+            alloc(_copy._capacity);
+            copy(_copy.args, _copy.args + _copy._count);
             return *this;
         }
 
         Arguments operator+(const Arguments& rhs) {
             _size_t i, j;
-            Arguments a(nargs + rhs.nargs);
-            a.copy(args, args + nargs);                         // left
-            a.copy(rhs.args, rhs.args + rhs.nargs, a.nargs);    // right
+            Arguments a(_count + rhs._count);
+            a.copy(args, args + _count);                         // left
+            a.copy(rhs.args, rhs.args + rhs._count, a._count);    // right
             return a;
         }
 
@@ -238,13 +238,13 @@ namespace Rest {
         }*/
 
         const Argument& operator[](int idx) const {
-            return (idx<nargs)
+            return (idx<_count)
                    ? args[idx]
                    : Argument::null;
         }
 
         const Argument& operator[](const char* _name) const {
-            for(decltype(nargs) i=0; i<nargs; i++) {
+            for(decltype(_count) i=0; i<_count; i++) {
                 if (strcmp(_name, args[i].name()) == 0)
                     return args[i];
             }
@@ -253,45 +253,45 @@ namespace Rest {
 
         Argument& add(Type& t) {
             // ensure we have room to add
-            if(nargs >= szargs)
-                alloc(szargs+1);
-            assert(nargs < szargs);
+            if(_count >= _capacity)
+                alloc(_capacity+1);
+            assert(_count < _capacity);
 
             // add the argument
-            Argument* arg = new (&args[nargs++]) Argument(t);    // placement copy constructor
+            Argument* arg = new (&args[_count++]) Argument(t);    // placement copy constructor
             assert(arg);
             return *arg;
         }
 
         Argument& add(const Argument& t) {
             // ensure we have room to add
-            if(nargs >= szargs)
-                alloc(szargs+1);
-            assert(nargs < szargs);
+            if(_count >= _capacity)
+                alloc(_capacity+1);
+            assert(_count < _capacity);
 
             // add the argument
-            Argument* arg = new (&args[nargs++]) Argument(t);    // placement copy constructor
+            Argument* arg = new (&args[_count++]) Argument(t);    // placement copy constructor
             assert(arg);
             return *arg;
         }
 
         inline void reserve(_size_t _count) { alloc(_count); }
 
-        inline _size_t count() const { return nargs; }
+        inline _size_t count() const { return _count; }
 
-        inline _size_t capacity() const { return szargs; }
+        inline _size_t capacity() const { return _capacity; }
 
     protected:
         Argument* args;
-        _size_t nargs;
-        _size_t szargs;
+        _size_t _count;
+        _size_t _capacity;
 
         void alloc(size_t _count) {
-            if(_count != szargs) {
-                szargs = _count;
+            if(_count != _capacity) {
+                _capacity = _count;
                 args = (args != nullptr)
-                    ? (Argument*)realloc(args, szargs * sizeof(Argument))
-                    : (Argument*)calloc(szargs, sizeof(Argument));
+                    ? (Argument*)realloc(args, _capacity * sizeof(Argument))
+                    : (Argument*)calloc(_capacity, sizeof(Argument));
             }
         }
 
@@ -306,13 +306,13 @@ namespace Rest {
 
         void copy(Argument* begin, Argument* end, _size_t dest_index=0) {
             size_t n = end - begin;
-            if(szargs < n)
+            if(_capacity < n)
                 alloc( n );
 
             Argument* dest = args + dest_index;
             while(begin < end) {
                 new(dest++) Argument(*begin++);    // placement copy constructor
-                nargs++;
+                _count++;
             }
         }
     };

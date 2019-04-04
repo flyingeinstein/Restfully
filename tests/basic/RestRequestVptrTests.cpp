@@ -46,7 +46,6 @@ public:
     }
 };
 
-//template<class Klass, class H> Rest::Handler<Klass*, H&> GET(int (Klass::*handler)(H&)) { return Rest::Handler<Klass*, H&>(HttpGet, std::function<int(Klass*, H&)>(handler)); }
 
 TEST(endpoints_vptr_decl)
 {
