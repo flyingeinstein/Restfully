@@ -186,8 +186,7 @@ TEST_DISABLED(endpoints_many)
         // any errors produced in the above sentences will get caught here
         .katch([](Endpoints::Exception ex) {
             std::cout << "exception occured adding endpoints: "
-                << uri_result_to_string(ex.code) << ": "
-                << ex.node.name();
+                << uri_result_to_string(ex.code);
             return FAIL;
         });
 

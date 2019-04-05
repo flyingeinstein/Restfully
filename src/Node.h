@@ -230,11 +230,6 @@ namespace Rest {
 
         inline int error() const { return _exception; }
 
-        // todo: implement node::name()
-        std::string name() const {
-            return "todo:name";
-        }
-
         inline const Endpoints* endpoints() const { return _endpoints; }
         inline Endpoints* endpoints() { return _endpoints; }
 
@@ -332,7 +327,7 @@ namespace Rest {
         Handler resolve(ParserState& ev) {
             // parse the input
             Parser parser(_node, _endpoints);
-            if((ev.result=parser.parse( &ev )) >=UriMatched) {  // todo: parser.parse() should probably now set status
+            if((ev.result=parser.parse( &ev )) >=UriMatched) {
                 // successfully resolved the endpoint
                 Handler handler = parser.context->handle(ev.request.method);
                 if(handler == nullptr)

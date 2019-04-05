@@ -8,6 +8,23 @@
 #include <ArduinoJson.h>        // from ArduinoJson library
 
 namespace Rest {
+    class Error {
+    public:
+        short code;
+        String message;
+
+        inline Error(short _code=0) : code(_code) {}
+        inline Error(short _code, const char* _message) : code(_code), message(_message) {}
+
+        Error(const Error& copy) : code(copy.code), message(copy.message) {}
+
+        Error& operator=(const Error& copy) {
+            code = copy.code;
+            message = copy.message;
+            return *this;
+        }
+    };
+
     namespace ArduinoJson {
         class Request {
         public:
@@ -35,7 +52,10 @@ namespace Rest {
             DynamicJsonDocument responseDoc { 512 };
             JsonObject response;
 
-            // todo: we should have a << operator here to output to server Stream
+            // we can set an error code and it will be returned as a response header
+            Error result;
+            inline void error(short code) { result = Rest::Error(code); }
+            inline void error(short code, const char* message) { result = Rest::Error(code, message); }
         };
     }
 
@@ -117,13 +137,22 @@ namespace Rest {
                             request.httpStatus = rs;
                     }
 
-                    // make a << operator to send output to server response
+                    // send error code
+                    sendError(server, request.result);
+
+                    // send output to server
                     String content;
                     serializeJson(request.response, content);
                     server.send(request.httpStatus, "application/json", content);
                     return true;
                 }
                 return false;
+            }
+
+            void sendError(WebServerType &server, const Error& error) {
+                server.sendHeader("x-api-code", String(error.code) );
+                if(error.message.length() >0)
+                    server.sendHeader("x-api-message", error.message );
             }
 
             virtual int defer(Endpoints &endpoints, TRequest &parent) {

@@ -11,9 +11,9 @@ namespace Rest {
     class Exception {
     public:
         TNode node;
-        int code;
+        short code;
 
-        inline Exception(TNode _node, int _code) : node(_node), code(_code) {}
+        inline Exception(TNode _node, short _code) : node(_node), code(_code) {}
     };
 
 }
