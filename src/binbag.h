@@ -68,13 +68,15 @@ DS_EXPORT long binbag_insertn(binbag *bb, const char *str, int length);
 /// \brief Insert a string if not exists
 /// This function is the same as binbag_insert() but first it checks to see if it already exists in the binbag. If so,
 /// then the existing element is returned.
-DS_EXPORT long  binbag_insert_distinct(binbag* bb, const char* str);
+DS_EXPORT long  binbag_insert_distinct(binbag* bb, const char* str, int (*compar)(const char*,const char*));
+
+DS_EXPORT long  binbag_insert_distinct_n(binbag* bb, const char* str, size_t n, int (*compar)(const char*,const char*, size_t n));
 
 DS_EXPORT void binbag_inplace_reverse(binbag *bb);
 
 //const unsigned char* binbag_binary_insert(const unsigned char* str, size_t len);
 
-DS_EXPORT const char *binbag_get(binbag *bb, size_t idx);
+DS_EXPORT const char *binbag_get(binbag *bb, long idx);
 
 //const unsigned char* binbag_binary_get(int idx, size_t* len_out);
 
@@ -87,6 +89,14 @@ DS_EXPORT long binbag_find_case(binbag *bb, const char* match);
 /// \brief Find the ordinal index of the given string using a case insensitive comparison
 DS_EXPORT long binbag_find_nocase(binbag *bb, const char* match);
 
+/// \brief Find the ordinal index of the given string with length
+DS_EXPORT long binbag_find_case_n(binbag *bb, const char* match, size_t n);
+
+/// \brief Find the ordinal index of the given string using a case insensitive comparison with length
+DS_EXPORT long binbag_find_nocase_n(binbag *bb, const char* match, size_t n);
+
+/// \brief Find the ordinal index of the given string using the supplied comparison function with length (works with strcmp, strcasecmp, etc)
+long binbag_find_n(binbag *bb, const char* match, size_t n, int (*compar)(const char*,const char*, size_t n));
 
 /// \brief Compare function used to sort in ascending order
 DS_EXPORT int binbag_element_sort_asc (const void * _lhs, const void * _rhs);

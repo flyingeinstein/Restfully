@@ -312,13 +312,20 @@ size_t binbag_free_space(binbag* bb)
     return (free_space>0) ? (size_t)free_space : 0;
 }
 
-long binbag_insert_distinct(binbag* bb, const char* str)
+long binbag_insert_distinct(binbag* bb, const char* str, int (*compar)(const char*,const char*))
 {
-    const char* _el;
     for(size_t i=0, c=binbag_count(bb); i<c; i++)
-        if(strcmp(_el=binbag_get(bb, i), str) ==0)
+        if(compar(binbag_get(bb, i), str) ==0)
             return i;
     return binbag_insert(bb, str);
+}
+
+long  binbag_insert_distinct_n(binbag* bb, const char* str, size_t n, int (*compar)(const char*,const char*, size_t n))
+{
+    for(size_t i=0, c=binbag_count(bb); i<c; i++)
+        if(compar(binbag_get(bb, i), str, n) ==0)
+            return i;
+    return binbag_insertn(bb, str, n);
 }
 
 long binbag_insert(binbag* bb, const char* str)
@@ -368,7 +375,7 @@ long binbag_insertn(binbag *bb, const char *str, int length)
 
 //const unsigned char* binbag_binary_insert(const unsigned char* str, size_t len);
 
-const char* binbag_get(binbag* bb, size_t idx)
+const char* binbag_get(binbag* bb, long idx)
 {
     const char** e = (const char**)(bb->end - sizeof(char*)) - idx;
     return (e < binbag_end_iterator(bb))
@@ -395,6 +402,27 @@ long binbag_find_case(binbag *bb, const char* match)
 long binbag_find_nocase(binbag *bb, const char* match)
 {
     return binbag_find(bb, match, strcasecmp);
+}
+
+long binbag_find_n(binbag *bb, const char* match, size_t n, int (*compar)(const char*,const char*, size_t n))
+{
+    for(long j=0, N=binbag_count(bb); j<N; j++) {
+        const char *el = binbag_get(bb, j);
+        if(compar(match, el, n) ==0) {
+            return j;
+        }
+    }
+    return -1;
+}
+
+long binbag_find_case_n(binbag *bb, const char* match, size_t n)
+{
+    return binbag_find_n(bb, match, n, strncmp);
+}
+
+long binbag_find_nocase_n(binbag *bb, const char* match, size_t n)
+{
+    return binbag_find_n(bb, match, n, strncasecmp);
 }
 
 void binbag_inplace_reverse(binbag *bb)
