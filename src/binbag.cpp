@@ -348,14 +348,14 @@ long binbag_insertn(binbag *bb, const char *str, int length)
 
     if(!all) {
         // since we didnt get everything, we should do a strlen() to determine exact size and make sure we grow enough
-        size_t slen = strlen(str);
+        int slen = std::min(length, (int)strlen(str));
 
         // grow the buffer
         size_t existing_capacity = bb->end - bb->begin;
         size_t new_capacity = (size_t)(existing_capacity * std::min(10.0, std::max(1.1, bb->growth_rate))) + slen+1+sizeof(char*);
         if(0== binbag_resize(bb, new_capacity))
             return -1;
-        return binbag_insertn(bb, str, (int)slen);
+        return binbag_insertn(bb, str, slen);
     }
 
     // accept the new string, add string pointer to elements, advance the tail insertion pointer
