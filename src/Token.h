@@ -47,7 +47,7 @@ class Token {
 
   public:
     short id;
-    const char *s;        // todo: make BinBag token type and store string ID in 'i'
+    const char *s;
     int64_t i;
     double d;
 

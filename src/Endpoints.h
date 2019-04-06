@@ -182,7 +182,6 @@ public:
     size_t sznodes;
 
     // some statistics on the endpoints
-    // todo: move this into a stats structure that is public
     size_t maxUriArgs;       // maximum number of embedded arguments on any one endpoint expression
 
 protected:
