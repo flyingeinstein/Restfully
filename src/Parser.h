@@ -302,9 +302,10 @@ namespace Rest {
                     case expectParam: {
                         if(ev->t.id==TID_IDENTIFIER) {
                             uint16_t typemask = 0;
-                            char name[32];
-                            memset(&name, 0, sizeof(name));
-                            strcpy(name, ev->t.s);
+
+                            // copy the token since it has the name
+                            Token name;
+                            name.swap(ev->t);
 
                             // read parameter spec
                             if(ev->peek.id=='(') {
@@ -384,7 +385,8 @@ namespace Rest {
 
                             if(arg == nullptr) {
                                 // add the argument to the Endpoint
-                                arg = pool->newArgumentType(name, typemask);
+                                assert( name.indexed );
+                                arg = pool->newArgumentType(name.i, typemask);
                                 context = arg->next = pool->newNode();
 
                                 if ((typemask & ARG_MASK_NUMBER) > 0) {

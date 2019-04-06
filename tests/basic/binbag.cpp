@@ -355,6 +355,60 @@ TEST(binbag_split_string_and_ignore_empties)
     return ((bb!=NULL) && binbag_count(bb)==11) ? OK : FAIL;
 }
 
+TEST(binbag_insert_char_range)
+{
+    long first_id, last_id;
+    binbag* bb = binbag_create(1000, 1.5);
+
+    const char* fullname = "Colin MacKenzie";
+    if((first_id=binbag_insertn(bb, fullname, 5)) <0)
+        return FAIL;
+    if((last_id=binbag_insertn(bb, fullname+6, 9)) <0)
+        return FAIL;
+
+    const char* first = binbag_get(bb, first_id);
+    if(strcmp(first, "Colin") !=0)
+        return FAIL;
+
+    const char* last = binbag_get(bb, last_id);
+    if(strcmp(last, "MacKenzie") !=0)
+        return FAIL;
+
+    binbag_free(bb);
+    return OK;
+}
+
+TEST(binbag_insert_char_range_distinct)
+{
+    long first_id, last_id, first_id_again, last_id_again;
+    binbag* bb = binbag_create(1000, 1.5);
+
+    const char* fullname = "Colin MacKenzie";
+    if((first_id=binbag_insert_distinct_n(bb, fullname, 5, strncasecmp)) <0)
+        return FAIL;
+    if((last_id=binbag_insert_distinct_n(bb, fullname+6, 9, strncasecmp)) <0)
+        return FAIL;
+    if((first_id_again=binbag_insert_distinct_n(bb, "Colin Doe", 5, strncasecmp)) <0)
+        return FAIL;
+    if((last_id_again=binbag_insert_distinct_n(bb, "MacKenzie Doe", 9, strncasecmp)) <0)
+        return FAIL;
+
+    const char* first = binbag_get(bb, first_id);
+    if(strcmp(first, "Colin") !=0)
+        return FAIL;
+    if(first_id != first_id_again)
+        return FAIL;
+
+    const char* last = binbag_get(bb, last_id);
+    if(strcmp(last, "MacKenzie") !=0)
+        return FAIL;
+    if(last_id != last_id_again)
+        return FAIL;
+
+    binbag_free(bb);
+    return OK;
+}
+
 TEST(binbag_find_case1)
 {
     binbag* bb = binbag_split_string(' ', 0, "jim john mary frank maya julia matthew david greg colin kinga");

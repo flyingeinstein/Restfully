@@ -114,10 +114,9 @@ public:
 
 
     // todo: hide the Endpoints argument, node and literal building methods behind a Builder interface.
-
-    ArgumentType* newArgumentType(const char* name, unsigned short typemask) {
-        long nameid = binbag_insert_distinct(literals_index, name);
-        return new ArgumentType(nameid, typemask);
+    
+    ArgumentType* newArgumentType(int literal_id, unsigned short typemask) {
+        return new ArgumentType(literal_id, typemask);
     }
 
     long findLiteral(const char* word) {

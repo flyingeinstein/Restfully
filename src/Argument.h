@@ -31,7 +31,7 @@ namespace Rest {
     public:
         inline Type() : name_index(0), type_mask(0) {}
         Type(const char* _name, unsigned short _typemask)
-                : name_index(binbag_insert_distinct(literals_index, _name)),
+                : name_index(binbag_insert_distinct(literals_index, _name, strcasecmp)),
                   type_mask(_typemask) {
         }
 
