@@ -135,7 +135,7 @@ namespace Rest {
 
         // resolve an external Endpoints collection and apply the instance object to the resolve handler
         template<class I, class EP>
-        EP& with(I& inst, EP& ep) { // here klass is the handler's class type
+        typename EP::Node with(I& inst, EP& ep) { // here klass is the handler's class type
             // store the klass reference and endpoints reference together
             // we resolve the klass member handler via endpoints, then bind the resolved handler to the klass reference
             // thus making it a static call
@@ -151,12 +151,12 @@ namespace Rest {
                        //return [&inst](RestRequest& rr) -> int { return inst.*h(rr); };
                    }
             );
-            return ep;
+            return ep.getRoot();
         }
 
         // resolve an external Endpoints collection and apply the instance object to the resolve handler
         template<class I, class EP=typename TEndpoints::template ClassEndpoints<I> >
-        EP& with(I& inst) { // here klass is the handler's class type
+        typename EP::Node with(I& inst) { // here klass is the handler's class type
             // store the klass reference and endpoints reference together using std::shared_ptr which gets stored in
             // the lambda class type.
             auto ep = std::make_shared<EP>();
@@ -174,12 +174,12 @@ namespace Rest {
 
             // would make some sense to return shared_ptr here, but then the with().on() method chaining changes
             // to -> operator, which is inconsistent. The life of the shared_ptr is assured for as long as the chain.
-            return *ep;
+            return ep->getRoot();
         }
 
         // resolve an external Endpoints collection and apply the instance object to the resolve handler
         template<class I, class EP=typename TEndpoints::template ClassEndpoints<I> >
-        EP& with( std::function< I&(Rest::UriRequest&) >& resolver) { // here klass is the handler's class type
+        typename EP::Node with( std::function< I&(Rest::UriRequest&) >& resolver) { // here klass is the handler's class type
             // store the klass reference and endpoints reference together using std::shared_ptr which gets stored in
             // the lambda class type.
             auto ep = std::make_shared<EP>();
@@ -207,12 +207,12 @@ namespace Rest {
 
             // would make some sense to return shared_ptr here, but then the with().on() method chaining changes
             // to -> operator, which is inconsistent. The life of the shared_ptr is assured for as long as the chain.
-            return *ep;
+            return ep->getRoot();
         }
 
         // resolve an external Endpoints collection (that has the same handler type)
         //template<typename HH, typename NN>
-        TEndpoints& with(TEndpoints& ep) { // here klass is the handler's class type
+        typename TEndpoints::Node with(TEndpoints& ep) { // here klass is the handler's class type
             // store the klass reference and endpoints reference together
             // we resolve the klass member handler via endpoints, then bind the resolved handler to the klass reference
             // thus making it a static call
@@ -225,7 +225,7 @@ namespace Rest {
                         return rhs_node.resolve(rhs_request);
                     }
             );
-            return ep;
+            return ep.getRoot();
         }
 
         inline int error() const { return _exception; }
