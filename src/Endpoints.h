@@ -150,7 +150,7 @@ public:
         p = &_new[_insert + 1];
         p->id = -1;
         p->isNumeric = false;
-        p->next = nullptr;
+        p->nextNode = nullptr;
 
         return _new + _insert;
     }
@@ -162,7 +162,7 @@ public:
         lit.isNumeric = false;
         if((lit.id = binbag_find_nocase(literals_index, literal_value)) <0)
             lit.id = binbag_insert(literals_index, literal_value);  // insert value into the binbag, and record the index into the id field
-        lit.next = nullptr;
+        lit.nextNode = nullptr;
         return newLiteral(ep, &lit);
     }
 
@@ -171,7 +171,7 @@ public:
         Literal lit;
         lit.isNumeric = true;
         lit.id = literal_value;
-        lit.next = nullptr;
+        lit.nextNode = nullptr;
         return newLiteral(ep, &lit);
     }
 

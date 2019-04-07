@@ -236,7 +236,7 @@ namespace Rest {
                                 if(ev->mode == ParserState::expand) {
                                     // regular URI word, add to lexicon and generate code
                                     lit = pool->newLiteralString(context, ev->t.s);
-                                    context = lit->next = pool->newNode();
+                                    context = lit->nextNode = pool->newNode();
                                 } else if(ev->mode == ParserState::resolve && epc->string!=nullptr) {
                                     GOTO_STATE(expectParameterValue);
                                 } else {
@@ -252,7 +252,7 @@ namespace Rest {
                                         return NoEndpoint;
                                 }
                             } else
-                                context = lit->next;
+                                context = lit->nextNode;
 
                             NEXT_STATE( expectPathSep );
 
@@ -270,22 +270,22 @@ namespace Rest {
                         if(ev->t.is(TID_STRING, TID_IDENTIFIER) && epc->string!=nullptr) {
                             // we can match by string argument type (parameter match)
                             ev->request.args.add( Argument(*epc->string, ev->t.s) );
-                            context = epc->string->next;
+                            context = epc->string->nextNode;
                             _typename = "string";
                         } else if(ev->t.id==TID_INTEGER && epc->numeric!=nullptr) {
                             // numeric argument
                             ev->request.args.add( Argument(*epc->numeric, (long)ev->t.i) );
-                            context = epc->numeric->next;
+                            context = epc->numeric->nextNode;
                             _typename = "int";
                         } else if(ev->t.id==TID_FLOAT && epc->numeric!=nullptr) {
                             // numeric argument
                             ev->request.args.add( Argument(*epc->numeric, ev->t.d) );
-                            context = epc->numeric->next;
+                            context = epc->numeric->nextNode;
                             _typename = "float";
                         } else if(ev->t.id==TID_BOOL && epc->boolean!=nullptr) {
                             // numeric argument
                             ev->request.args.add( Argument(*epc->boolean, ev->t.i>0) );
-                            context = epc->boolean->next;
+                            context = epc->boolean->nextNode;
                             _typename = "boolean";
                         } else
                         NEXT_STATE( errorExpectedIdentifierOrString ); // no match by type
@@ -371,7 +371,7 @@ namespace Rest {
                                     assert(tm>0); // must have gotten at least some typemask then
                                     if(tm == _typemask) {
                                         // exact match, we can jump to the endpoint
-                                        context = x->next;
+                                        context = x->nextNode;
                                         arg = x;
                                     } else if((tm & _typemask) >0) {
                                         // uh-oh, user specified a rest endpoint that handles the same type but has differing
@@ -387,7 +387,7 @@ namespace Rest {
                                 // add the argument to the Endpoint
                                 assert( name.indexed );
                                 arg = pool->newArgumentType(name.i, typemask);
-                                context = arg->next = pool->newNode();
+                                context = arg->nextNode = pool->newNode();
 
                                 if ((typemask & ARG_MASK_NUMBER) > 0) {
                                     // int or real
