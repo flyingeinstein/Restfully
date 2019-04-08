@@ -139,7 +139,6 @@ public:
         return _new;
     }
 
-
     Literal* newLiteralString(TNodeData* ep, const char* literal_value)
     {
         Literal lit;

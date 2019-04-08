@@ -88,6 +88,24 @@ namespace Rest {
             return *this;
         }
 
+        /* Linked list part of Mixin
+         */
         LinkedMixin* next;
+
+        void append(LinkedMixin* element) {
+            LinkedMixin* e = last();
+            e->next = element;
+        }
+
+        LinkedMixin* last() {
+            LinkedMixin* e = this;
+            while(e->next)
+                e = e->next;
+            return e;
+        }
     };
+
+    /// a trival version of LinkedMixin is one without any mixins
+    template<class TBase>
+    using Linked = LinkedMixin< TBase >;
 }
