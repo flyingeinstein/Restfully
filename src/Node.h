@@ -5,7 +5,7 @@
 #ifndef RESTFULLY_NODE_H
 #define RESTFULLY_NODE_H
 
-#include "Link.h"
+#include "Mixins.h"
 #include "Exception.h"
 #include "Literal.h"
 #include "Parser.h"
@@ -20,8 +20,16 @@ namespace Rest {
     template<class THandler, class TLiteral = Rest::Literal, class TArgumentType = Rest::Type>
     class NodeData {
     public:
-        using LiteralType = LinkedMixin<TLiteral, NodeLink<NodeData> >;
-        using ArgumentType = Link<TArgumentType, NodeData>;
+        /// links to other nodes are of this type. These links are used in Literals, Arguments and Externals to traverse
+        /// to the next node.
+        using NodeLink = NodeLink<NodeData>;
+
+        /// Construct a type for a linked list of Literals that are non-argument part of a URI.
+        /// If a literal is matched then parsing follows the NodeLink to the next part of the path matching.
+        using LiteralType = LinkedMixin<TLiteral, NodeLink >;
+
+        // Custruct a type is an argument of a specific type
+        using ArgumentType = Mixin<TArgumentType, NodeLink >;
         using HandlerType = THandler;
 
         using External = Linked< std::function<THandler(ParserState&)> >;
