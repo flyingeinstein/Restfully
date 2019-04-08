@@ -52,7 +52,7 @@ public:
 public:
     /// \brief Initialize an empty UriExpression with a maximum number of code size.
     Endpoints()
-        : pool( (sizeof(NodeData)+sizeof(Literal))*16, (sizeof(NodeData)+sizeof(Literal))*8),
+        : pool( (sizeof(NodeData)+sizeof(Literal))*8 ),
           ep_head(nullptr), maxUriArgs(0)
     {
         if(literals_index == nullptr) {

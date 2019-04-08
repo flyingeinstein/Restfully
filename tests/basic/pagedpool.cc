@@ -19,7 +19,7 @@ TEST(paged_pool_create)
 {
     Rest::PagedPool pool;
     auto info = pool.info();
-    return (info.available>0)
+    return (info.available ==0)
         ? OK
         : FAIL;
 }
@@ -90,7 +90,7 @@ error:
 
 TEST(paged_pool_fifty_objects)
 {
-    Rest::PagedPool pool(64, 64);
+    Rest::PagedPool pool(64);
     auto points = paged_pool_add_n(pool, 50);
     auto info = pool.info();
     return (info.available>0)
@@ -100,10 +100,10 @@ TEST(paged_pool_fifty_objects)
 
 TEST(paged_pool_array_fifty_objects)
 {
-    Rest::PagedPool pool(64, 64);
+    Rest::PagedPool pool(64);
     auto points = paged_pool_add_n_array(pool, 50);
     auto info = pool.info();
-    return (info.available>0)
+    return (info.available ==0) // should allocate 1 single large page
            ? OK
            : FAIL;
 }

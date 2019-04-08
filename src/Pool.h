@@ -36,7 +36,7 @@ namespace Rest {
         };
 
     public:
-        explicit PagedPool(size_t initial_capacity=128, size_t page_size=64);
+        explicit PagedPool(size_t page_size=64);
         PagedPool(PagedPool&& move) noexcept;
 
         PagedPool& operator=(PagedPool&& move) noexcept;
@@ -45,39 +45,22 @@ namespace Rest {
         template<class T, typename ...Args>
         T* make(Args ... args) {
             size_t sz = sizeof(T);
-            Page *p = _head, *lp = nullptr;
-            while(p) {
-                T* test = p->make<T>(args...);
-                if(test)
-                    return test;
-                lp = p;
-                p = p->_next;
-            }
-
-            // no existing pages, must add a new one
-            assert(lp); // wierd if it wasnt valid
-            lp->_next = p = new Page( std::max(sz, _page_size) );
-            T* test = p->make<T>(args...);
-            return test;
+            unsigned char* bytes = alloc(sz);
+            return bytes
+                ? new (bytes) T(args...)
+                : nullptr;
         }
 
         template<class T, typename ...Args>
         T* makeArray(size_t n, Args ... args) {
             size_t sz = sizeof(T)*n;
-            Page *p = _head, *lp = nullptr;
-            while(p) {
-                T* test = p->makeArray<T>(n, args...);
-                if(test)
-                    return test;
-                lp = p;
-                p = p->_next;
+            T* first = (T*)alloc(sz);
+            if(first) {
+                T *p = first;
+                for (size_t i = 0; i < n; i++)
+                    new(p++) T(args...);
             }
-
-            // no existing pages, must add a new one
-            assert(lp); // wierd if it wasnt valid
-            lp->_next = p = new Page( std::max(sz, _page_size) );
-            T* test = p->makeArray<T>(n, args...);
-            return test;
+            return first;
         }
 
         Info info() const {
@@ -100,27 +83,12 @@ namespace Rest {
             Page(const Page& copy) = delete;
             Page& operator=(const Page& copy) = delete;
 
-            template<class T, typename ...Args>
-            T* make(Args ... args) {
-                size_t sz = sizeof(T);
+            unsigned char* get(size_t sz) {
                 if(sz==0 || (_insertp+sz > _capacity))
                     return nullptr;
-                T* p = new ( _data + _insertp ) T(args...);
+                unsigned char* out =  _data + _insertp;
                 _insertp += sz;
-                return p;
-            }
-
-            template<class T, typename ...Args>
-            T* makeArray(size_t n, Args ... args) {
-                size_t sz = sizeof(T)*n;
-                if(sz==0 || (_insertp+sz > _capacity))
-                    return nullptr;
-                T* p = (T*) (_data + _insertp);
-                for(size_t i=0; i<n; i++) {
-                    new(_data + _insertp) T(args...);
-                    _insertp += sizeof(T);
-                }
-                return p;
+                return out;
             }
 
             unsigned char* _data;
@@ -128,6 +96,28 @@ namespace Rest {
             size_t _insertp;     // current insert position
             Page* _next;        // next page (unless we are the end)
         };
+
+        unsigned char* alloc(size_t sz) {
+            Page *p = _head, *lp = nullptr;
+            unsigned char* out;
+            if(sz==0) return nullptr;
+            while(p) {
+                out = p->get(sz);
+                if(out != nullptr)
+                    return out;
+
+                lp = p;
+                p = p->_next;
+            }
+
+            // no existing pages, must add a new one
+            p = new Page( std::max(sz, _page_size) );
+            if(lp)
+                lp->_next = p;
+            else
+                _head = p;  // first page
+            return p->get(sz);
+        }
 
     protected:
         size_t _page_size;
