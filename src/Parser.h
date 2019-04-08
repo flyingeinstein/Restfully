@@ -225,9 +225,9 @@ namespace Rest {
                             if(wid>=0 && epc->literals) {
                                 // word exists in dictionary, see if it is a literal of current endpoint
                                 lit = epc->literals;
-                                while(lit->isValid() && lit->id!=wid)
-                                    lit++;
-                                if(lit->id!=wid)
+                                while(lit && lit->isValid() && lit->id!=wid)
+                                    lit = (LiteralType*)lit->nextLiteral;  // todo: hacked
+                                if(lit && lit->id!=wid)
                                     lit=nullptr;
                             }
 
