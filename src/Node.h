@@ -15,10 +15,14 @@
 
 namespace Rest {
 
+    template<class TNode> struct NodeLink {
+        TNode* nextNode;
+    };
+
     template<class THandler, class TLiteral = Rest::Literal, class TArgumentType = Rest::Type>
     class NodeData {
     public:
-        using LiteralType = Link<TLiteral, NodeData>;
+        using LiteralType = LinkedMixin<TLiteral, NodeLink<NodeData> >;
         using ArgumentType = Link<TArgumentType, NodeData>;
         using HandlerType = THandler;
 

@@ -132,9 +132,9 @@ public:
         } else {
             // not first literal, walk the literals list and add to the end
             Literal* l = ep->literals;
-            while(l->nextLiteral != nullptr)
-                l = (Literal*)l->nextLiteral;   // todo: oh, hackish!
-            l->nextLiteral = _new;
+            while(l->next != nullptr)
+                l = l->next;
+            l->next = _new;
         }
         return _new;
     }
