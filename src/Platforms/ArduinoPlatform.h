@@ -41,7 +41,6 @@ namespace Rest {
         public:
             Response() {
                 response = responseDoc.to<JsonObject>();
-                // todo: errors array?
             }
 
             Response(const Response &copy) = default;

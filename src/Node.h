@@ -5,24 +5,34 @@
 #ifndef RESTFULLY_NODE_H
 #define RESTFULLY_NODE_H
 
-#include "Link.h"
+#include "Mixins.h"
 #include "Exception.h"
 #include "Literal.h"
 #include "Parser.h"
 
-#include <vector>   // todo: stop using stl vector
-
 
 namespace Rest {
+
+    template<class TNode> struct NodeLink {
+        TNode* nextNode;
+    };
 
     template<class THandler, class TLiteral = Rest::Literal, class TArgumentType = Rest::Type>
     class NodeData {
     public:
-        using LiteralType = Link<TLiteral, NodeData>;
-        using ArgumentType = Link<TArgumentType, NodeData>;
+        /// links to other nodes are of this type. These links are used in Literals, Arguments and Externals to traverse
+        /// to the next node.
+        using Link = NodeLink<NodeData>;
+
+        /// Construct a type for a linked list of Literals that are non-argument part of a URI.
+        /// If a literal is matched then parsing follows the NodeLink to the next part of the path matching.
+        using LiteralType = LinkedMixin<TLiteral, Link >;
+
+        // Custruct a type is an argument of a specific type
+        using ArgumentType = Mixin<TArgumentType, Link >;
         using HandlerType = THandler;
 
-        using External = std::function<THandler(ParserState&)>;
+        using External = Linked< std::function<THandler(ParserState&)> >;
 
         // if there is more input in parse stream
         LiteralType *literals;    // first try to match one of these literals
@@ -33,7 +43,7 @@ namespace Rest {
         // if no match is made, we can optionally call a wildcard handler
         NodeData *wild;
 
-        std::vector<External> externals;
+        External *externals;
 
         // if we are at the end of the URI then we can pass to one of the http verb handlers
         HandlerType GET, POST, PUT, PATCH, DELETE, OPTIONS;
@@ -75,10 +85,6 @@ namespace Rest {
                     if(!isSet(OPTIONS)) OPTIONS = handler;
                     break;
             }
-        }
-
-        void attach(External external) {
-            externals.insert(externals.begin(), external);
         }
     };
 
@@ -133,13 +139,21 @@ namespace Rest {
         inline const NodeData* operator->() const { return _node; }
         inline NodeData* operator->() { return _node; }
 
+        void otherwise(std::function<Handler(Rest::ParserState&)> external) {
+            auto ext = _endpoints->pool.template make<typename NodeData::External>(external);
+            if(_node->externals != nullptr)
+                _node->externals->append(ext);
+            else
+                _node->externals = ext;
+        }
+
         // resolve an external Endpoints collection and apply the instance object to the resolve handler
         template<class I, class EP>
-        EP& with(I& inst, EP& ep) { // here klass is the handler's class type
+        typename EP::Node with(I& inst, EP& ep) { // here klass is the handler's class type
             // store the klass reference and endpoints reference together
             // we resolve the klass member handler via endpoints, then bind the resolved handler to the klass reference
             // thus making it a static call
-            _node->attach(
+            otherwise(
                    [&inst,&ep](ParserState& lhs_request) -> Handler {
                        typename EP::Node rhs_node = ep.getRoot();
 
@@ -151,16 +165,16 @@ namespace Rest {
                        //return [&inst](RestRequest& rr) -> int { return inst.*h(rr); };
                    }
             );
-            return ep;
+            return ep.getRoot();
         }
 
         // resolve an external Endpoints collection and apply the instance object to the resolve handler
         template<class I, class EP=typename TEndpoints::template ClassEndpoints<I> >
-        EP& with(I& inst) { // here klass is the handler's class type
+        typename EP::Node with(I& inst) { // here klass is the handler's class type
             // store the klass reference and endpoints reference together using std::shared_ptr which gets stored in
             // the lambda class type.
             auto ep = std::make_shared<EP>();
-            _node->attach(
+            otherwise(
                     [&inst, ep](ParserState& lhs_request) -> Handler {
                         typename EP::Node rhs_node = ep->getRoot();
 
@@ -174,16 +188,16 @@ namespace Rest {
 
             // would make some sense to return shared_ptr here, but then the with().on() method chaining changes
             // to -> operator, which is inconsistent. The life of the shared_ptr is assured for as long as the chain.
-            return *ep;
+            return ep->getRoot();
         }
 
         // resolve an external Endpoints collection and apply the instance object to the resolve handler
         template<class I, class EP=typename TEndpoints::template ClassEndpoints<I> >
-        EP& with( std::function< I&(Rest::UriRequest&) >& resolver) { // here klass is the handler's class type
+        typename EP::Node with( std::function< I&(Rest::UriRequest&) >& resolver) { // here klass is the handler's class type
             // store the klass reference and endpoints reference together using std::shared_ptr which gets stored in
             // the lambda class type.
             auto ep = std::make_shared<EP>();
-            _node->attach(
+            otherwise(
                     // this lambda is the 'external', it holds the internally stored Endpoints object, along with the
                     // resolver function and when invoked will call resolve() on the this internal Endpoints to get
                     // the instance handler and convert it to static using the instance resolver function.
@@ -207,16 +221,16 @@ namespace Rest {
 
             // would make some sense to return shared_ptr here, but then the with().on() method chaining changes
             // to -> operator, which is inconsistent. The life of the shared_ptr is assured for as long as the chain.
-            return *ep;
+            return ep->getRoot();
         }
 
         // resolve an external Endpoints collection (that has the same handler type)
         //template<typename HH, typename NN>
-        TEndpoints& with(TEndpoints& ep) { // here klass is the handler's class type
+        typename TEndpoints::Node with(TEndpoints& ep) { // here klass is the handler's class type
             // store the klass reference and endpoints reference together
             // we resolve the klass member handler via endpoints, then bind the resolved handler to the klass reference
             // thus making it a static call
-            _node->attach(
+            otherwise(
                     [&ep](ParserState& lhs_request) -> Handler {
                         typename TEndpoints::Node rhs_node = ep.getRoot();
                         ParserState rhs_request(lhs_request);
@@ -225,7 +239,7 @@ namespace Rest {
                         return rhs_node.resolve(rhs_request);
                     }
             );
-            return ep;
+            return ep.getRoot();
         }
 
         inline int error() const { return _exception; }
@@ -330,19 +344,25 @@ namespace Rest {
             if((ev.result=parser.parse( &ev )) >=UriMatched) {
                 // successfully resolved the endpoint
                 Handler handler = parser.context->handle(ev.request.method);
-                if(handler == nullptr)
-                    ev.result = NoHandler;
-                return handler;
-            } else if(ev.result == NoEndpoint && !parser.context->externals.empty()) {
+                if(handler != nullptr)
+                    return handler;
+
+                ev.result = NoHandler;
+            }
+
+            if((ev.result == NoEndpoint || ev.result == NoHandler) && parser.context->externals != nullptr) {
                 // try any externals
-                for(auto b=parser.context->externals.begin(), _b=parser.context->externals.end(); b!=_b; b++) {
-                    Handler h = (*b)(ev);
+                auto external = parser.context->externals;
+                while(external != nullptr) {
+                    Handler h = (*external)(ev);
                     if(h!=nullptr) {
                         ev.result = UriMatched;
                         return h;
                     }
+                    external = external->next;
                 }
             }
+
             return Handler();    // cannot resolve
         }
 

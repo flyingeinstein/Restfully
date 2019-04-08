@@ -12,7 +12,7 @@
 #include "Node.h"
 #include "Argument.h"
 #include "Literal.h"
-#include "Link.h"
+#include "Mixins.h"
 #include "Pool.h"
 #include "Parser.h"
 #include "handler.h"
@@ -52,24 +52,26 @@ public:
 public:
     /// \brief Initialize an empty UriExpression with a maximum number of code size.
     Endpoints()
-        : ep_head(nullptr), ep_tail(nullptr), ep_end(nullptr), sznodes(32), maxUriArgs(0)
+        : pool( (sizeof(NodeData)+sizeof(Literal))*8 ),
+          ep_head(nullptr), maxUriArgs(0)
     {
+        if(literals_index == nullptr) {
+            literals_index = binbag_create(128, 1.5);
+        }
     }
 
     /// \brief Move constructor
     /// moves endpoints and resources from one Endpoints instance to another.
     Endpoints(Endpoints&& other) noexcept
-        : ep_head(other.ep_head), ep_tail(other.ep_tail), ep_end(other.ep_end), sznodes(other.sznodes), maxUriArgs(other.maxUriArgs) {
-        other.free(false);
+        : pool(other.pool), ep_head(other.ep_head), maxUriArgs(other.maxUriArgs) {
+          other.free(false);
     }
 
     /// \brief Move assignment operator
     /// moves endpoints and resources from one Endpoints instance to another.
     Endpoints& operator=(Endpoints&& other) noexcept {
+        pool = other.pool;
         ep_head = other.ep_head;
-        ep_tail = other.ep_tail;
-        ep_end = other.ep_end;
-        sznodes = other.sznodes;
         maxUriArgs = other.maxUriArgs;
         other.free(false);
     }
@@ -86,11 +88,9 @@ public:
 
     /// \brief Destroys the RestUriExpression and releases memory
     virtual ~Endpoints() {
-        free(true);
     }
 
     Node on(const char* expression) {
-        if(ep_head == nullptr) alloc();
         return getRoot().on(expression);
     }
 
@@ -100,23 +100,24 @@ public:
             : getRoot().resolve(method, expression);
     }
 
-    Node newNode() {
-        if(ep_head == nullptr) alloc();
-        assert(ep_tail < ep_end);
-        return Node(this, new (ep_tail++) TNodeData());
-    }
-
     inline Node getRoot() {
-        if(ep_head == nullptr) alloc();
-        return Node(this, ep_head);
+        return Node(this,
+            (ep_head == nullptr)
+                ? ep_head = newNode()        // first node
+                : ep_head                    // usual route
+        );
     }
 
 
 
     // todo: hide the Endpoints argument, node and literal building methods behind a Builder interface.
-    
+
+    Node newNode() {
+        return Node(this, pool.make<TNodeData>() );
+    }
+
     ArgumentType* newArgumentType(int literal_id, unsigned short typemask) {
-        return new ArgumentType(literal_id, typemask);
+        return pool.make<ArgumentType>(literal_id, typemask);
     }
 
     long findLiteral(const char* word) {
@@ -125,36 +126,18 @@ public:
 
     Literal* newLiteral(TNodeData* ep, Literal* literal)
     {
-        Literal* _new, *p;
-        int _insert;
-        if(ep->literals) {
-            // todo: this kind of realloc every Literal insert will cause memory fragmentation, use Endpoints shared mem
-            // find the end of this list
-            Literal *_list = ep->literals;
-            while (_list->isValid())
-                _list++;
-            _insert = (int)(_list - ep->literals);
-
-            // allocate a new list
-            _new = (Literal*)realloc(ep->literals, (_insert + 2) * sizeof(Literal));
-            //memset(_new+_insert+1, 0, sizeof(Literal));
+        Literal* _new = pool.make<Literal>(*literal);
+        if(ep->literals == nullptr) {
+            ep->literals = _new;    // first literal in node
         } else {
-            _new = (Literal*)calloc(2, sizeof(Literal));
-            _insert = 0;
-        };
-
-        // insert the new literal
-        memcpy(_new + _insert, literal, sizeof(Literal));
-        ep->literals = _new;
-
-        p = &_new[_insert + 1];
-        p->id = -1;
-        p->isNumeric = false;
-        p->next = nullptr;
-
-        return _new + _insert;
+            // not first literal, walk the literals list and add to the end
+            Literal* l = ep->literals;
+            while(l->next != nullptr)
+                l = l->next;
+            l->next = _new;
+        }
+        return _new;
     }
-
 
     Literal* newLiteralString(TNodeData* ep, const char* literal_value)
     {
@@ -162,7 +145,7 @@ public:
         lit.isNumeric = false;
         if((lit.id = binbag_find_nocase(literals_index, literal_value)) <0)
             lit.id = binbag_insert(literals_index, literal_value);  // insert value into the binbag, and record the index into the id field
-        lit.next = nullptr;
+        lit.nextNode = nullptr;
         return newLiteral(ep, &lit);
     }
 
@@ -171,49 +154,17 @@ public:
         Literal lit;
         lit.isNumeric = true;
         lit.id = literal_value;
-        lit.next = nullptr;
+        lit.nextNode = nullptr;
         return newLiteral(ep, &lit);
     }
 
 public:
     // stores the expression as a chain of endpoint nodes
-    // todo: this will need to use paged memory
-    TNodeData *ep_head, *ep_tail, *ep_end;
-    size_t sznodes;
+    PagedPool pool;
+    TNodeData *ep_head;
 
     // some statistics on the endpoints
     size_t maxUriArgs;       // maximum number of embedded arguments on any one endpoint expression
-
-protected:
-    void alloc() {
-        if(ep_head == nullptr) {
-            ep_head = ep_tail = (TNodeData *) calloc(sznodes, sizeof(TNodeData));
-            ep_end = ep_head + sznodes;
-
-            if(literals_index == nullptr) {
-                literals_index = binbag_create(128, 1.5);
-            }
-
-            // create the root node
-            new (ep_tail++) TNodeData();
-        }
-    }
-
-    void  free(bool dealloc=true) {
-        if (dealloc && ep_head!= nullptr) {
-            // call destructor on all nodes
-            TNodeData *n = ep_head;
-            while (n < ep_tail) {
-                n->~TNodeData();
-                n++;
-            }
-            // free all memory
-            ::free(ep_head);
-        }
-        ep_head = ep_tail = ep_end = nullptr;
-        sznodes = 32;
-        maxUriArgs = 0;
-    }
 };
 
 
