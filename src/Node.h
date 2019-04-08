@@ -344,10 +344,13 @@ namespace Rest {
             if((ev.result=parser.parse( &ev )) >=UriMatched) {
                 // successfully resolved the endpoint
                 Handler handler = parser.context->handle(ev.request.method);
-                if(handler == nullptr)
-                    ev.result = NoHandler;
-                return handler;
-            } else if(ev.result == NoEndpoint && parser.context->externals != nullptr) {
+                if(handler != nullptr)
+                    return handler;
+
+                ev.result = NoHandler;
+            }
+
+            if((ev.result == NoEndpoint || ev.result == NoHandler) && parser.context->externals != nullptr) {
                 // try any externals
                 auto external = parser.context->externals;
                 while(external != nullptr) {
@@ -359,6 +362,7 @@ namespace Rest {
                     external = external->next;
                 }
             }
+
             return Handler();    // cannot resolve
         }
 
