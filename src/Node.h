@@ -22,14 +22,14 @@ namespace Rest {
     public:
         /// links to other nodes are of this type. These links are used in Literals, Arguments and Externals to traverse
         /// to the next node.
-        using NodeLink = NodeLink<NodeData>;
+        using Link = NodeLink<NodeData>;
 
         /// Construct a type for a linked list of Literals that are non-argument part of a URI.
         /// If a literal is matched then parsing follows the NodeLink to the next part of the path matching.
-        using LiteralType = LinkedMixin<TLiteral, NodeLink >;
+        using LiteralType = LinkedMixin<TLiteral, Link >;
 
         // Custruct a type is an argument of a specific type
-        using ArgumentType = Mixin<TArgumentType, NodeLink >;
+        using ArgumentType = Mixin<TArgumentType, Link >;
         using HandlerType = THandler;
 
         using External = Linked< std::function<THandler(ParserState&)> >;
