@@ -150,6 +150,7 @@ void setup() {
     .with(resolve_sensor)
       .GET(&Sensor::restGet);
 
+
   // returns the list of sensors by id & name
   restHandler.on("/sensors") 
     .GET([](RestRequest& request) {
@@ -199,6 +200,19 @@ void setup() {
       JsonObject rst = root.createNestedObject("reset");
       rst["reason"] = ESP.getResetReason();
       rst["info"] = ESP.getResetInfo();
+      return 200;
+    })
+    .GET("restfully", [](RestRequest& request) {
+      JsonObject root = request.response;
+
+      /* output memory pool usage by Restfully core API */
+      auto info = restHandler.endpoints.pool.info();
+      JsonObject pool = root.createNestedObject("pool");
+      pool["count"] =  info.count;
+      pool["bytes"] =  info.bytes;
+      pool["available"] =  info.available;
+      pool["capacity"] =  info.capacity;
+      
       return 200;
     });
 
