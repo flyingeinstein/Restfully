@@ -4,27 +4,33 @@
 // (c)2018 FlyingEinstein.com
 
 // hard code the node name of the device
-const char* hostname = "nimbl";
+const char* hostname = "myhome";
 
 // if you dont use the Captive Portal for config you must define
 // the SSID and Password of the network to connect to.
-const char* ssid = "Yogi";
-const char* password = "cholera0625";
+const char* ssid = "MyRouter";
+const char* password = "mypassword";
 
-#include <Esp.h>
+#ifdef ARDUINO_ARCH_ESP8266
 #include <ESP8266WiFi.h>
 #include <ESP8266mDNS.h>
 #include <ESP8266WebServer.h>
 #include <ESP8266HTTPClient.h>
 
+using WebServer = ESP8266WebServer;
+#else
+#include <WiFi.h>
+#include <mDNS.h>
+#include <WebServer.h>
+#include <HTTPClient.h>
+#endif
+
 #include <Restfully.h>
+#include "Sensor.h"
 
-#include "Device.h"
-
-ESP8266WebServer server(80);
+WebServer server(80);
 RestRequestHandler restHandler;
 
-Animal* animals[2];
 
 /*** Web Server
 
@@ -81,18 +87,33 @@ class OptionsRequestHandler : public RequestHandler
     }
 } optionsRequestHandler;
 
-int handleEcho(RestRequest& request) {
-  String s("Hello ");
-    auto msg = request["msg"];
-    if(msg.isString())
-      s += msg.toString();
-    else {
-      s += '#';
-      s += (long)msg;
+
+
+// collection of sensors using shared pointers
+// we must use shared pointers in std::vector because we will be adding derived objects of Sensor not actual Sensor objects
+std::vector< std::shared_ptr<Sensor> > sensors;
+
+
+
+//std::function< decltype(resolve_sensor) > resolve_sensor_func = resolve_sensor;
+Sonar sonar;
+
+std::function<Sensor&(UriRequest&)> resolve_sensor = [](UriRequest& request) -> Sensor& {
+    auto id = request["id"];
+    if(id.isString()) {
+      auto name = id.toString();
+      Serial.println(name);
+      for(auto s=sensors.begin(), _s=sensors.end(); s!=_s; s++) {
+        if( (*s)->name == name)
+          return **s;
+      }
+    } else {
+      return *(sensors[ (int)id ].get());
+      Serial.println((int)id);
     }
-    request.response["reply"] = s;
-    return 200;
-}
+    return *(sensors[0]).get();  // todo: ordinal value doesnt exist, not found
+  };
+
 
 void setup() {
   Serial.begin(115200);
@@ -102,66 +123,59 @@ void setup() {
   server.addHandler(&restHandler);
 
   server.on("/", handleRoot);
-  //server.on("/status", JsonSendStatus);
-  //server.on("/devices", JsonSendDevices);
 
-  // binding a handler in the form of int(RestRequest&) to an endpoint
-  restHandler.on("/api/echo/:msg(string|integer)", GET(handleEcho) );
+  // handle CORS requests from browsers
+  // https://en.wikipedia.org/wiki/Cross-origin_resource_sharing
+  // Without answering http OPTIONS requests most external browser clients/javascript will fail with a security
+  // error. We could handle OPTIONS requests per API call using Restfully but if all you intend to do is to blanket 
+  // allow API calls then a single OPTIONS handler that returns access-control headers will do fine.
+  server.addHandler(&optionsRequestHandler);
+
+  // Add the Restfully Web Server Request Handler
+  // note: adding the Restfully handler should be done last, after all other server.on(...) statements because
+  // if the handler doesnt find an endpoint it will trigger a 404 regardless if a later on(...) should catch it.
+  server.addHandler(&restHandler);
 
   //server.onNotFound(handleNotFound);
   // our 404 handler tries to load documents from SPIFFS
   server.onNotFound(handleNotFound);
 
-  WiFi.mode(WIFI_STA);
-  WiFi.hostname(hostname);
-  WiFi.begin(ssid, password);
-  while (WiFi.waitForConnectResult() != WL_CONNECTED) {
-    Serial.println("Connection Failed! Rebooting...");
-    delay(5000);
-    ESP.restart();
-  }
+  // setup our sensors by adding a sonar and pH sensor
+  sensors.insert(sensors.end(), std::make_shared<Sonar>() );
+  sensors.insert(sensors.end(), std::make_shared<pH>() );
 
-  server.begin();
+  // This API call returns sensor data from the Sensor class member
+  // This method uses an instance resolver callback and demos Object Oriented Rest APIs
+  restHandler.on("/sensors/:id(string|integer)") 
+    .with(resolve_sensor)
+      .GET(&Sensor::restGet);
 
-  /* setup our animals 
-   */
-  animals[0] = new Cat();
-  animals[1] = new Dog();
-
-  // read or write the state of an analog pin
-  // uses direct lambda expression
-  restHandler.on("/animals/:ordinal(integer)/*", 
-    GET([](RestRequest& request) {
-      unsigned int ord = request["ordinal"];
-      return (ord < sizeof(animals)/sizeof(animals[0]) && animals[ord]!=nullptr)
-        ? restHandler.defer(animals[ord]->endpoints, request)
-        : 404;  // ordinal value doesnt exist, not found
-    })
-  );
-  restHandler.on("/animals/:name(string)/*", 
-    GET([](RestRequest& request) {
-      auto name = request["name"];
-      Serial.println(request["_url"].toString());
-      for(int i=0, _i=sizeof(animals)/sizeof(animals[0]); i<_i; i++) {
-        if(animals[i] && animals[i]->name==name.toString())
-          return restHandler.defer(animals[i]->endpoints, request);
-      }
-      return 404;  // ordinal value doesnt exist, not found
-    })
-  );  
-  restHandler.on("/animals/list", 
-    GET([](RestRequest& request) {
-      size_t count = sizeof(animals)/sizeof(animals[0]);
-      JsonArray list = request.response.createNestedArray("animals"); 
-      for(size_t i=0; i<count; i++) {
-        if(animals[i]!=nullptr)
-          list.add(animals[i]->name.c_str());
+  // returns the list of sensors by id & name
+  restHandler.on("/sensors") 
+    .GET([](RestRequest& request) {
+      JsonArray list = request.response.createNestedArray("sensors"); 
+      for(auto s=sensors.begin(), _s=sensors.end(); s!=_s; s++) {
+        JsonObject sensor = list.createNestedObject();
+          sensor["name"] = (*s)->name;
+          sensor["type"] = (*s)->sensorType();
       }
       return 200;
-    })
-  );
-  restHandler.on("/sys/info", 
-    GET([](RestRequest& request) {
+    });
+
+
+    // binding a regular static handler in the form of int(RestRequest&) to an endpoint
+    // this endpoint simply says Hello and is a good test API call
+  restHandler.on("/api/echo/:msg(string)")
+    .GET([](RestRequest& request) {
+      JsonObject root = request.body.as<JsonObject>();
+      auto greeting = root.get<const char*>("greeting");
+      request.response["reply"] = String(greeting ? greeting : "Hello ") + request["msg"].toString();
+      return 200;
+    });
+
+  // this static call returns device runtime information
+  restHandler.on("/sys/info")
+    .GET([](RestRequest& request) {
       JsonObject root = request.response;
       
       JsonObject cpu = root.createNestedObject("cpu");
@@ -172,9 +186,9 @@ void setup() {
       JsonObject mem = root.createNestedObject("memory");
       mem["sketchSize"] =  ESP.getSketchSize();
       mem["free"] =  ESP.getFreeHeap();
-      mem["maxFreeBlockSize"] =  ESP.getMaxFreeBlockSize();
-      mem["heapFragmentation"] =  ESP.getHeapFragmentation();
-      mem["freeContStack"] =  ESP.getFreeContStack();
+      //mem["maxFreeBlockSize"] =  ESP.getMaxFreeBlockSize();
+      //mem["heapFragmentation"] =  ESP.getHeapFragmentation();
+      //mem["freeContStack"] =  ESP.getFreeContStack();
 
       JsonObject sdk = root.createNestedObject("versions");
       sdk["sdk"] =  ESP.getSdkVersion();
@@ -186,8 +200,22 @@ void setup() {
       rst["reason"] = ESP.getResetReason();
       rst["info"] = ESP.getResetInfo();
       return 200;
-    })
-  );
+    });
+
+
+
+
+
+  WiFi.mode(WIFI_STA);
+  WiFi.hostname(hostname);
+  WiFi.begin(ssid, password);
+  while (WiFi.waitForConnectResult() != WL_CONNECTED) {
+    Serial.println("Connection Failed! Rebooting...");
+    delay(5000);
+    ESP.restart();
+  }
+
+  server.begin();
 
   Serial.print("Host: ");
   Serial.print(hostname);
