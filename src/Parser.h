@@ -57,16 +57,18 @@ namespace Rest {
         HttpMethod method;
         const char* uri;
         Arguments args;
+        int status;
 
-        inline UriRequest() :  method(HttpMethodAny), uri(nullptr) {}
-        inline UriRequest(HttpMethod _method, const char* _uri) : method(_method), uri(_uri) {}
-        inline UriRequest(const UriRequest& copy) : method(copy.method), uri(copy.uri), args(copy.args) {}
+        inline UriRequest() :  method(HttpMethodAny), uri(nullptr), status(0) {}
+        inline UriRequest(HttpMethod _method, const char* _uri, int _status=0) : method(_method), uri(_uri), status(_status) {}
+        inline UriRequest(const UriRequest& copy) : method(copy.method), uri(copy.uri), args(copy.args), status(copy.status) {}
 
         inline const Argument& operator[](size_t idx) const { return args.operator[](idx); }
         inline const Argument& operator[](const char* name) const { return args.operator[](name); }
 
-        inline UriRequest& operator=(const UriRequest& copy)
-        = default;
+        inline UriRequest& operator=(const UriRequest& copy) = default;
+
+        virtual void abort(int code) { status = code; }
     };
 
     /// \brief Contains state for resolving or expanding a Url expression tree
