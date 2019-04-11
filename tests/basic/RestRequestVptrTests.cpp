@@ -338,6 +338,42 @@ TEST(endpoints_curry_with_anonymous_class_method_inst_resolver_at_root)
     return OK;
 }
 
+TEST(endpoints_curry_with_anonymous_class_method_inst_resolver_devices)
+{
+    using Handler1 = Rest::Handler<RestRequest&>;
+    using Endpoints1 = Rest::Endpoints< Handler1 >;
+
+    VptrTest cowboy;
+    cowboy.greeting = "Howdy";
+
+    std::function<VptrTest&(Rest::UriRequest&)> resolve_instance = [&cowboy](Rest::UriRequest& rr) -> VptrTest& {
+        long dev = rr["device"];
+        if(dev != 5)
+            rr.abort(404);
+        return cowboy;
+    };
+
+    Endpoints1 endpoints1;
+    endpoints1
+            .on("/api/dev/:device(string|integer)")
+            .with(resolve_instance)
+            .GET(&VptrTest::echo2);
+
+    // Cowboy
+    {
+        Endpoints1::Request res = endpoints1.resolve(Rest::HttpGet, "/api/dev/5");
+        if (res.method != Rest::HttpGet || res.status != Rest::UriMatched)
+            return FAIL;
+
+        RestRequest r(res);
+        if (res.handler(r) >= 0) {
+            if (r.response != "Greeting is Howdy")
+                return FAIL;
+        }
+    }
+    return OK;
+}
+
 TEST(endpoints_vptr_resolve_echo)
 {
     using Endpoints = Rest::Endpoints< int(VptrTest::*)(RestRequest&) >;
