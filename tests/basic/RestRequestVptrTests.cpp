@@ -355,13 +355,13 @@ TEST(endpoints_curry_with_anonymous_class_method_inst_resolver_devices)
 
     Endpoints1 endpoints1;
     endpoints1
-            .on("/api/dev/:device(string|integer)")
+            .on("/api/devices/:device(string|integer)")
             .with(resolve_instance)
             .GET(&VptrTest::echo2);
 
     // Cowboy
     {
-        Endpoints1::Request res = endpoints1.resolve(Rest::HttpGet, "/api/dev/5");
+        Endpoints1::Request res = endpoints1.resolve(Rest::HttpGet, "/api/devices/5");
         if (res.method != Rest::HttpGet || res.status != Rest::UriMatched)
             return FAIL;
 

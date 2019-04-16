@@ -223,6 +223,22 @@ TEST(binbag_api_sample_using_split_string)
     return ((bb!=NULL) && binbag_count(bb)==68) ? OK : FAIL;
 }
 
+TEST(binbag_strlen)
+{
+    // test that the binbag's optimized strlen routine matches strlen() from clib
+    const char* str = "jim,john,mary,frank,maya,julia,,matthew,david,greg,colin,kinga";
+    binbag* bb = binbag_split_string(',', 0, str);
+    if(!bb)
+        return FAIL;
+    for(int i=0, _i=binbag_count(bb); i<_i; i++) {
+        const char* s = binbag_get(bb, i);
+        int n = strlen(s);
+        if(n != binbag_strlen(bb, i))
+            return FAIL;
+    }
+    return OK;
+}
+
 const char* split_string(int sep, const char* str, char* word, size_t sz_word)
 {
     const char *p=str;
