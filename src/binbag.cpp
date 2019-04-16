@@ -323,7 +323,7 @@ long binbag_insert_distinct(binbag* bb, const char* str, int (*compar)(const cha
 long  binbag_insert_distinct_n(binbag* bb, const char* str, size_t n, int (*compar)(const char*,const char*, size_t n))
 {
     for(size_t i=0, c=binbag_count(bb); i<c; i++)
-        if(compar(binbag_get(bb, i), str, n) ==0)
+        if(binbag_strlen(bb, i)==n && compar(binbag_get(bb, i), str, n) ==0)
             return i;
     return binbag_insertn(bb, str, n);
 }
@@ -383,6 +383,15 @@ const char* binbag_get(binbag* bb, long idx)
         : NULL; // out of bounds
 }
 
+DS_EXPORT int binbag_strlen(binbag *bb, long idx)
+{
+    const char** i = (const char**)(bb->end - sizeof(char*)) - idx;     // ptr to indexed string
+    const char** j = i - 1;                                             // ptr to next string after indexed string
+    return (j >= binbag_begin_iterator(bb))                             // check if j points out of bounds
+        ? *j - *i - 1                                                   // j in bounds, so simple string ptr dif
+        : bb->tail - *i - 1;                                            // j out-of-bounds, compute distance to string insertion ptr (binbag text tail)
+}
+
 long binbag_find(binbag *bb, const char* match, int (*compar)(const char*,const char*))
 {
     for(long j=0, N=binbag_count(bb); j<N; j++) {
@@ -408,7 +417,7 @@ long binbag_find_n(binbag *bb, const char* match, size_t n, int (*compar)(const 
 {
     for(long j=0, N=binbag_count(bb); j<N; j++) {
         const char *el = binbag_get(bb, j);
-        if(compar(match, el, n) ==0) {
+        if(binbag_strlen(bb, j)==n && compar(match, el, n) ==0) {
             return j;
         }
     }
@@ -539,6 +548,8 @@ binbag* binbag_sort_distinct(binbag *bb, int (*compar)(const void*,const void*))
         bb->elements = new_begin;
 
     }
+#else
+    assert(false);
 #endif
     return NULL;
 }

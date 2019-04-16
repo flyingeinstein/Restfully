@@ -78,6 +78,9 @@ DS_EXPORT void binbag_inplace_reverse(binbag *bb);
 
 DS_EXPORT const char *binbag_get(binbag *bb, long idx);
 
+// get the length of the string at the given index
+DS_EXPORT int binbag_strlen(binbag *bb, long idx);
+
 //const unsigned char* binbag_binary_get(int idx, size_t* len_out);
 
 /// \brief Find the ordinal index of the given string using the supplied comparison function (works with strcmp, strcasecmp, etc)
