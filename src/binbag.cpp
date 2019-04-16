@@ -378,7 +378,7 @@ long binbag_insertn(binbag *bb, const char *str, int length)
 const char* binbag_get(binbag* bb, long idx)
 {
     const char** e = (const char**)(bb->end - sizeof(char*)) - idx;
-    return (e < binbag_end_iterator(bb))
+    return (e >= binbag_begin_iterator(bb))
         ? *e
         : NULL; // out of bounds
 }
