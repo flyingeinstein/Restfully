@@ -264,7 +264,6 @@ namespace Rest {
                             NEXT_STATE( errorExpectedIdentifierOrString );
                     } break;
                     case expectParameterValue: {
-                        const char* _typename=nullptr;
                         //assert(ev->args);   // must have collection of args
                         //assert(ev->nargs < ev->_capacity);
 
@@ -273,22 +272,18 @@ namespace Rest {
                             // we can match by string argument type (parameter match)
                             ev->request.args.add( Argument(*epc->string, ev->t.s) );
                             context = epc->string->nextNode;
-                            _typename = "string";
                         } else if(ev->t.id==TID_INTEGER && epc->numeric!=nullptr) {
                             // numeric argument
                             ev->request.args.add( Argument(*epc->numeric, (long)ev->t.i) );
                             context = epc->numeric->nextNode;
-                            _typename = "int";
                         } else if(ev->t.id==TID_FLOAT && epc->numeric!=nullptr) {
                             // numeric argument
                             ev->request.args.add( Argument(*epc->numeric, ev->t.d) );
                             context = epc->numeric->nextNode;
-                            _typename = "float";
                         } else if(ev->t.id==TID_BOOL && epc->boolean!=nullptr) {
                             // numeric argument
                             ev->request.args.add( Argument(*epc->boolean, ev->t.i>0) );
                             context = epc->boolean->nextNode;
-                            _typename = "boolean";
                         } else
                         NEXT_STATE( errorExpectedIdentifierOrString ); // no match by type
 

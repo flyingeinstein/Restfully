@@ -11,7 +11,7 @@ namespace Rest {
     }
 
     PagedPool::PagedPool(PagedPool&& move) noexcept
-        : _head(move._head), _page_size(move._page_size)
+        : _page_size(move._page_size), _head(move._head)
     {
         move._head = nullptr;
     }

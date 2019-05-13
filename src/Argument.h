@@ -219,7 +219,6 @@ namespace Rest {
         }
 
         Arguments operator+(const Arguments& rhs) {
-            _size_t i, j;
             Arguments a(_count + rhs._count);
             a.copy(args, args + _count);                         // left
             a.copy(rhs.args, rhs.args + rhs._count, a._count);    // right
@@ -283,10 +282,10 @@ namespace Rest {
 
     protected:
         Argument* args;
-        _size_t _count;
         _size_t _capacity;
+        _size_t _count;
 
-        void alloc(size_t _count) {
+        void alloc(_size_t _count) {
             if(_count != _capacity) {
                 _capacity = _count;
                 args = (args != nullptr)
@@ -305,7 +304,7 @@ namespace Rest {
         }
 
         void copy(Argument* begin, Argument* end, _size_t dest_index=0) {
-            size_t n = end - begin;
+            _size_t n = end - begin;
             if(_capacity < n)
                 alloc( n );
 
