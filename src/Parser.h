@@ -69,6 +69,8 @@ namespace Rest {
         inline UriRequest& operator=(const UriRequest& copy) = default;
 
         virtual void abort(int code) { status = code; }
+
+        inline bool isSuccessful() const { return status==0 || (status >=200 && status<300); }
     };
 
     /// \brief Contains state for resolving or expanding a Url expression tree
