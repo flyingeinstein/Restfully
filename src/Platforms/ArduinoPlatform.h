@@ -145,7 +145,9 @@ namespace Rest {
                     server.send(request.httpStatus, "application/json", content);
                     return true;
                 }
-                return false;
+                sendError(server, 404);
+                server.send(404, "text/plain", "Not found");
+                return true;
             }
 
             void sendError(WebServerType &server, const Error& error) {
