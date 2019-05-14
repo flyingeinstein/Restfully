@@ -472,6 +472,39 @@ TEST(endpoints_curry_with_anonymous_class_method_instptr_resolver_devices_404)
         : FAIL;
 }
 
+TEST(endpoints_curry_nimble_test1)
+{
+    using Handler1 = Rest::Handler<RestRequest&>;
+    using Endpoints1 = Rest::Endpoints< Handler1 >;
+
+    VptrTest cowboy;
+    cowboy.greeting = "Howdy";
+
+    std::function<VptrTest*(Rest::UriRequest&)> device_resolver = [&cowboy](Rest::UriRequest& rr) -> VptrTest* {
+        long dev = rr["xxx"];
+        if(dev != 5) {
+            rr.abort(404);
+            return nullptr;
+        }
+        return &cowboy;
+    };
+
+    Endpoints1 endpoints1;
+    endpoints1.on("/api/echo/:msg(string|integer)")
+            .GET( [](RestRequest& request) { return 200; } );
+    endpoints1.on("/api/devices")
+            .GET([](RestRequest& request) { return 200; });
+    endpoints1.on("/api/dev/:xxx(string|integer)/info")
+            .with(device_resolver)
+            .GET(&VptrTest::echo2);
+
+    // Cowboy
+    Endpoints1::Request res = endpoints1.resolve(Rest::HttpGet, "/api/dev/4/info");
+    return (res.method == Rest::HttpGet && res.status != Rest::UriMatched && res.handler == nullptr)
+           ? OK
+           : FAIL;
+}
+
 TEST(endpoints_vptr_resolve_echo)
 {
     using Endpoints = Rest::Endpoints< int(VptrTest::*)(RestRequest&) >;
