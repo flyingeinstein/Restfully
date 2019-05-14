@@ -24,6 +24,20 @@
 #endif
 #include <algorithm>
 
+#if defined(ARDUINO)
+#include <Arduino.h>
+
+int default_binbag_print(const char* str)
+{
+    return Serial.print(str);
+}
+#else
+int default_binbag_print(const char* str)
+{
+    return fputs(str, stdout);
+}
+#endif
+
 #if !defined(HAS_STPNCPY)
 char* stpncpy(char* dest, const char* src, size_t n) {
     while(*src && --n)
@@ -60,10 +74,12 @@ const uint32_t fencepost = 0xdefec8ed;
 #if defined(FENCEPOSTS) && FENCEPOSTS>0
 void check_fencepost(binbag* bb)
 {
+    char s[512];
     uint32_t* fpmem = (uint32_t*)binbag_begin_iterator(bb) - FENCEPOSTS;
     for(int i=0; i<FENCEPOSTS; i++)
         if(fpmem[i] != fencepost) {
-            printf("binbag: fencepost was corrupted at position %d, expected %08x, got %08x\n", i, fencepost, fpmem[i]);
+            sprintf(s,"binbag: fencepost was corrupted at position %d, expected %08x, got %08x\n", i, fencepost, fpmem[i]);
+            default_binbag_print(s);
             binbag_debug_print(bb);
             assert(fpmem[i] == fencepost);
         }
@@ -80,14 +96,19 @@ void binbag_debug_print(binbag* bb)
 {
     uint32_t* fpmem = (uint32_t*)binbag_begin_iterator(bb) - FENCEPOSTS;
     size_t N;
-    char s[1000];
+    char s[512];
     size_t slen = 0;
     long long offset;
-    printf("memory contents of binbag: %u elements, %u of %ub capacity used   (freespace %u\nelements:\n",
+    sprintf(s, "memory contents of binbag: %u elements, %u of %ub capacity used   (freespace %u)\nelements:\n",
            (unsigned int)(N=binbag_count(bb)), (unsigned int)binbag_byte_length(bb),
            (unsigned int)binbag_capacity(bb), (unsigned int)binbag_free_space(bb));
+    default_binbag_print(s);
+
     for(size_t j=0; j<N; j++) {
         const char* el = binbag_get(bb, j);
+
+        sprintf(s,"   %4u: @%08llu %4ub ", (unsigned int)j, offset, (unsigned int)slen);
+        default_binbag_print(s);
 
         if(el==NULL) {
             strcpy(s, "NULL!");
@@ -108,19 +129,21 @@ void binbag_debug_print(binbag* bb)
                 strcpy(&s[43], el + slen - 37);
             }
         }
-        printf("   %4u: @%08llu %4ub %s\n", (unsigned int)j, offset, (unsigned int)slen, s);
+        default_binbag_print(s);
+        default_binbag_print("\n");
     }
 
     // print fenceposts
 #if defined(FENCEPOSTS) && FENCEPOSTS >0
     bool ok = true;
-    printf("fenceposts:");
+    default_binbag_print("fenceposts:");
     for(int j=0; j<FENCEPOSTS; j++) {
         if(fpmem[j] != fencepost)
             ok = false;
-        printf(" 0x%08x", fpmem[j]);
+        sprintf(s, " 0x%08x", fpmem[j]);
+        default_binbag_print(s);
     }
-    printf("   %s\n", ok ? "OK":"CORRUPT");
+    default_binbag_print( ok ? "   OK\n":"   CORRUPT\n");
 #endif
 }
 #else

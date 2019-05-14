@@ -131,6 +131,11 @@ DS_EXPORT const char **binbag_begin_iterator(binbag *bb);
 
 DS_EXPORT const char **binbag_end_iterator(binbag *bb);
 
+/// \brief This is the function that prints a string to the default console.
+/// This function prints using fputs(s, stdout) but it is given weak linking so you can override this function if you
+/// want to redirect debug print messages to another destination.
+int default_binbag_print(const char* str) __attribute__((weak));
+
 #ifdef __cplusplus
 }
 #endif
