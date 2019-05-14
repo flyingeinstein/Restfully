@@ -121,7 +121,7 @@ namespace Rest {
         inline bool isInteger() const { return (type&ARG_MASK_INTEGER)==ARG_MASK_INTEGER; }
         inline bool isSignedInteger() const { return (type&ARG_MASK_UINTEGER)==ARG_MASK_INTEGER; }
         inline bool isUnsignedInteger() const { return (type&ARG_MASK_UINTEGER)==ARG_MASK_UINTEGER; }
-        inline bool isNumber() const { return (type&ARG_MASK_NUMBER)==ARG_MASK_NUMBER; }
+        inline bool isNumber() const { return (type&ARG_MASK_NUMBER)>0; }
         inline bool isBoolean() const { return (type&ARG_MASK_BOOLEAN)==ARG_MASK_BOOLEAN; }
         inline bool isString() const { return (type&ARG_MASK_STRING)==ARG_MASK_STRING; }
 
