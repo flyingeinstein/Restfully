@@ -192,7 +192,7 @@ namespace Rest {
 
         // resolve an external Endpoints collection and apply the instance object to the resolve handler
         template<class I, class EP=typename TEndpoints::template ClassEndpoints<I> >
-        typename EP::Node with( std::function< I&(Rest::UriRequest&) >& resolver) { // here klass is the handler's class type
+        typename EP::Node with( std::function< I&(Rest::UriRequest&) > resolver) { // here klass is the handler's class type
             // store the klass reference and endpoints reference together using std::shared_ptr which gets stored in
             // the lambda class type.
             auto ep = std::make_shared<EP>();
@@ -200,7 +200,7 @@ namespace Rest {
                     // this lambda is the 'external', it holds the internally stored Endpoints object, along with the
                     // resolver function and when invoked will call resolve() on the this internal Endpoints to get
                     // the instance handler and convert it to static using the instance resolver function.
-                    [&resolver, ep](ParserState& lhs_request) -> Handler {
+                    [resolver, ep](ParserState& lhs_request) -> Handler {
                         typename EP::Node rhs_node = ep->getRoot();
                         ParserState rhs_request(lhs_request);
 
@@ -229,7 +229,7 @@ namespace Rest {
 
         // resolve an external Endpoints collection and apply the instance object to the resolve handler
         template<class I, class EP=typename TEndpoints::template ClassEndpoints<I> >
-        typename EP::Node with( std::function< I*(Rest::UriRequest&) >& resolver) { // here klass is the handler's class type
+        typename EP::Node with( std::function< I*(Rest::UriRequest&) > resolver) { // here klass is the handler's class type
             // store the klass reference and endpoints reference together using std::shared_ptr which gets stored in
             // the lambda class type.
             auto ep = std::make_shared<EP>();
@@ -237,7 +237,7 @@ namespace Rest {
                     // this lambda is the 'external', it holds the internally stored Endpoints object, along with the
                     // resolver function and when invoked will call resolve() on the this internal Endpoints to get
                     // the instance handler and convert it to static using the instance resolver function.
-                    [&resolver, ep](ParserState& lhs_request) -> Handler {
+                    [resolver, ep](ParserState& lhs_request) -> Handler {
                         typename EP::Node rhs_node = ep->getRoot();
                         ParserState rhs_request(lhs_request);
 
