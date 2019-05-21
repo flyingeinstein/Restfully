@@ -7,6 +7,8 @@
 
 #include <ArduinoJson.h>        // from ArduinoJson library
 
+#define HTTP_RESPONSE_SENT  -99
+
 namespace Rest {
     class Error {
     public:
@@ -78,14 +80,9 @@ namespace Rest {
 
             // the collection of Rest handlers
             Endpoints endpoints;
+            typename Endpoints::Request req;
 
-            WebServerRequestHandler() = default;
-
-            virtual bool canHandle(HTTPMethod method, String uri) {
-                return true;
-            }
-
-            virtual bool handle(WebServerType &server, HTTPMethod requestMethod, String requestUri) {
+            virtual bool canHandle(HTTPMethod requestMethod, String uri) {
                 // convert our Http method enumeration
                 Rest::HttpMethod method;
                 switch(requestMethod) {
@@ -99,9 +96,13 @@ namespace Rest {
                     default: return false;
                 }
 
-                typename Endpoints::Request ep = endpoints.resolve(method, requestUri.c_str());
-                if (ep) {
-                    RequestType request(server, ep);
+                return (bool)(req = endpoints.resolve(method, uri.c_str()));
+            }
+
+            virtual bool handle(WebServerType &server, HTTPMethod requestMethod, String requestUri) {
+                if (req) {
+                    req.uri = requestUri.c_str();
+                    RequestType request(server, req);
                     request.timestamp = millis();
 
                     if(request.server.hasHeader("content-type"))
@@ -126,7 +127,10 @@ namespace Rest {
                             request.hasJson = true;
                     }
 
-                    int rs = ep.handler(request);
+                    int rs = req.handler(request);
+                    if(rs == HTTP_RESPONSE_SENT)
+                        return true;    // handler sent its own response (probably non-Json)
+
                     if (request.httpStatus == 0) {
                         if (rs == 0)
                             request.httpStatus = 200;
@@ -143,10 +147,14 @@ namespace Rest {
                     String content;
                     serializeJson(request.response, content);
                     server.send(request.httpStatus, "application/json", content);
+                    req = typename Endpoints::Request(); // clear request
                     return true;
                 }
+
+                // handler or object not found
                 sendError(server, 404);
                 server.send(404, "text/plain", "Not found");
+                req = typename Endpoints::Request(); // clear request
                 return true;
             }
 

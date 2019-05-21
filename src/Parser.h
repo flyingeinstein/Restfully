@@ -66,7 +66,13 @@ namespace Rest {
         inline const Argument& operator[](size_t idx) const { return args.operator[](idx); }
         inline const Argument& operator[](const char* name) const { return args.operator[](name); }
 
-        inline UriRequest& operator=(const UriRequest& copy) = default;
+        inline UriRequest& operator=(const UriRequest& copy) {
+            method=copy.method;
+            uri=copy.uri;
+            args=copy.args;
+            status=copy.status;
+            return *this;
+        }
 
         virtual void abort(int code) { status = code; }
 

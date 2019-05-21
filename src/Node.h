@@ -108,8 +108,17 @@ namespace Rest {
             Handler handler;
             // todo: possibly make this derived class contain the conversions from class instance to static?
 
+            inline Request() : handler(nullptr) {}
             inline Request(HttpMethod _method, const char* _uri, int _status=0) : UriRequest(_method, _uri, _status), handler(nullptr) {}
+            inline Request(const Request& copy) : UriRequest(copy), handler(copy.handler) {}
+
             inline Request(const UriRequest& req) : UriRequest(req), handler(nullptr) {}
+
+            Request& operator=(const Request& copy) {
+                UriRequest::operator=(copy);
+                handler = copy.handler;
+                return *this;
+            }
 
             inline explicit operator bool() const { return status==UriMatched && handler!=nullptr; }
         };
