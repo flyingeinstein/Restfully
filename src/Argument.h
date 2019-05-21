@@ -286,7 +286,10 @@ namespace Rest {
         _size_t _count;
 
         void alloc(_size_t _count) {
-            if(_count != _capacity) {
+            if(_count ==0) {
+                // just free
+                free();
+            } else if(_count != _capacity) {
                 _capacity = _count;
                 args = (args != nullptr)
                     ? (Argument*)realloc(args, _capacity * sizeof(Argument))
@@ -300,6 +303,8 @@ namespace Rest {
                 //    a->~Argument();
                 ::free(args);
                 args = nullptr;
+                _capacity = 0;
+                _count = 0;
             }
         }
 
