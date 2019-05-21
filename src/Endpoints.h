@@ -45,6 +45,9 @@ public:
     template<class Klass>
     using ClassEndpoints = Endpoints< typename HandlerTraits::template CVFunctionType<Klass> >;
 
+    template<class Klass>
+    using ClassConstEndpoints = Endpoints< typename HandlerTraits::template CVConstFunctionType<Klass> >;
+
 public:
     using Request = typename Node::Request;
     using Exception = typename Node::Exception;
