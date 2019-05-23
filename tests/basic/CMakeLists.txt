@@ -1,17 +1,17 @@
 project(basic-tests)
 
-#set(SOURCE_FILES binbag.cpp requests.h vptr-requests.h RestTests.cpp RestEndpointsTests.cpp RestRequestTests.cpp  RestRequestVptrTests.cpp)
-set(SOURCE_FILES binbag.cpp requests.h Arguments.cc pagedpool.cc HandlerTests.cpp RestEndpointsTests.cpp RestRequestTests.cpp RestRequestVptrTests.cpp)
+#set(SOURCE_FILES binbag.cpp requests.h Arguments.cc pagedpool.cc HandlerTests.cpp RestEndpointsTests.cpp RestRequestTests.cpp RestRequestVptrTests.cpp)
+set(SOURCE_FILES basic-tests.cc binbag.cpp)
 
 add_executable(basic-tests ${SOURCE_FILES})
-add_dependencies(basic-tests common-tests restfully)
+add_dependencies(basic-tests restfully)
 
 #set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set_property(TARGET basic-tests PROPERTY CXX_STANDARD 11)
 #target_compile_features(basic-tests PUBLIC cxx_generalized_initializers)
 
-include_directories(../../src ../common)
-target_link_libraries(basic-tests common-tests restfully)
+include_directories(../../src ../catch2)
+target_link_libraries(basic-tests restfully)
 
 if(VALGRIND)
     add_dependencies(memcheck memcheck-basic-tests)
@@ -22,4 +22,5 @@ endif()
 install(TARGETS basic-tests
         RUNTIME DESTINATION "${APP_INSTALL_PREFIX}/tests")
 
-
+# include the generated list of cmake tests
+include(CMakeTests.txt)

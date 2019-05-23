@@ -2,9 +2,9 @@
 // Created by Colin MacKenzie on 5/18/17.
 //
 
+#include <catch.hpp>
 #include <cstring>
 #include <stdio.h>
-#include <tests.h>
 #include <binbag.h>
 
 #define SAMPLE_L66 "Contrary to popular belief, Lorem Ipsum is not simply random text."
@@ -12,38 +12,36 @@
 #define SAMPLE_L165 SAMPLE_L66 " " SAMPLE_L97
 
 #define SAMPLE_API_WORDS "api,sys,status,deviceid,version,restart,firmware,upload,license,log,event,adp,alarm,meta,request,eventlog,adp-log,alarm-log,dai,aliases,download,alias,vod,purge,metadata,assets,pattern,export,import,test,validate,stream,initStart,control,start,stop,extend,query,manifest,scanning,rvl,schedule,capture,ports,files,enums,configure,analytics,schema,view,config,save,modules,module,section,templates,summary,debug,csv,time,set,service,ntpd,oauth,policy,sparkle,daily,sysstatus"
+#define SAMPLE_API_WORDS2 "sysstatus,payload,daily,sparkle,policy,oauth,ntpd,service,set,time,csv,debug,summary,templates,section,module,modules,save,config,view,schema,analytics,configure,enums,files,ports,capture,schedule,metadata,rvl,scanning,manifest,query,extend,stop,start,control,initStart,stream,validate,test,import,export,pattern,assets,purge,vod,alias,download,aliases,dai,alarm-log,adp-log,eventlog,request,meta,alarm,adp,event,log,license,upload,firmware,restart,version,deviceid,status,sys,api"
 
+#define TEST(x) TEST_CASE( #x, "[binbag]" )
 
 TEST(binbag_create)
 {
     binbag* bb = binbag_create(128, 2.0);
     if(bb) binbag_free(bb);
-    return (bb!=NULL) ? OK : FAIL;
+    REQUIRE (bb!=nullptr    );
 }
 
 TEST(binbag_length_capacity_on_create)
 {
     binbag* bb = binbag_create(128, 2.0);
-    int res = (binbag_byte_length(bb)==0 && binbag_count(bb)==0 && binbag_capacity(bb)==128) ? OK : FAIL;
+    REQUIRE (binbag_byte_length(bb)==0);
+    REQUIRE (binbag_count(bb)==0);
+    REQUIRE (binbag_capacity(bb)==128);
     binbag_free(bb);
-    return res;
 }
 
 TEST(binbag_insert_one_matches_length)
 {
-    int res = OK;
     size_t len1, len2;
     binbag* bb = binbag_create(128, 2.0);
-    if (binbag_insert(bb, SAMPLE_L66)!=0)   // first element is 0
-        res = FAIL;
-    if (res==OK && (len1=strlen(SAMPLE_L66)+1) != (len2=binbag_byte_length(bb))) {
-        printf("   strlen() returned %lu, binbag_byte_length() returned %lu\n", len1, len2);
-        res = FAIL;
-    }
+    REQUIRE (binbag_insert(bb, SAMPLE_L66) ==0);   // first element is 0
+    REQUIRE ((strlen(SAMPLE_L66)+1) == (len2=binbag_byte_length(bb)));
     binbag_free(bb);
-    return res;
 }
 
+#if 0
 TEST(binbag_insert_one_has_one_element)
 {
     int res = OK;
@@ -292,7 +290,7 @@ long split_string_verify(binbag* bb, int sep, const char* str) {
     return total;
 }
 
-TEST(binbag_api_sample_using_growth)
+TEST(binbag_api_sample_using_growth_1000)
 {
     ssize_t added;
     size_t bbcount;
@@ -306,6 +304,28 @@ TEST(binbag_api_sample_using_growth)
         return FAIL;
 
     if(split_string_verify(bb, ',', SAMPLE_API_WORDS) <1) {
+        binbag_debug_print(bb);
+        return FAIL;
+    }
+
+    binbag_free(bb);
+    return OK;
+}
+
+TEST(binbag_api_sample_using_growth_512)
+{
+    ssize_t added;
+    size_t bbcount;
+    binbag* bb = binbag_create(512, 1.5);
+    if((added=split_string_add(bb, ',', SAMPLE_API_WORDS2)) <1)
+        return FAIL;
+
+    // validate counts
+    bbcount = binbag_count(bb);
+    if (added!=bbcount || bbcount!=69)
+        return FAIL;
+
+    if(split_string_verify(bb, ',', SAMPLE_API_WORDS2) <1) {
         binbag_debug_print(bb);
         return FAIL;
     }
@@ -559,3 +579,5 @@ TEST(binbag_reverse_11)
         return FAIL;
     return ((bb!=NULL) && binbag_count(bb)==11) ? OK : FAIL;
 }
+
+#endif

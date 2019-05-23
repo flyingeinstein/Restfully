@@ -1,0 +1,4 @@
+#!/usr/bin/bash
+ wget --no-check-certificate https://raw.githubusercontent.com/catchorg/Catch2/master/single_include/catch2/catch.hpp -O catch.hpp
+ wget --no-check-certificate https://raw.githubusercontent.com/catchorg/Catch2/master/single_include/catch2/catch_reporter_teamcity.hpp -O catch_reporter_teamcity.hpp
+
