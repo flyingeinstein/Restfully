@@ -31,7 +31,7 @@ namespace Rest {
     public:
         inline Type() : name_index(0), type_mask(0) {}
         Type(const char* _name, unsigned short _typemask)
-                : name_index(binbag_insert_distinct(literals_index, _name, strcasecmp)),
+                : name_index(literals_index.insert_distinct(_name, strcasecmp)),
                   type_mask(_typemask) {
         }
 
@@ -40,7 +40,7 @@ namespace Rest {
                   type_mask(_typemask) {
         }
 
-        inline const char* name() const { return binbag_get(literals_index, name_index); }
+        inline const char* name() const { return literals_index.get(name_index); }
 
         inline unsigned short typemask() const { return type_mask; }
         inline bool supports(unsigned short mask) const { return (mask & type_mask)==mask; }

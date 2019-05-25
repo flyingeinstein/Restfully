@@ -35,7 +35,7 @@ typedef enum {
 namespace Rest {
 
     // this never gets destroyed
-    binbag* literals_index = nullptr;
+    StringPool literals_index;
 
     const Argument Argument::null;
 

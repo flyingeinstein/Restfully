@@ -4,16 +4,11 @@
 
 #pragma once
 
-#include "binbag.h"
-
 #include <assert.h>
 #include <algorithm>
 
 
 namespace Rest {
-    // shared index of text strings
-    // assigned a unique integer ID to each word stored
-    extern binbag *literals_index;
 
     /// \brief dynamic memory allocator using memory pages
     /// This class tries to alleviate issues of memory fragmentation on small devices. By allocating pages of memory for
@@ -36,7 +31,8 @@ namespace Rest {
         };
 
     public:
-        explicit PagedPool(size_t page_size=64);
+        PagedPool(size_t page_size=64, bool use_index = false);
+        PagedPool(const PagedPool& copy);
         PagedPool(PagedPool&& move) noexcept;
 
         PagedPool& operator=(PagedPool&& move) noexcept;
@@ -68,20 +64,64 @@ namespace Rest {
             Page *p = _head;
             while(p) {
                 info.count++;
-                info.capacity += p->_capacity;
+                info.capacity += p->capacity();
                 info.bytes += p->_insertp;
-                info.available += p->_capacity - p->_insertp;
+                info.available += p->available();
                 p = p->_next;
             }
             return info;
         }
 
+        size_t capacity() const {
+            size_t n=0;
+            Page *p = _head;
+            while(p) {
+                n += p->capacity();
+                p = p->_next;
+            }
+            return n;
+        }
+
+        size_t available() const {
+            size_t n=0;
+            Page *p = _head;
+            while(p) {
+                n += p->capacity();
+                p = p->_next;
+            }
+            return n;
+        }
+
+        size_t bytes() const {
+            size_t n=0;
+            Page *p = _head;
+            while(p) {
+                n += p->_insertp;
+                p = p->_next;
+            }
+            return n;
+        }
+
     protected:
+        class Page;
+
+        class AllocatedObject {
+            public:
+                Page* page;
+                unsigned char* data;
+                size_t ordinal;
+
+                inline AllocatedObject() : page(nullptr), data(nullptr), ordinal(0) {}
+        };
+
         class Page {
         public:
             explicit Page(size_t _size);
-            Page(const Page& copy) = delete;
+            Page(const Page& copy);
             Page& operator=(const Page& copy) = delete;
+
+            inline size_t capacity() const { return _capacity - _indexSize*sizeof(unsigned char*); }
+            inline size_t available() const { return _capacity - _insertp - _indexSize*sizeof(unsigned char*); }
 
             unsigned char* get(size_t sz) {
                 if(sz==0 || (_insertp+sz > _capacity))
@@ -91,20 +131,46 @@ namespace Rest {
                 return out;
             }
 
+            const unsigned char** getIndex() const {
+                assert(_data != nullptr);
+                return (const unsigned char**)((_data + _capacity) - _indexSize*sizeof(unsigned char*));
+            }
+
+            const unsigned char* fromIndex(size_t ord) const {
+                auto _index = getIndex();
+                return (ord < _indexSize)
+                    ? _index[ord]
+                    : nullptr;
+            }
+
+            size_t index(const unsigned char* element) {
+                assert(_data != nullptr);
+                _indexSize++;
+                auto _index = (const unsigned char**)((_data + _capacity) - _indexSize*sizeof(unsigned char*));
+                *_index = element;
+                return 0;
+            }
+
             unsigned char* _data;
             size_t _capacity;    // size of buffer
             size_t _insertp;     // current insert position
+            size_t _indexSize;   // number of elements in the index (index grows from tail inward)
             Page* _next;        // next page (unless we are the end)
         };
 
-        unsigned char* alloc(size_t sz) {
+        AllocatedObject allocObject(size_t sz) {
+            AllocatedObject obj;
             Page *p = _head, *lp = nullptr;
-            unsigned char* out;
-            if(sz==0) return nullptr;
+            if(sz==0) return obj;
             while(p) {
-                out = p->get(sz);
-                if(out != nullptr)
-                    return out;
+                obj.data = p->get(sz);
+                if(obj.data != nullptr) {
+                    obj.page = p;
+                    // add to index
+                    if(_use_index)
+                        obj.ordinal = p->index(obj.data);
+                    return obj;
+                }
 
                 lp = p;
                 p = p->_next;
@@ -116,11 +182,20 @@ namespace Rest {
                 lp->_next = p;
             else
                 _head = p;  // first page
-            return p->get(sz);
+            obj.data =  p->get(sz);
+            obj.page = p;
+            if(_use_index)
+                obj.ordinal = p->index(obj.data);
+            return obj;
+        }
+
+        unsigned char* alloc(size_t sz) {
+            return allocObject(sz).data;
         }
 
     protected:
         size_t _page_size;
+        bool _use_index;
         Page *_head;        // first page in linked list of pages
     };
 

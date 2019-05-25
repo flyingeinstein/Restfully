@@ -2,10 +2,13 @@
 // Created by Colin MacKenzie on 5/18/17.
 //
 
+#define CATCH_CONFIG_FAST_COMPILE
+
 #include <catch.hpp>
 #include <cstring>
 #include <stdio.h>
-#include <binbag.h>
+#include <StringPool.h>
+
 
 #define SAMPLE_L66 "Contrary to popular belief, Lorem Ipsum is not simply random text."
 #define SAMPLE_L97 "It has roots in a piece of classical Latin literature from 45 BC, making it over 2000 years old."
@@ -14,31 +17,66 @@
 #define SAMPLE_API_WORDS "api,sys,status,deviceid,version,restart,firmware,upload,license,log,event,adp,alarm,meta,request,eventlog,adp-log,alarm-log,dai,aliases,download,alias,vod,purge,metadata,assets,pattern,export,import,test,validate,stream,initStart,control,start,stop,extend,query,manifest,scanning,rvl,schedule,capture,ports,files,enums,configure,analytics,schema,view,config,save,modules,module,section,templates,summary,debug,csv,time,set,service,ntpd,oauth,policy,sparkle,daily,sysstatus"
 #define SAMPLE_API_WORDS2 "sysstatus,payload,daily,sparkle,policy,oauth,ntpd,service,set,time,csv,debug,summary,templates,section,module,modules,save,config,view,schema,analytics,configure,enums,files,ports,capture,schedule,metadata,rvl,scanning,manifest,query,extend,stop,start,control,initStart,stream,validate,test,import,export,pattern,assets,purge,vod,alias,download,aliases,dai,alarm-log,adp-log,eventlog,request,meta,alarm,adp,event,log,license,upload,firmware,restart,version,deviceid,status,sys,api"
 
-#define TEST(x) TEST_CASE( #x, "[binbag]" )
 
-TEST(binbag_create)
+TEST_CASE("new binbag consumes zero space", "[binbag]")
 {
-    binbag* bb = binbag_create(128, 2.0);
-    if(bb) binbag_free(bb);
-    REQUIRE (bb!=nullptr    );
+    StringPool bb;
+    REQUIRE (bb.bytes()==0);
+    REQUIRE (bb.count()==0);
+    REQUIRE (bb.capacity()==0);
 }
 
-TEST(binbag_length_capacity_on_create)
+SCENARIO("binbag can insert string within a single page", "[binbag]")
 {
-    binbag* bb = binbag_create(128, 2.0);
-    REQUIRE (binbag_byte_length(bb)==0);
-    REQUIRE (binbag_count(bb)==0);
-    REQUIRE (binbag_capacity(bb)==128);
-    binbag_free(bb);
-}
+    GIVEN("An empty binbag") {
+        StringPool bb(1024);
 
-TEST(binbag_insert_one_matches_length)
-{
-    size_t len1, len2;
-    binbag* bb = binbag_create(128, 2.0);
-    REQUIRE (binbag_insert(bb, SAMPLE_L66) ==0);   // first element is 0
-    REQUIRE ((strlen(SAMPLE_L66)+1) == (len2=binbag_byte_length(bb)));
-    binbag_free(bb);
+        REQUIRE( bb.count()==0 );
+        REQUIRE( bb.bytes()==0 );
+        REQUIRE( bb.capacity()==0 );
+
+        WHEN("a string is inserted") {
+            bb.insert(SAMPLE_L66);
+            THEN("count becomes 1") {
+                REQUIRE( bb.count()==1 );
+            }
+            THEN("capacity increases") {
+                REQUIRE( bb.capacity() > 60 );
+            }
+            THEN("size equals the string length") {
+                REQUIRE( bb.bytes() == strlen(SAMPLE_L66)+1 );
+            }
+            THEN("string matches by index") {
+                REQUIRE( strcmp(bb.get(0), SAMPLE_L66)==0 );
+            }
+            THEN("find string returns index") {
+                REQUIRE( bb.find(SAMPLE_L66)==0 );
+            }
+        }
+
+         WHEN("a second string is inserted") {
+            bb.insert(SAMPLE_L66);
+            bb.insert(SAMPLE_L97);
+            THEN("count becomes 2") {
+                REQUIRE( bb.count()==2 );
+            }
+            THEN("capacity increases") {
+                REQUIRE( bb.capacity() > sizeof(SAMPLE_L97)+sizeof(SAMPLE_L66));
+            }
+            THEN("size equals the string length") {
+                REQUIRE( bb.bytes() == sizeof(SAMPLE_L97)+sizeof(SAMPLE_L66));
+            }
+            THEN("new string matches by index") {
+                REQUIRE( strcmp(bb.get(0), SAMPLE_L97)==0 );
+            }
+            THEN("old string matches by index") {
+                REQUIRE( strcmp(bb.get(1), SAMPLE_L66)==0 );
+            }
+            THEN("find string returns index") {
+                REQUIRE( bb.find(SAMPLE_L66)==1 );
+            }
+        }
+    }
 }
 
 #if 0

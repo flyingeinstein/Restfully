@@ -8,13 +8,12 @@
 #include <cstdlib>
 #include <stdio.h>
 
-#include "Pool.h"
+#include "StringPool.h"
 
 #if defined(HAS_MALLOC_H)
 #include <malloc.h>
 #endif
 
- 
 // simple token IDs
 #define TID_EOF               300
 #define TID_INTEGER           303
@@ -36,6 +35,11 @@
 
 
 namespace Rest {
+
+// shared index of text strings
+// assigned a unique integer ID to each word stored
+extern StringPool literals_index;
+
 
 class Token {
   public:
@@ -131,11 +135,11 @@ class Token {
       if(_index == indexIfExists) {
         // look in index and if word exists then use it
         long idx = (_end == nullptr)
-                ? binbag_find(literals_index, _begin, strcasecmp)
-                : binbag_find_n(literals_index, _begin, _end - _begin, strncasecmp);
+                ? literals_index.find(_begin, strcasecmp)
+                : literals_index.find(_begin, _end - _begin, strncasecmp);
         if(idx >=0) {
           indexed = true;
-          s = binbag_get(literals_index, i = idx);
+          s = literals_index.get(i = idx);
           return;
         }
       }
@@ -143,9 +147,9 @@ class Token {
       if(_index == indexAlways) {
         // insert into the index
         i = (_end == nullptr)
-                ? binbag_insert_distinct(literals_index, _begin, strcasecmp)
-                : binbag_insert_distinct_n(literals_index, _begin, _end - _begin, strncasecmp);
-        s = binbag_get(literals_index, i);
+                ? literals_index.insert_distinct(_begin, strcasecmp)
+                : literals_index.insert_distinct(_begin, _end - _begin, strncasecmp);
+        s = literals_index.get(i);
       } else {
         // allocate memory and copy the string
         if (_end == nullptr) {

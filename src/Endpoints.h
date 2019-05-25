@@ -13,7 +13,7 @@
 #include "Argument.h"
 #include "Literal.h"
 #include "Mixins.h"
-#include "Pool.h"
+#include "StringPool.h"
 #include "Parser.h"
 #include "handler.h"
 
@@ -58,9 +58,6 @@ public:
         : pool( (sizeof(NodeData)+sizeof(Literal))*8 ),
           ep_head(nullptr), maxUriArgs(0)
     {
-        if(literals_index == nullptr) {
-            literals_index = binbag_create(128, 1.5);
-        }
     }
 
     /// \brief Move constructor
@@ -124,7 +121,7 @@ public:
     }
 
     long findLiteral(const char* word) {
-        return binbag_find_nocase(literals_index, word);
+        return literals_index.find_nocase(word);
     }
 
     Literal* newLiteral(TNodeData* ep, Literal* literal)
@@ -146,8 +143,7 @@ public:
     {
         Literal lit;
         lit.isNumeric = false;
-        if((lit.id = binbag_find_nocase(literals_index, literal_value)) <0)
-            lit.id = binbag_insert(literals_index, literal_value);  // insert value into the binbag, and record the index into the id field
+        lit.id = literals_index.insert_distinct(literal_value, strcasecmp);
         lit.nextNode = nullptr;
         return newLiteral(ep, &lit);
     }
