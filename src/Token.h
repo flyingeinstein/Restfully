@@ -139,7 +139,7 @@ class Token {
                 : literals_index.find(_begin, _end - _begin, strncasecmp);
         if(idx >=0) {
           indexed = true;
-          s = literals_index.get(i = idx);
+          s = literals_index[i = idx];
           return;
         }
       }
@@ -149,7 +149,7 @@ class Token {
         i = (_end == nullptr)
                 ? literals_index.insert_distinct(_begin, strcasecmp)
                 : literals_index.insert_distinct(_begin, _end - _begin, strncasecmp);
-        s = literals_index.get(i);
+        s = literals_index[i];
       } else {
         // allocate memory and copy the string
         if (_end == nullptr) {

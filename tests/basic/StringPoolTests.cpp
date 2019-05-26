@@ -47,7 +47,7 @@ SCENARIO("binbag can insert string within a single page", "[binbag]")
                 REQUIRE( bb.bytes() == strlen(SAMPLE_L66)+1 );
             }
             THEN("string matches by index") {
-                REQUIRE( strcmp(bb.get(0), SAMPLE_L66)==0 );
+                REQUIRE( strcmp(bb[0], SAMPLE_L66)==0 );
             }
             THEN("find string returns index") {
                 REQUIRE( bb.find(SAMPLE_L66)==0 );
@@ -67,10 +67,10 @@ SCENARIO("binbag can insert string within a single page", "[binbag]")
                 REQUIRE( bb.bytes() == sizeof(SAMPLE_L97)+sizeof(SAMPLE_L66));
             }
             THEN("new string matches by index") {
-                REQUIRE( strcmp(bb.get(0), SAMPLE_L97)==0 );
+                REQUIRE( strcmp(bb[0], SAMPLE_L97)==0 );
             }
             THEN("old string matches by index") {
-                REQUIRE( strcmp(bb.get(1), SAMPLE_L66)==0 );
+                REQUIRE( strcmp(bb[1], SAMPLE_L66)==0 );
             }
             THEN("find string returns index") {
                 REQUIRE( bb.find(SAMPLE_L66)==1 );

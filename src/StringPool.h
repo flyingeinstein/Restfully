@@ -71,8 +71,7 @@ public:
     //const unsigned char* binary_insert(const unsigned char* str, size_t len);
 
     /// \brief returns the string at the given ordinal position
-    const char *get(index_type idx) const;
-    inline const char* operator[](index_type idx) const { return get(idx); }
+    const char* operator[](index_type idx) const;
 
     /// \brief get the length of the string at the given index
     size_type strlen(StringPool::index_type idx);

@@ -40,7 +40,7 @@ namespace Rest {
                   type_mask(_typemask) {
         }
 
-        inline const char* name() const { return literals_index.get(name_index); }
+        inline const char* name() const { return literals_index[name_index]; }
 
         inline unsigned short typemask() const { return type_mask; }
         inline bool supports(unsigned short mask) const { return (mask & type_mask)==mask; }

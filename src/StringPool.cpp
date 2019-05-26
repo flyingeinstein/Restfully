@@ -170,7 +170,7 @@ StringPool::index_type StringPool::insert(const char *str, size_type length)
     return sp.ordinal;
 }
 
-const char* StringPool::get(index_type idx) const
+const char* StringPool::operator[](index_type idx) const
 {
     Page *p = _head;
     if(idx<0) return nullptr;
