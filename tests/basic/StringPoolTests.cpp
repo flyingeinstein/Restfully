@@ -54,9 +54,9 @@ SCENARIO("binbag can insert string within a single page", "[binbag]")
             }
         }
 
-         WHEN("a second string is inserted") {
-            bb.insert(SAMPLE_L66);
-            bb.insert(SAMPLE_L97);
+        WHEN("a second string is inserted") {
+            StringPool::index_type idx66 = bb.insert(SAMPLE_L66);
+            StringPool::index_type idx97 = bb.insert(SAMPLE_L97);
             THEN("count becomes 2") {
                 REQUIRE( bb.count()==2 );
             }
@@ -66,14 +66,119 @@ SCENARIO("binbag can insert string within a single page", "[binbag]")
             THEN("size equals the string length") {
                 REQUIRE( bb.bytes() == sizeof(SAMPLE_L97)+sizeof(SAMPLE_L66));
             }
+            THEN("string indexes are 0 & 1") {
+                REQUIRE(idx66 == 0);
+                REQUIRE(idx97 == 1);
+            }
             THEN("new string matches by index") {
-                REQUIRE( strcmp(bb[0], SAMPLE_L97)==0 );
+                REQUIRE( strcmp(bb[idx97], SAMPLE_L97)==0 );
             }
             THEN("old string matches by index") {
-                REQUIRE( strcmp(bb[1], SAMPLE_L66)==0 );
+                REQUIRE( strcmp(bb[idx66], SAMPLE_L66)==0 );
+            }
+            THEN("find new string returns index") {
+                REQUIRE( bb.find(SAMPLE_L97)==1 );
+            }
+            THEN("find old string returns index") {
+                REQUIRE(bb.find(SAMPLE_L66) == 0);
+            }
+        }
+    }
+}
+
+SCENARIO("binbag can insert string within two pages", "[binbag]")
+{
+    GIVEN("An empty binbag") {
+        StringPool bb(80);
+
+        REQUIRE( bb.count()==0 );
+        REQUIRE( bb.bytes()==0 );
+        REQUIRE( bb.capacity()==0 );
+
+        WHEN("a string is inserted") {
+            bb.insert(SAMPLE_L66);
+            THEN("count becomes 1") {
+                REQUIRE( bb.count()==1 );
+            }
+            THEN("capacity increases") {
+                REQUIRE( bb.capacity() > 60 );
+            }
+            THEN("size equals the string length") {
+                REQUIRE( bb.bytes() == strlen(SAMPLE_L66)+1 );
+            }
+            THEN("string matches by index") {
+                REQUIRE( strcmp(bb[0], SAMPLE_L66)==0 );
             }
             THEN("find string returns index") {
-                REQUIRE( bb.find(SAMPLE_L66)==1 );
+                REQUIRE( bb.find(SAMPLE_L66)==0 );
+            }
+        }
+
+        WHEN("a second string is inserted") {
+            StringPool::index_type idx66 = bb.insert(SAMPLE_L66);
+            StringPool::index_type idx97 = bb.insert(SAMPLE_L97);
+            THEN("count becomes 2") {
+                REQUIRE(bb.count() == 2);
+            }
+            THEN("capacity increases") {
+                REQUIRE(bb.capacity() > sizeof(SAMPLE_L97) + sizeof(SAMPLE_L66));
+            }
+            THEN("size equals the string length") {
+                REQUIRE(bb.bytes() == sizeof(SAMPLE_L97) + sizeof(SAMPLE_L66));
+            }
+            THEN("string indexes are 0 & 1") {
+                REQUIRE(idx66 == 0);
+                REQUIRE(idx97 == 1);
+            }
+            THEN("new string matches by index") {
+                REQUIRE(strcmp(bb[idx97], SAMPLE_L97) == 0);
+            }
+            THEN("old string matches by index") {
+                REQUIRE(strcmp(bb[idx66], SAMPLE_L66) == 0);
+            }
+            THEN("find new string returns index") {
+                REQUIRE(bb.find(SAMPLE_L97) == 1);
+            }
+            THEN("find old string returns index") {
+                REQUIRE(bb.find(SAMPLE_L66) == 0);
+            }
+        }
+
+        WHEN("a third string is inserted") {
+            StringPool::index_type idx97 = bb.insert(SAMPLE_L97);
+            StringPool::index_type idx66 = bb.insert(SAMPLE_L66);
+            StringPool::index_type idx165 = bb.insert(SAMPLE_L165);
+            THEN("count becomes 2") {
+                REQUIRE(bb.count() == 3);
+            }
+            THEN("capacity increases") {
+                REQUIRE(bb.capacity() > sizeof(SAMPLE_L97) + sizeof(SAMPLE_L66) + sizeof(SAMPLE_L165));
+            }
+            THEN("size equals the string length") {
+                REQUIRE(bb.bytes() == sizeof(SAMPLE_L97) + sizeof(SAMPLE_L66) + sizeof(SAMPLE_L165));
+            }
+            THEN("string indexes are 0,1 & 2") {
+                REQUIRE(idx97 == 0);
+                REQUIRE(idx66 == 1);
+                REQUIRE(idx165 == 2);
+            }
+            THEN("first string matches by index") {
+                REQUIRE(strcmp(bb[idx97], SAMPLE_L97) == 0);
+            }
+            THEN("second string matches by index") {
+                REQUIRE(strcmp(bb[idx66], SAMPLE_L66) == 0);
+            }
+            THEN("third string matches by index") {
+                REQUIRE(strcmp(bb[idx165], SAMPLE_L165) == 0);
+            }
+            THEN("find first string returns index") {
+                REQUIRE(bb.find(SAMPLE_L97) == 0);
+            }
+            THEN("find second string returns index") {
+                REQUIRE(bb.find(SAMPLE_L66) == 1);
+            }
+            THEN("find thirdstring returns index") {
+                REQUIRE(bb.find(SAMPLE_L165) == 2);
             }
         }
     }

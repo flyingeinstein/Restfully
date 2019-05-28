@@ -31,7 +31,7 @@ namespace Rest {
         };
 
     public:
-        PagedPool(size_t page_size=64, bool use_index = false);
+        PagedPool(size_t page_size=64);
         PagedPool(const PagedPool& copy);
         PagedPool(PagedPool&& move) noexcept;
 
@@ -41,7 +41,7 @@ namespace Rest {
         template<class T, typename ...Args>
         T* make(Args ... args) {
             size_t sz = sizeof(T);
-            unsigned char* bytes = alloc(sz);
+            unsigned char* bytes = alloc(sz).data;
             return bytes
                 ? new (bytes) T(args...)
                 : nullptr;
@@ -49,8 +49,7 @@ namespace Rest {
 
         template<class T, typename ...Args>
         T* makeArray(size_t n, Args ... args) {
-            size_t sz = sizeof(T)*n;
-            T* first = (T*)alloc(sz);
+            T* first = alloc<T>(n).data;
             if(first) {
                 T *p = first;
                 for (size_t i = 0; i < n; i++)
@@ -86,7 +85,7 @@ namespace Rest {
             size_t n=0;
             Page *p = _head;
             while(p) {
-                n += p->capacity();
+                n += p->available();
                 p = p->_next;
             }
             return n;
@@ -102,17 +101,23 @@ namespace Rest {
             return n;
         }
 
-    protected:
         class Page;
 
-        class AllocatedObject {
+        template<class T>
+        class Allocated {
             public:
                 Page* page;
-                unsigned char* data;
+                T* data;
                 size_t ordinal;
 
-                inline AllocatedObject() : page(nullptr), data(nullptr), ordinal(0) {}
+                inline size_t offset() const { return (unsigned char*)data - page->_data; }
+
+                inline const T* operator->() const { return data; }
+                inline T* operator->() { return data; }
+
+                inline Allocated() : page(nullptr), data(nullptr), ordinal(0) {}
         };
+
 
         class Page {
         public:
@@ -120,8 +125,8 @@ namespace Rest {
             Page(const Page& copy);
             Page& operator=(const Page& copy) = delete;
 
-            inline size_t capacity() const { return _capacity - _indexSize*sizeof(unsigned char*); }
-            inline size_t available() const { return _capacity - _insertp - _indexSize*sizeof(unsigned char*); }
+            inline size_t capacity() const { return _capacity; }
+            inline size_t available() const { return _capacity - _insertp; }
 
             unsigned char* get(size_t sz) {
                 if(sz==0 || (_insertp+sz > _capacity))
@@ -131,44 +136,22 @@ namespace Rest {
                 return out;
             }
 
-            const unsigned char** getIndex() const {
-                assert(_data != nullptr);
-                return (const unsigned char**)((_data + _capacity) - _indexSize*sizeof(unsigned char*));
-            }
-
-            const unsigned char* fromIndex(size_t ord) const {
-                auto _index = getIndex();
-                return (ord < _indexSize)
-                    ? _index[ord]
-                    : nullptr;
-            }
-
-            size_t index(const unsigned char* element) {
-                assert(_data != nullptr);
-                _indexSize++;
-                auto _index = (const unsigned char**)((_data + _capacity) - _indexSize*sizeof(unsigned char*));
-                *_index = element;
-                return 0;
-            }
-
             unsigned char* _data;
             size_t _capacity;    // size of buffer
             size_t _insertp;     // current insert position
-            size_t _indexSize;   // number of elements in the index (index grows from tail inward)
             Page* _next;        // next page (unless we are the end)
         };
 
-        AllocatedObject allocObject(size_t sz) {
-            AllocatedObject obj;
+        template<class T>
+        Allocated<T> alloc(size_t count) {
+            Allocated<T> obj;
+            size_t sz = count * sizeof(T);
             Page *p = _head, *lp = nullptr;
             if(sz==0) return obj;
             while(p) {
-                obj.data = p->get(sz);
+                obj.data = (T*)p->get(sz);
                 if(obj.data != nullptr) {
                     obj.page = p;
-                    // add to index
-                    if(_use_index)
-                        obj.ordinal = p->index(obj.data);
                     return obj;
                 }
 
@@ -182,20 +165,20 @@ namespace Rest {
                 lp->_next = p;
             else
                 _head = p;  // first page
-            obj.data =  p->get(sz);
+            obj.data =  (T*)p->get(sz);
             obj.page = p;
-            if(_use_index)
-                obj.ordinal = p->index(obj.data);
             return obj;
         }
 
-        unsigned char* alloc(size_t sz) {
-            return allocObject(sz).data;
+        inline Allocated<unsigned char> alloc(size_t sz) {
+            return alloc<unsigned char>(sz);
         }
+
+        inline const Page* head() const { return _head; }
+        inline Page* head() { return _head; }
 
     protected:
         size_t _page_size;
-        bool _use_index;
         Page *_head;        // first page in linked list of pages
     };
 

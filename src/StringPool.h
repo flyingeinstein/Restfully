@@ -15,7 +15,7 @@
 
 class StringPool : private Rest::PagedPool {
 protected:
-    typedef short index_count_t;
+    Rest::PagedPool index;
 
 #if !defined(NDEBUG)
     void sanity_check() const;
@@ -124,7 +124,7 @@ public:
 
         const_iterator& operator++() {
             _idx++;
-            if(_idx >= _page->_indexSize) {
+            if(_idx >= indexElementCount(_page)) {
                 // advance page (if we reach the end then _page becomes nullptr)
                 _page = _page->_next;
                 _idx = 0;
@@ -139,8 +139,8 @@ public:
         }
 
         const char* operator*() const {
-            return (_page!= nullptr && _idx < _page->_indexSize)
-                ? (const char*)_page->fromIndex(_idx)
+            return (_page!= nullptr && _idx < indexElementCount(_page))
+                ? indexElement(_page, _idx)
                 : nullptr;
         }
 
@@ -173,6 +173,10 @@ public:
 
     /// \brief Compare function used to sort in descending order
     static int element_sort_desc (const void * _lhs, const void * _rhs);
+
+protected:
+    inline static size_t indexElementCount(const Page* pg) { return pg->_insertp / sizeof(char*); }
+    inline static const char* indexElement(const Page* pg, size_t n) { return ((const char**)pg->_data)[n]; }
 };
 
 /// \brief This is the function that prints a string to the default console.

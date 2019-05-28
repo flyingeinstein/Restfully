@@ -63,9 +63,8 @@ char* stpcpy(char* dest, const char* src) {
 #endif
 
 StringPool::StringPool(size_t page_size)
-    : PagedPool(page_size, true)
+    : PagedPool(page_size), index(16*sizeof(char*))
 {
-
 }
 
 StringPool::StringPool(const StringPool& copy) noexcept
@@ -121,9 +120,9 @@ size_t StringPool::byte_length()
 size_t StringPool::count()
 {
     size_t n=0;
-    Page *p = _head;
+    Page *p = index.head();
     while(p) {
-        n += p->_indexSize;
+        n += indexElementCount(p);
         p = p->_next;
     }
     return n;
@@ -163,22 +162,25 @@ StringPool::index_type StringPool::insert(const char* str)
 
 StringPool::index_type StringPool::insert(const char *str, size_type length)
 {
-    auto sp = allocObject(length+1);
+    auto sp = alloc(length+1);
     if(sp.data != nullptr)
         memcpy(sp.data, str, length);
     sp.data[length]=0;   // null terminate
-    return sp.ordinal;
+    auto spidx = index.alloc<const char*>(1);
+    *spidx.data = (const char*)sp.data;
+    return spidx.offset() / sizeof(char*);
 }
 
 const char* StringPool::operator[](index_type idx) const
 {
-    Page *p = _head;
+    const Page *p = index.head();
     if(idx<0) return nullptr;
     while(p) {
-        if(idx < p->_indexSize)
-            return (const char*)p->fromIndex(idx);  // index is within this page
+        size_t cnt = indexElementCount(p);
+        if(idx < cnt)
+            return indexElement(p, idx);  // index is within this page
         else
-            idx -= p->_indexSize;                   // index is in a subsequent page
+            idx -= cnt;                   // index is in a subsequent page
         p = p->_next;
     }
     return nullptr; // out of bounds
@@ -186,18 +188,25 @@ const char* StringPool::operator[](index_type idx) const
 
 StringPool::size_type StringPool::strlen(StringPool::index_type idx)
 {
-    Page *p = _head;
+    Page *p = index.head();
     if(idx<0) return -1;
     while(p) {
-        if(idx < p->_indexSize) {
+        auto count = indexElementCount(p);
+        if(idx < count) {
             // index is within this page
-            auto s = p->fromIndex(idx);
+            auto s = indexElement(p, idx);
+#if 1
+            // no longer a shortcut since strings in the index are not contiquous in the string memory
+            return ::strlen(s);
+        }
+#else
             idx++;  // now we need to count bytes to following string
-            return (idx < p->_indexSize)
-                ? p->fromIndex(idx) - s             // string is not the last string in the index
+            return (idx < count)
+                ? indexElement(p, idx) - s             // string is not the last string in the index
                 : p->_insertp - (s - p->_data);     // was last string in index, so use insertp as end of string
         } else
             idx -= p->_indexSize;                   // index is in a subsequent page
+#endif
         p = p->_next;
     }
     return -1; // out of bounds
@@ -205,16 +214,17 @@ StringPool::size_type StringPool::strlen(StringPool::index_type idx)
 
 StringPool::size_type StringPool::find(const char* match, int (*compar)(const char*,const char*)) const
 {
-    Page *p = _head;
     if(match==nullptr || compar==nullptr)
         return -1;
     long idx=0;
+    const Page *p = index.head();
     while(p) {
-        auto _elements = (const char**)p->getIndex();
-        for(int i=0, _i = p->_indexSize; i<_i; i++)
-            if(compar(match, _elements[i]) ==0)
+        auto elements = (const char**)p->_data;
+        auto count = indexElementCount(p);
+        for(int i=0; i<count; i++)
+            if(compar(match, elements[i]) ==0)
                 return idx + i;
-        idx += p->_indexSize;
+        idx += count;
         p = p->_next;
     }
     return -1;
@@ -222,16 +232,17 @@ StringPool::size_type StringPool::find(const char* match, int (*compar)(const ch
 
 StringPool::size_type StringPool::find(const char* match, size_type n, int (*compar)(const char*,const char*, size_t n)) const
 {
-    Page *p = _head;
     if(match==nullptr || compar==nullptr)
         return -1;
     long idx=0;
+    const Page *p = index.head();
     while(p) {
-        auto _elements = (const char**)p->fromIndex(0);
-        for(int i=0, _i = p->_indexSize; i<_i; i++)
-            if(compar(match, _elements[i], n) ==0)
+        auto elements = (const char**)p->_data;
+        auto count = indexElementCount(p);
+        for(int i=0; i<count; i++)
+            if(compar(match, elements[i], n) ==0)
                 return idx + i;
-        idx += p->_indexSize;
+        idx += count;
         p = p->_next;
     }
     return -1;
