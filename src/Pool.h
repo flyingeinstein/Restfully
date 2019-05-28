@@ -108,14 +108,13 @@ namespace Rest {
             public:
                 Page* page;
                 T* data;
-                size_t ordinal;
 
                 inline size_t offset() const { return (unsigned char*)data - page->_data; }
 
                 inline const T* operator->() const { return data; }
                 inline T* operator->() { return data; }
 
-                inline Allocated() : page(nullptr), data(nullptr), ordinal(0) {}
+                inline Allocated() : page(nullptr), data(nullptr) {}
         };
 
 
