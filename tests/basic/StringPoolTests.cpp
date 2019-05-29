@@ -8,6 +8,7 @@
 #include <cstring>
 #include <stdio.h>
 #include <StringPool.h>
+#include <sstream>
 
 
 #define SAMPLE_L66 "Contrary to popular belief, Lorem Ipsum is not simply random text."
@@ -185,129 +186,40 @@ SCENARIO("binbag can insert string within two pages", "[binbag]")
 }
 
 #if 0
-TEST(binbag_insert_one_has_one_element)
+std::vector<std::string> generate_strings(int count, int min_words, int max_words, std::string source)
 {
-    int res = OK;
-    binbag* bb = binbag_create(128, 2.0);
-    if (binbag_insert(bb, SAMPLE_L66)!=0)   // first element is 0
-        res = FAIL;
-    if (res==OK && binbag_count(bb)!=1) {
-        printf("binbag count was %lu, expected 1\n", binbag_count(bb));
-        res = FAIL;
+    // tokenize the source
+    std::string word;
+    std::vector<std::string> words;
+    for(const auto c : source) {
+        if(isalpha(c))
+            word += c;
+        else if(word.length() >0) {
+            words.insert(words.end(), word);
+            word = std::string();
+        }
     }
-    binbag_free(bb);
-    return res;
+
+    std::vector<std::string> out;
+    for(int i=0; i<count; i++) {
+        std::stringstream ss;
+        int n = min_words + rand() % (max_words-min_words);
+        for(int j=0; j<n; j++) {
+            int n = rand() % words.size();
+            if(j>0) ss << ' ';
+            ss << words[n];
+        }
+    }
+
+    return out;
 }
 
-TEST(binbag_insert_one_matches_buffer)
+TEST_CASE("inserting many large strings","[stringpool]")
 {
-    int res = OK;
-    binbag* bb = binbag_create(128, 2.0);
-    if (binbag_insert(bb, SAMPLE_L66)!=0)   // first element is 0
-        res = FAIL;
-    if (res==OK && strcmp(bb->begin, SAMPLE_L66)!=0)
-        res = FAIL;
-    binbag_free(bb);
-    return res;
-}
-
-TEST(binbag_insert_one_matches_getter)
-{
-    int res = OK;
-    binbag* bb = binbag_create(128, 2.0);
-    if (binbag_insert(bb, SAMPLE_L66)!=0)   // first element is 0
-        res = FAIL;
-    if (res==OK && strcmp(binbag_get(bb, 0), SAMPLE_L66)!=0)
-        res = FAIL;
-    binbag_free(bb);
-    return res;
-}
-
-TEST(binbag_insert_two_without_growth)
-{
-    int res = OK;
-    binbag* bb = binbag_create(512, 2.0);
-    if (binbag_insert(bb, SAMPLE_L66)!=0)   // first element is 0
-        res = FAIL;
-    if (res==OK && strcmp(binbag_get(bb, 0), SAMPLE_L66)!=0)
-        res = FAIL;
-
-    if (binbag_insert(bb, SAMPLE_L97)!=1)   // second element is 1
-        res = FAIL;
-    if (res==OK && strcmp(binbag_get(bb, 0), SAMPLE_L66)!=0)
-        res = FAIL;
-    if (res==OK && strcmp(binbag_get(bb, 1), SAMPLE_L97)!=0)
-        res = FAIL;
-
-    binbag_free(bb);
-    return res;
-}
-
-TEST(binbag_insert_two_with_growth)
-{
-    int res = OK;
-    binbag* bb = binbag_create(128, 2.0);
-    if (binbag_insert(bb, SAMPLE_L66)!=0)   // first element is 0
-        res = FAIL;
-    if (res==OK && strcmp(binbag_get(bb, 0), SAMPLE_L66)!=0)
-        res = FAIL;
-
-    if (binbag_insert(bb, SAMPLE_L97)!=1)
-        res = FAIL;
-    if (res==OK && strcmp(binbag_get(bb, 0), SAMPLE_L66)!=0)
-        res = FAIL;
-    if (res==OK && strcmp(binbag_get(bb, 1), SAMPLE_L97)!=0)
-        res = FAIL;
-
-    binbag_free(bb);
-    return res;
-}
-
-TEST(binbag_insert_large_one_causes_growth)
-{
-    int res = OK;
     size_t len1, len2;
-    binbag* bb = binbag_create(128, 2.0);
+    StringPool bb(128);
 
-    // test capacity is 128
-    if(binbag_capacity(bb)!=128)
-        res = FAIL;
-
-    if(res==OK && binbag_insert(bb, SAMPLE_L165)!=0)
-        res = FAIL;
-
-    // test capacity grew
-    if(res==OK && (len1=binbag_capacity(bb))<165) {
-        printf("   binbag_capacity() returned %lu, expected greater than 164\n", len1);
-        res = FAIL;
-    }
-
-    // test lengths match
-    if (res==OK && (len1=strlen(SAMPLE_L165)+1) != (len2=binbag_byte_length(bb))) {
-        printf("   strlen() returned %lu, binbag_byte_length() returned %lu\n", len1, len2);
-        res = FAIL;
-    }
-
-    // test buffer is exactly the string
-    if (res==OK && strcmp(bb->begin, SAMPLE_L165)!=0)
-        res = FAIL;
-
-    // test fetching element 0 returns the right string
-    if (res==OK && strcmp(binbag_get(bb, 0), SAMPLE_L165)!=0)
-        res = FAIL;
-    binbag_free(bb);
-    return res;
-}
-
-TEST(binbag_insert_keep_growing)
-{
-    int res = OK;
-    size_t len1, len2;
-    binbag* bb = binbag_create(128, 1.1);
-
-    // test capacity is 128
-    if(binbag_capacity(bb)!=128)
-    res = FAIL;
+    auto strings = generate_strings(50, 1, 25, SAMPLE_L165);
 
     size_t count = 10, chars=0, growths=0;
     for(size_t i=0; i<count; i++) {
@@ -350,7 +262,7 @@ TEST(binbag_insert_keep_growing)
     return res;
 }
 
-TEST(binbag_split_typical_string)
+TEST_CASE("binbag_split_typical_string","[stringpool]")
 {
     const char* str = "jim,john,mary,frank,maya,julia,,matthew,david,greg,colin,kinga";
     binbag* bb = binbag_split_string(',', 0, str);
@@ -358,13 +270,13 @@ TEST(binbag_split_typical_string)
     return ((bb!=NULL) && binbag_count(bb)==12) ? OK : FAIL;
 }
 
-TEST(binbag_api_sample_using_split_string)
+TEST_CASE("binbag_api_sample_using_split_string","[stringpool]")
 {
     binbag* bb = binbag_split_string(',', 0, SAMPLE_API_WORDS);
     return ((bb!=NULL) && binbag_count(bb)==68) ? OK : FAIL;
 }
 
-TEST(binbag_strlen)
+TEST_CASE("binbag_strlen","[stringpool]")
 {
     // test that the binbag's optimized strlen routine matches strlen() from clib
     const char* str = "jim,john,mary,frank,maya,julia,,matthew,david,greg,colin,kinga";
@@ -433,7 +345,7 @@ long split_string_verify(binbag* bb, int sep, const char* str) {
     return total;
 }
 
-TEST(binbag_api_sample_using_growth_1000)
+TEST_CASE("binbag_api_sample_using_growth_1000","[stringpool]")
 {
     ssize_t added;
     size_t bbcount;
@@ -455,7 +367,7 @@ TEST(binbag_api_sample_using_growth_1000)
     return OK;
 }
 
-TEST(binbag_api_sample_using_growth_512)
+TEST_CASE("binbag_api_sample_using_growth_512","[stringpool]")
 {
     ssize_t added;
     size_t bbcount;
@@ -477,7 +389,7 @@ TEST(binbag_api_sample_using_growth_512)
     return OK;
 }
 
-TEST(binbag_api_sample_pack_mem)
+TEST_CASE("binbag_api_sample_pack_mem","[stringpool]")
 {
     ssize_t added;
     size_t bbcount;
@@ -502,7 +414,7 @@ TEST(binbag_api_sample_pack_mem)
     return (capacity==0) ? OK : FAIL;
 }
 
-TEST(binbag_split_empty_string)
+TEST_CASE("binbag_split_empty_string","[stringpool]")
 {
     const char* str = "";
     binbag* bb = binbag_split_string(',', 0, str);
@@ -510,7 +422,7 @@ TEST(binbag_split_empty_string)
     return ((bb!=NULL) && binbag_count(bb)==0) ? OK : FAIL;
 }
 
-TEST(binbag_split_singleton_string)
+TEST_CASE("binbag_split_singleton_string","[stringpool]")
 {
     const char* str = "jim";
     binbag* bb = binbag_split_string(',', 0, str);
@@ -518,7 +430,7 @@ TEST(binbag_split_singleton_string)
     return ((bb!=NULL) && binbag_count(bb)==1) ? OK : FAIL;
 }
 
-TEST(binbag_split_seperator_terminated_string)
+TEST_CASE("binbag_split_seperator_terminated_string","[stringpool]")
 {
     const char* str = "jim,john,mary,frank,maya,julia,,matthew,david,greg,colin,kinga,";
     binbag* bb = binbag_split_string(',', 0, str);
@@ -526,7 +438,7 @@ TEST(binbag_split_seperator_terminated_string)
     return ((bb!=NULL) && binbag_count(bb)==13) ? OK : FAIL;
 }
 
-TEST(binbag_split_string_and_ignore_empties)
+TEST_CASE("binbag_split_string_and_ignore_empties","[stringpool]")
 {
     const char* str = "jim,john,,mary,frank,maya,julia,,matthew,david,greg,colin,kinga,";
     binbag* bb = binbag_split_string(',', SF_IGNORE_EMPTY, str);
@@ -534,7 +446,7 @@ TEST(binbag_split_string_and_ignore_empties)
     return ((bb!=NULL) && binbag_count(bb)==11) ? OK : FAIL;
 }
 
-TEST(binbag_insert_char_range)
+TEST_CASE("binbag_insert_char_range","[stringpool]")
 {
     long first_id, last_id;
     binbag* bb = binbag_create(1000, 1.5);
@@ -557,7 +469,7 @@ TEST(binbag_insert_char_range)
     return OK;
 }
 
-TEST(binbag_insert_char_range_distinct)
+TEST_CASE("binbag_insert_char_range_distinct","[stringpool]")
 {
     long first_id, last_id, first_id_again, last_id_again;
     binbag* bb = binbag_create(1000, 1.5);
@@ -588,36 +500,37 @@ TEST(binbag_insert_char_range_distinct)
     return OK;
 }
 
-TEST(binbag_find_case1)
+TEST_CASE("binbag_find_case1","[stringpool]")
 {
     binbag* bb = binbag_split_string(' ', 0, "jim john mary frank maya julia matthew david greg colin kinga");
     return ((bb!=NULL) && binbag_find_case(bb, "julia")==5) ? OK : FAIL;
 }
 
-TEST(binbag_find_case_neg1)
+TEST_CASE("binbag_find_case_neg1","[stringpool]")
 {
     binbag* bb = binbag_split_string(' ', 0, "jim john mary frank maya julia matthew david greg colin kinga");
     return ((bb!=NULL) && binbag_find_case(bb, "Julia")==-1) ? OK : FAIL;
 }
 
-TEST(binbag_find_nocase1)
+TEST_CASE("binbag_find_nocase1","[stringpool]")
 {
     binbag* bb = binbag_split_string(' ', 0, "jim john mary frank maya julia matthew david greg colin kinga");
     return ((bb!=NULL) && binbag_find_nocase(bb, "Julia")==5) ? OK : FAIL;
 }
 
-TEST(binbag_find_nocase2)
+TEST_CASE("binbag_find_nocase2","[stringpool]")
 {
     binbag* bb = binbag_split_string(' ', 0, "jim john mary frank maya julia matthew david greg colin kinga");
     return ((bb!=NULL) && binbag_find_nocase(bb, "Julia")==5) ? OK : FAIL;
 }
 
-TEST(binbag_find_nocase_neg1)
+TEST_CASE("binbag_find_nocase_neg1","[stringpool]")
 {
     binbag* bb = binbag_split_string(' ', 0, "jim john mary frank maya julia matthew david greg colin kinga");
     return ((bb!=NULL) && binbag_find_nocase(bb, "harry")==-1) ? OK : FAIL;
 }
-TEST(binbag_sort_names)
+
+TEST_CASE("binbag_sort_names","[stringpool]")
 {
     const char* str = "jim,john,mary,frank,maya,julia,matthew,david,greg,colin,kinga";
     binbag* bb = binbag_split_string(',', SF_IGNORE_EMPTY, str);
@@ -640,7 +553,7 @@ TEST(binbag_sort_names)
     return ((sorted!=NULL) && binbag_count(sorted)==11) ? OK : FAIL;
 }
 
-TEST(binbag_sort_with_duplicates)
+TEST_CASE("binbag_sort_with_duplicates","[stringpool]")
 {
     const char* str = "john,jim,john,colin,mary,frank,maya,julia,matthew,david,maya,greg,colin,kinga,john";
     binbag* bb = binbag_split_string(',', SF_IGNORE_EMPTY, str);
@@ -667,7 +580,7 @@ TEST(binbag_sort_with_duplicates)
     return ((sorted!=NULL) && binbag_count(sorted)==15) ? OK : FAIL;
 }
 
-TEST(binbag_reverse_3)
+TEST_CASE("binbag_reverse_3","[stringpool]")
 {
     const char* str = "jim,john,mary";
     binbag* bb = binbag_split_string(',', SF_IGNORE_EMPTY, str);
@@ -680,7 +593,7 @@ TEST(binbag_reverse_3)
     return ((bb!=NULL) && binbag_count(bb)==3) ? OK : FAIL;
 }
 
-TEST(binbag_reverse_1)
+TEST_CASE("binbag_reverse_1","[stringpool]")
 {
     const char* str = "mary";
     binbag* bb = binbag_split_string(',', SF_IGNORE_EMPTY, str);
@@ -691,7 +604,7 @@ TEST(binbag_reverse_1)
     return ((bb!=NULL) && binbag_count(bb)==1) ? OK : FAIL;
 }
 
-TEST(binbag_reverse_2)
+TEST_CASE("binbag_reverse_2","[stringpool]")
 {
     const char* str = "mary,jane";
     binbag* bb = binbag_split_string(',', SF_IGNORE_EMPTY, str);
@@ -702,7 +615,7 @@ TEST(binbag_reverse_2)
     return ((bb!=NULL) && binbag_count(bb)==2) ? OK : FAIL;
 }
 
-TEST(binbag_reverse_11)
+TEST_CASE("binbag_reverse_11","[stringpool]")
 {
     const char* str = "jim,john,mary,frank,maya,julia,matthew,david,greg,colin,kinga";
     binbag* bb = binbag_split_string(',', SF_IGNORE_EMPTY, str);
