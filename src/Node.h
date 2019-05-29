@@ -112,7 +112,7 @@ namespace Rest {
             inline Request(HttpMethod _method, const char* _uri, int _status=0) : UriRequest(_method, _uri, _status), handler(nullptr) {}
             inline Request(const Request& copy) : UriRequest(copy), handler(copy.handler) {}
 
-            inline Request(const UriRequest& req) : UriRequest(req), handler(nullptr) {}
+            inline explicit Request(const UriRequest& req) : UriRequest(req), handler(nullptr) {}
 
             Request& operator=(const Request& copy) {
                 UriRequest::operator=(copy);
@@ -126,7 +126,7 @@ namespace Rest {
         inline Node() : _endpoints(nullptr), _node(nullptr), _exception(URL_FAIL_NULL_ROOT) {}
         explicit inline Node(Endpoints* endpoints) : _endpoints(endpoints), _node(nullptr), _exception(0) {}
         explicit inline Node(Endpoints* endpoints, NodeData* node) : _endpoints(endpoints), _node(node), _exception(0) {}
-        explicit inline Node(Endpoints* endpoints, int _exception) : _endpoints(endpoints), _node(nullptr), _exception(_exception) {}
+        explicit inline Node(Endpoints* endpoints, short _exception) : _endpoints(endpoints), _node(nullptr), _exception(_exception) {}
 
         inline Node(const Node& copy) : _endpoints(copy._endpoints), _node(copy._node), _exception(copy._exception) {}
 
@@ -469,7 +469,7 @@ namespace Rest {
     protected:
         Endpoints* _endpoints;
         NodeData* _node;
-        int _exception;
+        short _exception;
     };
 
 }

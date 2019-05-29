@@ -5,10 +5,10 @@
 #ifndef ANALYTICSAPI_TESTS_H
 #define ANALYTICSAPI_TESTS_H
 
-#define OK      (short)0
-#define FAIL    (short)-1
-#define LEAKY	(short)-2
-#define CORRUPT_HEAP		(short)-3
+#define OK      ((short)0)
+#define FAIL    ((short)-1)
+#define LEAKY	((short)-2)
+#define CORRUPT_HEAP		((short)-3)
 
 extern bool enable_header;
 extern bool enable_reporting;

@@ -25,7 +25,7 @@ public:
     using size_type = size_t;
     using index_type = size_t;
 
-    StringPool(size_t page_size=512);
+    explicit StringPool(size_t page_size=512);
     StringPool(const StringPool& copy) noexcept;
     StringPool(StringPool&& move) noexcept;
 
@@ -110,7 +110,7 @@ public:
         int _idx;
 
     protected:
-        inline const_iterator(PagedPool::Page* page) : _page(page), _idx(0) {}
+        inline explicit const_iterator(PagedPool::Page* page) : _page(page), _idx(0) {}
 
     public:
         inline const_iterator() : _page(nullptr), _idx(0) {}

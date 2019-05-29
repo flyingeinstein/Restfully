@@ -13,7 +13,7 @@ namespace Rest {
         using size_type = long;
 
         inline Literal() : id(0), isNumeric(false) {}
-        inline Literal(size_type _id, bool _isNumeric = false) : id(_id), isNumeric(_isNumeric) {}
+        inline explicit Literal(size_type _id, bool _isNumeric = false) : id(_id), isNumeric(_isNumeric) {}
 
         inline Literal(const Literal& copy) : id(copy.id), isNumeric(copy.isNumeric) {}
 

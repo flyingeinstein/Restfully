@@ -15,7 +15,7 @@ namespace Rest {
     public:
         inline Mixin() {}
 
-        inline Mixin(const TBase &emplace) : TBase(emplace) {}
+        inline explicit Mixin(const TBase &emplace) : TBase(emplace) {}
 
         // constructor with the same args as base
         template<class... Targs>
@@ -47,7 +47,7 @@ namespace Rest {
     public:
         LinkedMixin() : next(nullptr) {}
 
-        LinkedMixin(const TBase& emplace) : Mixin<TBase, Links...>(emplace), next(nullptr) {}
+        explicit LinkedMixin(const TBase& emplace) : Mixin<TBase, Links...>(emplace), next(nullptr) {}
 
         LinkedMixin(const LinkedMixin& copy)
             : Mixin<TBase, Links...>( (Mixin<TBase, Links...>&)copy),

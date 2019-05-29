@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include <assert.h>
+#include <cassert>
 #include <algorithm>
 
 
@@ -31,7 +31,7 @@ namespace Rest {
         };
 
     public:
-        PagedPool(size_t page_size=64);
+        explicit PagedPool(size_t page_size=64);
         PagedPool(const PagedPool& copy);
         PagedPool(PagedPool&& move) noexcept;
 

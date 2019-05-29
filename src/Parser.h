@@ -63,7 +63,7 @@ namespace Rest {
         inline UriRequest(HttpMethod _method, const char* _uri, int _status=0) : method(_method), uri(_uri), status(_status) {}
         inline UriRequest(const UriRequest& copy) : method(copy.method), uri(copy.uri), args(copy.args), status(copy.status) {}
 
-        inline const Argument& operator[](size_t idx) const { return args.operator[](idx); }
+        inline const Argument& operator[](int idx) const { return args.operator[](idx); }
         inline const Argument& operator[](const char* name) const { return args.operator[](name); }
 
         inline UriRequest& operator=(const UriRequest& copy) {
@@ -87,7 +87,7 @@ namespace Rest {
             resolve = 2        // indicates we are resolving a URL to a defined handler
         } mode_e;
 
-        ParserState(const UriRequest& _request)
+        explicit ParserState(const UriRequest& _request)
                 : mode(resolve), request(_request), state(expectPathPartOrSep),
                   nargs(0), result(0)
         {
@@ -180,7 +180,7 @@ namespace Rest {
         {
             ParseResult rv;
             long wid;
-            Node* epc = context;
+            Node* epc = nullptr;
             LiteralType* lit;
             ArgumentType* arg;
 
@@ -372,7 +372,7 @@ namespace Rest {
                                 }
 
                                 if(x != nullptr) {
-                                    uint16_t _typemask = (uint16_t)(((typemask & ARG_MASK_NUMBER)>0) ? typemask | ARG_MASK_NUMBER : typemask);
+                                    auto _typemask = (uint16_t)(((typemask & ARG_MASK_NUMBER)>0) ? typemask | ARG_MASK_NUMBER : typemask);
                                     assert(tm>0); // must have gotten at least some typemask then
                                     if(tm == _typemask) {
                                         // exact match, we can jump to the endpoint
@@ -440,6 +440,8 @@ namespace Rest {
                         return URL_FAIL_EXPECTED_IDENTIFIER;
                     case errorExpectedIdentifierOrString:
                         return URL_FAIL_EXPECTED_STRING;
+                    default:
+                        return URL_FAIL_INTERNAL;   // should not get here
                 }
 
                 // next token

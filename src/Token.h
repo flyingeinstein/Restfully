@@ -4,9 +4,9 @@
 
 #pragma once
 
-#include <string.h>
+#include <cstring>
 #include <cstdlib>
-#include <stdio.h>
+#include <cstdio>
 
 #include "StringPool.h"
 
