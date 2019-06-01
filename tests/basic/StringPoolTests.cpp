@@ -15,9 +15,15 @@
 #define SAMPLE_L97 "It has roots in a piece of classical Latin literature from 45 BC, making it over 2000 years old."
 #define SAMPLE_L165 SAMPLE_L66 " " SAMPLE_L97
 
-#define SAMPLE_API_WORDS "api,sys,status,deviceid,version,restart,firmware,upload,license,log,event,adp,alarm,meta,request,eventlog,adp-log,alarm-log,dai,aliases,download,alias,vod,purge,metadata,assets,pattern,export,import,test,validate,stream,initStart,control,start,stop,extend,query,manifest,scanning,rvl,schedule,capture,ports,files,enums,configure,analytics,schema,view,config,save,modules,module,section,templates,summary,debug,csv,time,set,service,ntpd,oauth,policy,sparkle,daily,sysstatus"
-#define SAMPLE_API_WORDS2 "sysstatus,payload,daily,sparkle,policy,oauth,ntpd,service,set,time,csv,debug,summary,templates,section,module,modules,save,config,view,schema,analytics,configure,enums,files,ports,capture,schedule,metadata,rvl,scanning,manifest,query,extend,stop,start,control,initStart,stream,validate,test,import,export,pattern,assets,purge,vod,alias,download,aliases,dai,alarm-log,adp-log,eventlog,request,meta,alarm,adp,event,log,license,upload,firmware,restart,version,deviceid,status,sys,api"
+#define LIST_OF_NAMES "jim,john,mary,frank,maya,julia,,matthew,david,greg,colin,kinga"
 
+#define LOREM_IPSUM "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Aliquam euismod ex ut pulvinar sagittis. Donec eget condimentum ante. Donec pulvinar molestie lorem vel scelerisque. Nam a vulputate justo, quis ullamcorper leo. Morbi ut pretium neque. Morbi ut elit non ex ornare faucibus. Nullam eros nunc, tempus at justo at, viverra rutrum nulla. Morbi nibh arcu, convallis quis blandit eu, laoreet eget nibh. Aenean consequat bibendum tellus. Mauris et ex sit amet lectus feugiat posuere eget et arcu. Ut ac sem at diam porttitor malesuada et ut velit.\n\n" \
+                    "Cras non velit cursus, elementum velit at, iaculis leo. Proin sed nisi pellentesque, iaculis justo sollicitudin, congue lacus. Etiam convallis nisl a est finibus porttitor. In hac habitasse platea dictumst. Vivamus rhoncus, tortor a vehicula bibendum, nunc turpis fermentum elit, vel fringilla urna lorem ut magna. Suspendisse potenti. Donec a dui ac dui eleifend malesuada. Suspendisse massa nisi, consectetur et tortor eget, eleifend luctus urna. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec tincidunt luctus placerat. Maecenas nec dui orci. "
+
+#define SAMPLE_API_1_WORDS "api,sys,status,deviceid,version,restart,firmware,upload,license,log,event,adp,alarm,meta,request,eventlog,adp-log,alarm-log,dai,aliases,download,alias,vod,purge,metadata,assets,pattern,export,import,TEST_CASE,validate,stream,initStart,control,start,stop,extend,query,manifest,scanning,rvl,schedule,capture,ports,files,enums,configure,analytics,schema,view,config,save,modules,module,section,templates,summary,debug,csv,time,set,service,ntpd,oauth,policy,sparkle,daily,sysstatus"
+#define SAMPLE_API_2_WORDS "sysstatus,payload,daily,sparkle,policy,oauth,ntpd,service,set,time,csv,debug,summary,templates,section,module,modules,save,config,view,schema,analytics,configure,enums,files,ports,capture,schedule,metadata,rvl,scanning,manifest,query,extend,stop,start,control,initStart,stream,validate,TEST_CASE,import,export,pattern,assets,purge,vod,alias,download,aliases,dai,alarm-log,adp-log,eventlog,request,meta,alarm,adp,event,log,license,upload,firmware,restart,version,deviceid,status,sys,api"
+
+using Rest::StringPool;
 
 TEST_CASE("new binbag consumes zero space", "[binbag]")
 {
@@ -45,7 +51,7 @@ SCENARIO("binbag can insert string within a single page", "[binbag]")
                 REQUIRE( bb.capacity() > 60 );
             }
             THEN("size equals the string length") {
-                REQUIRE( bb.bytes() == strlen(SAMPLE_L66)+1 );
+                REQUIRE( bb.bytes() == strlen(SAMPLE_L66)+1+sizeof(char*) );
             }
             THEN("string matches by index") {
                 REQUIRE( strcmp(bb[0], SAMPLE_L66)==0 );
@@ -65,7 +71,7 @@ SCENARIO("binbag can insert string within a single page", "[binbag]")
                 REQUIRE( bb.capacity() > sizeof(SAMPLE_L97)+sizeof(SAMPLE_L66));
             }
             THEN("size equals the string length") {
-                REQUIRE( bb.bytes() == sizeof(SAMPLE_L97)+sizeof(SAMPLE_L66));
+                REQUIRE( bb.bytes() == sizeof(SAMPLE_L97)+sizeof(SAMPLE_L66)+2*sizeof(char*));
             }
             THEN("string indexes are 0 & 1") {
                 REQUIRE(idx66 == 0);
@@ -105,7 +111,7 @@ SCENARIO("binbag can insert string within two pages", "[binbag]")
                 REQUIRE( bb.capacity() > 60 );
             }
             THEN("size equals the string length") {
-                REQUIRE( bb.bytes() == strlen(SAMPLE_L66)+1 );
+                REQUIRE( bb.bytes() == strlen(SAMPLE_L66)+1+sizeof(char*) );
             }
             THEN("string matches by index") {
                 REQUIRE( strcmp(bb[0], SAMPLE_L66)==0 );
@@ -125,7 +131,7 @@ SCENARIO("binbag can insert string within two pages", "[binbag]")
                 REQUIRE(bb.capacity() > sizeof(SAMPLE_L97) + sizeof(SAMPLE_L66));
             }
             THEN("size equals the string length") {
-                REQUIRE(bb.bytes() == sizeof(SAMPLE_L97) + sizeof(SAMPLE_L66));
+                REQUIRE(bb.bytes() == sizeof(SAMPLE_L97) + sizeof(SAMPLE_L66)+2*sizeof(char*));
             }
             THEN("string indexes are 0 & 1") {
                 REQUIRE(idx66 == 0);
@@ -156,7 +162,7 @@ SCENARIO("binbag can insert string within two pages", "[binbag]")
                 REQUIRE(bb.capacity() > sizeof(SAMPLE_L97) + sizeof(SAMPLE_L66) + sizeof(SAMPLE_L165));
             }
             THEN("size equals the string length") {
-                REQUIRE(bb.bytes() == sizeof(SAMPLE_L97) + sizeof(SAMPLE_L66) + sizeof(SAMPLE_L165));
+                REQUIRE(bb.bytes() == sizeof(SAMPLE_L97) + sizeof(SAMPLE_L66) + sizeof(SAMPLE_L165)+3*sizeof(char*));
             }
             THEN("string indexes are 0,1 & 2") {
                 REQUIRE(idx97 == 0);
@@ -185,7 +191,6 @@ SCENARIO("binbag can insert string within two pages", "[binbag]")
     }
 }
 
-#if 0
 std::vector<std::string> generate_strings(int count, int min_words, int max_words, std::string source)
 {
     // tokenize the source
@@ -203,108 +208,65 @@ std::vector<std::string> generate_strings(int count, int min_words, int max_word
     std::vector<std::string> out;
     for(int i=0; i<count; i++) {
         std::stringstream ss;
-        int n = min_words + rand() % (max_words-min_words);
+        int n = (max_words==min_words)
+                ? min_words
+                : min_words + rand() % (max_words-min_words);
         for(int j=0; j<n; j++) {
             int n = rand() % words.size();
-            if(j>0) ss << ' ';
-            ss << words[n];
+            std::string word = words[n];
+            if(j == 0) {
+                // first word
+                word[0] = toupper(word[0]); // upper case first word
+            } else {
+                // subsequent word
+                ss << ' ';
+                word[0] = tolower(word[0]); // always lower case first char in word
+            }
+            ss << word;
         }
+        if(min_words<max_words || min_words>1)  // dont add period if min_words==max_words==1
+            ss << '.';
+        out.insert(out.begin(), ss.str());
     }
 
     return out;
 }
 
-TEST_CASE("inserting many large strings","[stringpool]")
+void test_strings(StringPool& bb, const std::vector<std::string>& strings)
 {
-    size_t len1, len2;
-    StringPool bb(128);
+    // generate a number of sentences
+    std::vector<StringPool::index_type> IDs(strings.size());
 
-    auto strings = generate_strings(50, 1, 25, SAMPLE_L165);
+    size_t n=0, id;
+    for( auto const& s : strings) {
+        id = IDs[n] = bb.insert_distinct(s.c_str());
+        n++;
 
-    size_t count = 10, chars=0, growths=0;
-    for(size_t i=0; i<count; i++) {
-        size_t cap = binbag_capacity(bb);
-        if (res == OK && binbag_insert(bb, SAMPLE_L165) != i)
-            res = FAIL;
-        chars += strlen(SAMPLE_L165)+1;
-
-        // test lengths match
-        if (res==OK && chars != (len2=binbag_byte_length(bb))) {
-            printf("   strlen() returned %lu, binbag_byte_length() returned %lu\n", chars, len2);
-            res = FAIL;
-        }
-
-        // test count is correct
-        if (res==OK && (i+1) != (len2=binbag_count(bb))) {
-            printf("   strlen() returned %lu, binbag_byte_length() returned %lu\n", chars, len2);
-            res = FAIL;
-        }
-
-        // test each element matches the string
-        for(size_t j=0; j<len2; j++) {
-            const char* el = binbag_get(bb, j);
-            if (res == OK && strcmp(el, SAMPLE_L165) != 0) {
-                const char* el = binbag_get(bb, j);
-                printf("   element %lu did not match the insert string after %lu inserts and %lu growths\n", j, i+1, bb->growths);
-                binbag_debug_print(bb);
-                res = FAIL;
-            }
-        }
+        REQUIRE ( s == bb[id] );
     }
 
-    // test capacity grew
-    if(res==OK && (len1=binbag_capacity(bb))<165) {
-        printf("   binbag_capacity() returned %lu, expected greater than 164\n", len1);
-        res = FAIL;
+    for( int i=0; i<strings.size(); i++) {
+        const std::string& s = strings[i];
+        StringPool::index_type id = IDs[i];
+
+        REQUIRE ( bb.find(s.c_str()) == id );
+        REQUIRE ( s == bb[id] );
     }
-
-    binbag_free(bb);
-    return res;
-}
-
-TEST_CASE("binbag_split_typical_string","[stringpool]")
-{
-    const char* str = "jim,john,mary,frank,maya,julia,,matthew,david,greg,colin,kinga";
-    binbag* bb = binbag_split_string(',', 0, str);
-    //binbag_debug_print(bb);
-    return ((bb!=NULL) && binbag_count(bb)==12) ? OK : FAIL;
-}
-
-TEST_CASE("binbag_api_sample_using_split_string","[stringpool]")
-{
-    binbag* bb = binbag_split_string(',', 0, SAMPLE_API_WORDS);
-    return ((bb!=NULL) && binbag_count(bb)==68) ? OK : FAIL;
-}
-
-TEST_CASE("binbag_strlen","[stringpool]")
-{
-    // test that the binbag's optimized strlen routine matches strlen() from clib
-    const char* str = "jim,john,mary,frank,maya,julia,,matthew,david,greg,colin,kinga";
-    binbag* bb = binbag_split_string(',', 0, str);
-    if(!bb)
-        return FAIL;
-    for(int i=0, _i=binbag_count(bb); i<_i; i++) {
-        const char* s = binbag_get(bb, i);
-        int n = strlen(s);
-        if(n != binbag_strlen(bb, i))
-            return FAIL;
-    }
-    return OK;
 }
 
 const char* split_string(int sep, const char* str, char* word, size_t sz_word)
 {
     const char *p=str;
 
-    if(str==NULL || *str==0)
-        return NULL;
+    if(str==nullptr || *str==0)
+        return nullptr;
 
     // find next seperator
     while (*p && *p != sep)
         p++;
 
     size_t cnt = p - str;
-    if (word!=NULL && cnt > 0) {
+    if (word!=nullptr && cnt > 0) {
         if(cnt >= sz_word-1)
             cnt = sz_word-1;
 
@@ -315,20 +277,361 @@ const char* split_string(int sep, const char* str, char* word, size_t sz_word)
     return *p ? (p+1) : p;
 }
 
-long split_string_add(binbag* bb, int sep, const char* str) {
+const char* split_string_inline(int sep, const char* str, const char*& _begin, const char*& _end)
+{
+    const char *p=str;
+
+    if(str== nullptr || *str==0)
+        return nullptr;
+
+    // find next seperator
+    while (*p && *p != sep)
+        p++;
+
+    size_t cnt = p - str;
+    if (cnt > 0) {
+        _begin = str;
+        _end = str + cnt;
+    }
+
+    return *p ? (p+1) : p;
+}
+
+std::vector<std::string> split_string_to_vector(int sep, const char* str) {
+    std::vector<std::string> strings;
+    char word[512];
+    const char* p = str;
+
+    // grab a word from the input each iteration
+    while(NULL != (p = split_string(sep, p, word, sizeof(word))) ) {
+        if(word[0]!=0)
+            strings.insert(strings.end(), word);
+    }
+    return strings;
+}
+
+long split_string_add(StringPool& bb, int sep, const char* str) {
     char word[512];
     const char* p = str;
     ssize_t total = 0;
 
     // grab a word from the input each iteration
-    while(NULL != (p = split_string(',', p, word, sizeof(word))) ) {
-        long idx = binbag_insert(bb, word);
+    while(NULL != (p = split_string(sep, p, word, sizeof(word))) ) {
+        long idx = bb.insert_distinct(word);
         if (idx < 0)
             return idx;
         total++;
     }
     return total;
 }
+
+long split_string_add_by_range(StringPool& bb, int sep, const char* str) {
+    char word[512];
+    const char* p = str;
+    const char *_begin, *_end;
+    ssize_t total = 0;
+
+    // grab a word from the input each iteration
+    while(NULL != (p = split_string_inline(sep, p, _begin, _end)) ) {
+        long idx = bb.insert_distinct(_begin, _end-_begin, strncmp);
+        if (idx < 0)
+            return idx;
+        total++;
+    }
+    return total;
+}
+
+TEST_CASE("inserting 5 words with pagesize 128b","[stringpool]")
+{
+    // generate a number of sentences
+    StringPool bb(128);
+    auto strings = generate_strings(5, 1, 1, LOREM_IPSUM);
+    test_strings(bb, strings);
+}
+
+TEST_CASE("inserting 50 words with pagesize 128b","[stringpool]")
+{
+    // generate a number of sentences
+    StringPool bb(128);
+    auto strings = generate_strings(50, 1, 1, LOREM_IPSUM);
+    test_strings(bb, strings);
+}
+
+TEST_CASE("inserting 500 words with pagesize 128b","[stringpool]")
+{
+    // generate a number of sentences
+    StringPool bb(128);
+    auto strings = generate_strings(500, 1, 1, LOREM_IPSUM);
+    test_strings(bb, strings);
+}
+
+TEST_CASE("inserting 5 sentences with pagesize 256b","[stringpool]")
+{
+    // generate a number of sentences
+    StringPool bb(256);
+    auto strings = generate_strings(5, 1, 25, LOREM_IPSUM);
+    test_strings(bb, strings);
+}
+
+TEST_CASE("inserting 50 sentences with pagesize 256b","[stringpool]")
+{
+    // generate a number of sentences
+    StringPool bb(256);
+    auto strings = generate_strings(50, 1, 25, LOREM_IPSUM);
+    test_strings(bb, strings);
+}
+
+TEST_CASE("inserting 500 sentences with pagesize 256b","[stringpool]")
+{
+    // generate a number of sentences
+    StringPool bb(256);
+    auto strings = generate_strings(500, 1, 25, LOREM_IPSUM);
+    test_strings(bb, strings);
+}
+
+
+TEST_CASE("split a string into names","[stringpool]")
+{
+    auto bb = StringPool::split(',', SF_DISTINCT_NO_CASE, LIST_OF_NAMES);
+    auto strings = split_string_to_vector(',', LIST_OF_NAMES);
+
+    for(const auto& s : strings) {
+        REQUIRE ( bb.find(s.c_str()) >= 0 );
+    }
+}
+
+TEST_CASE("split a string into a set of API keywords (API-1)","[stringpool]")
+{
+    auto bb = StringPool::split(',', SF_DISTINCT_NO_CASE, SAMPLE_API_1_WORDS);
+    auto strings = split_string_to_vector(',', SAMPLE_API_1_WORDS);
+    for(const auto& s : strings) {
+        auto id = bb.find(s.c_str());
+        REQUIRE ( id >= 0 );
+
+        auto _str = bb[id];
+        REQUIRE ( strlen(_str) == s.length() );
+        REQUIRE ( s == _str );
+    }
+}
+
+TEST_CASE("split a string into a set of API keywords (API-2)","[stringpool]")
+{
+    auto bb = StringPool::split(',', SF_DISTINCT_NO_CASE, SAMPLE_API_2_WORDS, 64);
+    auto strings = split_string_to_vector(',', SAMPLE_API_2_WORDS);
+    for(const auto& s : strings) {
+        auto id = bb.find(s.c_str());
+        REQUIRE ( id >= 0 );
+
+        auto _str = bb[id];
+        REQUIRE ( strlen(_str) == s.length() );
+        REQUIRE ( s == _str );
+    }
+}
+
+TEST_CASE("split a string into a set of API keywords (API-2) into a single page","[stringpool]")
+{
+    auto bb = StringPool::split(',', SF_DISTINCT_NO_CASE | SF_SINGLE_PAGE, SAMPLE_API_2_WORDS);
+    auto strings = split_string_to_vector(',', SAMPLE_API_2_WORDS);
+    for(const auto& s : strings) {
+        auto id = bb.find(s.c_str());
+        REQUIRE ( id >= 0 );
+
+        auto _str = bb[id];
+        REQUIRE ( strlen(_str) == s.length() );
+        REQUIRE ( s == _str );
+    }
+}
+
+TEST_CASE("can iterate over a list of API keywords (API-2)","[stringpool]")
+{
+    auto bb = StringPool::split(',', SF_DISTINCT_NO_CASE, SAMPLE_API_2_WORDS);
+    auto strings = split_string_to_vector(',', SAMPLE_API_2_WORDS);
+    for(StringPool::const_iterator s=bb.begin(), _s=bb.end(); s!=_s; s++) {
+        auto strings_itr = std::find(strings.begin(), strings.end(), *s);
+        REQUIRE ( strings_itr != strings.end() );
+    }
+}
+
+TEST_CASE("can iterate over a range (c++11) of API keywords (API-2)","[stringpool]")
+{
+    auto bb = StringPool::split(',', SF_DISTINCT_NO_CASE, SAMPLE_API_2_WORDS);
+    auto strings = split_string_to_vector(',', SAMPLE_API_2_WORDS);
+    for(const auto& s : bb) {
+        auto strings_itr = std::find(strings.begin(), strings.end(), s);
+        REQUIRE ( strings_itr != strings.end() );
+    }
+}
+
+TEST_CASE("split empty string","[stringpool]")
+{
+    auto bb = StringPool::split(',', SF_NONE, "");
+    REQUIRE ( bb.count()==0 );
+    REQUIRE ( bb.bytes()==0 );
+}
+
+TEST_CASE("split singleton string","[stringpool]")
+{
+    auto bb = StringPool::split(',', SF_NONE, "single entry");
+    REQUIRE ( bb.count()==1 );
+    REQUIRE ( bb.bytes()==13 + sizeof(char*) ); // sizeof string plus 1 entry in index
+}
+
+TEST_CASE("split singleton string with terminator","[stringpool]")
+{
+    auto bb = StringPool::split(',', SF_IGNORE_EMPTY, "single entry,,,");
+    REQUIRE ( bb.count()==1 );
+    REQUIRE ( bb.bytes()==13 + sizeof(char*) ); // sizeof string plus 1 entry in index
+}
+
+TEST_CASE("binbag_split_seperator_terminated_string","[stringpool]")
+{
+    auto bb = StringPool::split(',', SF_IGNORE_EMPTY,
+            "jim,john,mary,frank,maya,julia,matthew,david,greg,colin,kinga,");
+    REQUIRE ( bb.count()==11 );
+}
+
+TEST_CASE("binbag_split_string_and_ignore_empties","[stringpool]")
+{
+    auto bb = StringPool::split(',', SF_IGNORE_EMPTY,
+            "jim,john,,mary,frank,maya,,julia,,matthew,david,greg,colin,kinga,");
+    REQUIRE ( bb.count()==11 );
+}
+
+TEST_CASE("insert using substring","[stringpool]")
+{
+    StringPool bb;
+    long first, last, middle;
+    const char* fullname = "Colin Freeman MacKenzie";
+
+    first=bb.insert(fullname, 5);
+    REQUIRE ( strcmp(bb[first], "Colin") ==0 );
+
+    middle=bb.insert(fullname+6, 7);
+    REQUIRE ( strcmp(bb[middle], "Freeman") ==0 );
+
+    last=bb.insert(fullname+14);
+    REQUIRE ( strcmp(bb[last], "MacKenzie") ==0 );
+}
+
+
+TEST_CASE("insert distinct words from 'There was an old lady'","[stringpool]")
+{
+    StringPool bb;
+    auto line1 = split_string_to_vector(' ', "She swallowed the goat to catch the dog");
+    auto line2 = split_string_to_vector(' ', "She swallowed the dog to catch the cat");
+    auto line3 = split_string_to_vector(' ', "She swallowed the cat to catch the bird");
+
+    for(auto const& w : line1)
+        bb.insert_distinct(w.c_str());
+    REQUIRE ( bb.count() == 7 );
+
+    for(auto const& w : line2)
+        bb.insert_distinct(w.c_str());
+    REQUIRE ( bb.count() == 8 );
+
+    for(auto const& w : line3)
+        bb.insert_distinct(w.c_str());
+    REQUIRE ( bb.count() == 9 );
+}
+
+TEST_CASE("insert distinct words from 'There was an old lady' using char-range insert","[stringpool]")
+{
+    StringPool bb;
+    auto line1 = "She swallowed the goat to catch the dog";
+    auto line2 = "She swallowed the dog to catch the cat";      // note: catch has the keyword cat in it, but should be counted unique
+    auto line3 = "She swallowed the cat to catch the bird";
+
+    split_string_add_by_range(bb, ' ', line1);
+    REQUIRE ( bb.count() == 7 );
+
+    split_string_add_by_range(bb, ' ', line2);
+    REQUIRE ( bb.count() == 8 );
+
+    split_string_add_by_range(bb, ' ', line3);
+    REQUIRE ( bb.count() == 9 );
+}
+
+TEST_CASE("various find cases","[stringpool]")
+{
+    StringPool bb = StringPool::split(' ', 0, "jim john mary frank maya julia matthew david greg colin kinga");
+    REQUIRE ( bb.count() == 11);
+
+    SECTION("can find julia") {
+        REQUIRE (bb.find("julia") == 5);
+        REQUIRE (bb.find("Julia") == -1);
+        REQUIRE (bb.find_nocase("juliax") == -1);   // negative case
+    }
+    SECTION("can find Julia using case insensitive") {
+        REQUIRE (bb.find_nocase("julia") == 5);
+        REQUIRE (bb.find_nocase("Julia") == 5);
+        REQUIRE (bb.find_nocase("Juliax") == -1);   // negative case
+    }
+
+    SECTION("can find kinga using range") {
+        REQUIRE (bb.find("kinga mackenzie", 5) == 10);
+        REQUIRE (bb.find("Kinga MacKenzie", 5) == -1);          // negative case
+        REQUIRE (bb.find_nocase("kinga mackenzie", 6) == -1);   // negative case
+    }
+    SECTION("can find Kinga using case insensitive") {
+        REQUIRE (bb.find_nocase("kinga mackenzie", 5) == 10);
+        REQUIRE (bb.find_nocase("Kinga MacKenzie", 5) == 10);
+        REQUIRE (bb.find_nocase("kinga mackenzie", 6) == -1);   // negative case
+    }
+
+    SECTION("can find jim") {
+        REQUIRE (bb.find("jim") == 0);
+        REQUIRE (bb.find("Jim") == -1);
+        REQUIRE (bb.find_nocase("jimx") == -1);   // negative case
+    }
+    SECTION("can find Jim using case insensitive") {
+        REQUIRE (bb.find_nocase("jim") == 0);
+        REQUIRE (bb.find_nocase("Jim") == 0);
+        REQUIRE (bb.find_nocase("Jimx") == -1);   // negative case
+    }
+
+}
+
+TEST_CASE("various find cases when multiple pages","[stringpool]")
+{
+    StringPool bb = StringPool::split(' ', 0, "jim john mary frank maya julia matthew david greg colin kinga", 16);
+    REQUIRE ( bb.count() == 11);
+
+    SECTION("can find julia") {
+        REQUIRE (bb.find("julia") == 5);
+        REQUIRE (bb.find("Julia") == -1);
+        REQUIRE (bb.find_nocase("juliax") == -1);   // negative case
+    }
+    SECTION("can find Julia using case insensitive") {
+        REQUIRE (bb.find_nocase("julia") == 5);
+        REQUIRE (bb.find_nocase("Julia") == 5);
+        REQUIRE (bb.find_nocase("Juliax") == -1);   // negative case
+    }
+
+    SECTION("can find kinga using range") {
+        REQUIRE (bb.find("kinga mackenzie", 5) == 10);
+        REQUIRE (bb.find("Kinga MacKenzie", 5) == -1);          // negative case
+        REQUIRE (bb.find_nocase("kinga mackenzie", 6) == -1);   // negative case
+    }
+    SECTION("can find Kinga using case insensitive") {
+        REQUIRE (bb.find_nocase("kinga mackenzie", 5) == 10);
+        REQUIRE (bb.find_nocase("Kinga MacKenzie", 5) == 10);
+        REQUIRE (bb.find_nocase("kinga mackenzie", 6) == -1);   // negative case
+    }
+
+    SECTION("can find jim") {
+        REQUIRE (bb.find("jim") == 0);
+        REQUIRE (bb.find("Jim") == -1);
+        REQUIRE (bb.find_nocase("jimx") == -1);   // negative case
+    }
+    SECTION("can find Jim using case insensitive") {
+        REQUIRE (bb.find_nocase("jim") == 0);
+        REQUIRE (bb.find_nocase("Jim") == 0);
+        REQUIRE (bb.find_nocase("Jimx") == -1);   // negative case
+    }
+
+}
+
+#if 0
 
 long split_string_verify(binbag* bb, int sep, const char* str) {
     char word[512];
@@ -367,28 +670,6 @@ TEST_CASE("binbag_api_sample_using_growth_1000","[stringpool]")
     return OK;
 }
 
-TEST_CASE("binbag_api_sample_using_growth_512","[stringpool]")
-{
-    ssize_t added;
-    size_t bbcount;
-    binbag* bb = binbag_create(512, 1.5);
-    if((added=split_string_add(bb, ',', SAMPLE_API_WORDS2)) <1)
-        return FAIL;
-
-    // validate counts
-    bbcount = binbag_count(bb);
-    if (added!=bbcount || bbcount!=69)
-        return FAIL;
-
-    if(split_string_verify(bb, ',', SAMPLE_API_WORDS2) <1) {
-        binbag_debug_print(bb);
-        return FAIL;
-    }
-
-    binbag_free(bb);
-    return OK;
-}
-
 TEST_CASE("binbag_api_sample_pack_mem","[stringpool]")
 {
     ssize_t added;
@@ -414,121 +695,6 @@ TEST_CASE("binbag_api_sample_pack_mem","[stringpool]")
     return (capacity==0) ? OK : FAIL;
 }
 
-TEST_CASE("binbag_split_empty_string","[stringpool]")
-{
-    const char* str = "";
-    binbag* bb = binbag_split_string(',', 0, str);
-    //binbag_debug_print(bb);
-    return ((bb!=NULL) && binbag_count(bb)==0) ? OK : FAIL;
-}
-
-TEST_CASE("binbag_split_singleton_string","[stringpool]")
-{
-    const char* str = "jim";
-    binbag* bb = binbag_split_string(',', 0, str);
-    //binbag_debug_print(bb);
-    return ((bb!=NULL) && binbag_count(bb)==1) ? OK : FAIL;
-}
-
-TEST_CASE("binbag_split_seperator_terminated_string","[stringpool]")
-{
-    const char* str = "jim,john,mary,frank,maya,julia,,matthew,david,greg,colin,kinga,";
-    binbag* bb = binbag_split_string(',', 0, str);
-    //binbag_debug_print(bb);
-    return ((bb!=NULL) && binbag_count(bb)==13) ? OK : FAIL;
-}
-
-TEST_CASE("binbag_split_string_and_ignore_empties","[stringpool]")
-{
-    const char* str = "jim,john,,mary,frank,maya,julia,,matthew,david,greg,colin,kinga,";
-    binbag* bb = binbag_split_string(',', SF_IGNORE_EMPTY, str);
-    //binbag_debug_print(bb);
-    return ((bb!=NULL) && binbag_count(bb)==11) ? OK : FAIL;
-}
-
-TEST_CASE("binbag_insert_char_range","[stringpool]")
-{
-    long first_id, last_id;
-    binbag* bb = binbag_create(1000, 1.5);
-
-    const char* fullname = "Colin MacKenzie";
-    if((first_id=binbag_insertn(bb, fullname, 5)) <0)
-        return FAIL;
-    if((last_id=binbag_insertn(bb, fullname+6, 9)) <0)
-        return FAIL;
-
-    const char* first = binbag_get(bb, first_id);
-    if(strcmp(first, "Colin") !=0)
-        return FAIL;
-
-    const char* last = binbag_get(bb, last_id);
-    if(strcmp(last, "MacKenzie") !=0)
-        return FAIL;
-
-    binbag_free(bb);
-    return OK;
-}
-
-TEST_CASE("binbag_insert_char_range_distinct","[stringpool]")
-{
-    long first_id, last_id, first_id_again, last_id_again;
-    binbag* bb = binbag_create(1000, 1.5);
-
-    const char* fullname = "Colin MacKenzie";
-    if((first_id=binbag_insert_distinct_n(bb, fullname, 5, strncasecmp)) <0)
-        return FAIL;
-    if((last_id=binbag_insert_distinct_n(bb, fullname+6, 9, strncasecmp)) <0)
-        return FAIL;
-    if((first_id_again=binbag_insert_distinct_n(bb, "Colin Doe", 5, strncasecmp)) <0)
-        return FAIL;
-    if((last_id_again=binbag_insert_distinct_n(bb, "MacKenzie Doe", 9, strncasecmp)) <0)
-        return FAIL;
-
-    const char* first = binbag_get(bb, first_id);
-    if(strcmp(first, "Colin") !=0)
-        return FAIL;
-    if(first_id != first_id_again)
-        return FAIL;
-
-    const char* last = binbag_get(bb, last_id);
-    if(strcmp(last, "MacKenzie") !=0)
-        return FAIL;
-    if(last_id != last_id_again)
-        return FAIL;
-
-    binbag_free(bb);
-    return OK;
-}
-
-TEST_CASE("binbag_find_case1","[stringpool]")
-{
-    binbag* bb = binbag_split_string(' ', 0, "jim john mary frank maya julia matthew david greg colin kinga");
-    return ((bb!=NULL) && binbag_find_case(bb, "julia")==5) ? OK : FAIL;
-}
-
-TEST_CASE("binbag_find_case_neg1","[stringpool]")
-{
-    binbag* bb = binbag_split_string(' ', 0, "jim john mary frank maya julia matthew david greg colin kinga");
-    return ((bb!=NULL) && binbag_find_case(bb, "Julia")==-1) ? OK : FAIL;
-}
-
-TEST_CASE("binbag_find_nocase1","[stringpool]")
-{
-    binbag* bb = binbag_split_string(' ', 0, "jim john mary frank maya julia matthew david greg colin kinga");
-    return ((bb!=NULL) && binbag_find_nocase(bb, "Julia")==5) ? OK : FAIL;
-}
-
-TEST_CASE("binbag_find_nocase2","[stringpool]")
-{
-    binbag* bb = binbag_split_string(' ', 0, "jim john mary frank maya julia matthew david greg colin kinga");
-    return ((bb!=NULL) && binbag_find_nocase(bb, "Julia")==5) ? OK : FAIL;
-}
-
-TEST_CASE("binbag_find_nocase_neg1","[stringpool]")
-{
-    binbag* bb = binbag_split_string(' ', 0, "jim john mary frank maya julia matthew david greg colin kinga");
-    return ((bb!=NULL) && binbag_find_nocase(bb, "harry")==-1) ? OK : FAIL;
-}
 
 TEST_CASE("binbag_sort_names","[stringpool]")
 {
@@ -635,5 +801,4 @@ TEST_CASE("binbag_reverse_11","[stringpool]")
         return FAIL;
     return ((bb!=NULL) && binbag_count(bb)==11) ? OK : FAIL;
 }
-
 #endif
