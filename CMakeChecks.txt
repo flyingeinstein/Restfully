@@ -6,9 +6,9 @@ check_include_file(malloc.h HAS_MALLOC_H)
 
 # check symbols for existance on platform
 include(CheckSymbolExists)
-check_symbol_exists(strndup string.h HAS_STRNDUP)
-check_symbol_exists(stpcpy  string.h HAS_STPCPY)
-check_symbol_exists(stpncpy string.h HAS_STPNCPY)
+#check_symbol_exists(strndup string.h HAS_STRNDUP)
+#check_symbol_exists(stpcpy  string.h HAS_STPCPY)
+#check_symbol_exists(stpncpy string.h HAS_STPNCPY)
 check_symbol_exists(register_printf_specifier printf.h HAS_REGISTER_PRINTF_SPECIFIER)
 
 
