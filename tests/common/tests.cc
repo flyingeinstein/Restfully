@@ -117,7 +117,7 @@ void list_all_ctest_format(const char* program_name)
         // now output the tests by group
         for (tests_map::const_iterator m = tests.begin(), _m = tests.end(); m != _m; m++) {
             printf("\n\n#  %s module\n", m->first.c_str());
-            for (const auto & t : m->second) {
+            for (std::vector<std::string>::const_iterator t = m->second.begin(), _t = m->second.end(); t != _t; t++) {
                 printf("add_test(%s %s %s)\n", t.c_str(), program_name, t.c_str());
             }
         }
