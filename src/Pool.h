@@ -37,6 +37,8 @@ namespace Rest {
 
         PagedPool& operator=(PagedPool&& move) noexcept;
 
+        inline size_t pageSize() const { return _page_size; }
+
 
         template<class T, typename ...Args>
         T* make(Args ... args) {
@@ -174,7 +176,16 @@ namespace Rest {
         }
 
         inline const Page* head() const { return _head; }
-        inline Page* head() { return _head; }
+
+        Page* head() {
+            return (_head != nullptr)
+                ? _head
+                : _head = new Page( _page_size );
+        }
+
+        Page* tail();
+
+        Page* addPage(size_t size);
 
     protected:
         size_t _page_size;

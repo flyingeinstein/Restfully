@@ -49,5 +49,21 @@ namespace Rest {
         memcpy(_data, copy._data, _capacity);
     }
 
+    PagedPool::Page* PagedPool::tail() {
+        Page *p = _head;
+        if(p!= nullptr) {
+            while (p->_next) {
+                p = p->_next;
+            }
+        }
+        return p;
+    }
+
+    PagedPool::Page* PagedPool::addPage(size_t size) {
+        Page* _tail = tail();
+        return (_tail != nullptr)
+            ? _tail->_next = new Page( size )
+            : _head = new Page( size );
+    }
 
 }
