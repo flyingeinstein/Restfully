@@ -25,7 +25,7 @@
 
 using Rest::StringPool;
 
-TEST_CASE("new binbag consumes zero space", "[binbag]")
+TEST_CASE("new StringPool consumes zero space", "[binbag]")
 {
     StringPool bb;
     REQUIRE (bb.bytes()==0);
@@ -33,7 +33,7 @@ TEST_CASE("new binbag consumes zero space", "[binbag]")
     REQUIRE (bb.capacity()==0);
 }
 
-SCENARIO("binbag can insert string within a single page", "[binbag]")
+SCENARIO("StringPool can insert string within a single page", "[binbag]")
 {
     GIVEN("An empty binbag") {
         StringPool bb(1024);
@@ -93,7 +93,7 @@ SCENARIO("binbag can insert string within a single page", "[binbag]")
     }
 }
 
-SCENARIO("binbag can insert string within two pages", "[binbag]")
+SCENARIO("StringPool can insert string within two pages", "[binbag]")
 {
     GIVEN("An empty binbag") {
         StringPool bb(80);
@@ -341,7 +341,7 @@ long split_string_add_by_range(StringPool& bb, int sep, const char* str) {
     return total;
 }
 
-TEST_CASE("inserting 5 words with pagesize 128b","[stringpool]")
+TEST_CASE("StringPool inserting 5 words with pagesize 128b","[stringpool]")
 {
     // generate a number of sentences
     StringPool bb(128);
@@ -349,7 +349,7 @@ TEST_CASE("inserting 5 words with pagesize 128b","[stringpool]")
     test_strings(bb, strings);
 }
 
-TEST_CASE("inserting 50 words with pagesize 128b","[stringpool]")
+TEST_CASE("StringPool inserting 50 words with pagesize 128b","[stringpool]")
 {
     // generate a number of sentences
     StringPool bb(128);
@@ -357,7 +357,7 @@ TEST_CASE("inserting 50 words with pagesize 128b","[stringpool]")
     test_strings(bb, strings);
 }
 
-TEST_CASE("inserting 500 words with pagesize 128b","[stringpool]")
+TEST_CASE("StringPool inserting 500 words with pagesize 128b","[stringpool]")
 {
     // generate a number of sentences
     StringPool bb(128);
@@ -365,7 +365,7 @@ TEST_CASE("inserting 500 words with pagesize 128b","[stringpool]")
     test_strings(bb, strings);
 }
 
-TEST_CASE("inserting 5 sentences with pagesize 256b","[stringpool]")
+TEST_CASE("StringPool inserting 5 sentences with pagesize 256b","[stringpool]")
 {
     // generate a number of sentences
     StringPool bb(256);
@@ -373,7 +373,7 @@ TEST_CASE("inserting 5 sentences with pagesize 256b","[stringpool]")
     test_strings(bb, strings);
 }
 
-TEST_CASE("inserting 50 sentences with pagesize 256b","[stringpool]")
+TEST_CASE("StringPool inserting 50 sentences with pagesize 256b","[stringpool]")
 {
     // generate a number of sentences
     StringPool bb(256);
@@ -381,7 +381,7 @@ TEST_CASE("inserting 50 sentences with pagesize 256b","[stringpool]")
     test_strings(bb, strings);
 }
 
-TEST_CASE("inserting 500 sentences with pagesize 256b","[stringpool]")
+TEST_CASE("StringPool inserting 500 sentences with pagesize 256b","[stringpool]")
 {
     // generate a number of sentences
     StringPool bb(256);
@@ -389,60 +389,7 @@ TEST_CASE("inserting 500 sentences with pagesize 256b","[stringpool]")
     test_strings(bb, strings);
 }
 
-
-TEST_CASE("split a string into names","[stringpool]")
-{
-    auto bb = StringPool::split(',', SF_DISTINCT_NO_CASE, LIST_OF_NAMES);
-    auto strings = split_string_to_vector(',', LIST_OF_NAMES);
-
-    for(const auto& s : strings) {
-        REQUIRE ( bb.find(s.c_str()) >= 0 );
-    }
-}
-
-TEST_CASE("split a string into a set of API keywords (API-1)","[stringpool]")
-{
-    auto bb = StringPool::split(',', SF_DISTINCT_NO_CASE, SAMPLE_API_1_WORDS);
-    auto strings = split_string_to_vector(',', SAMPLE_API_1_WORDS);
-    for(const auto& s : strings) {
-        auto id = bb.find(s.c_str());
-        REQUIRE ( id >= 0 );
-
-        auto _str = bb[id];
-        REQUIRE ( strlen(_str) == s.length() );
-        REQUIRE ( s == _str );
-    }
-}
-
-TEST_CASE("split a string into a set of API keywords (API-2)","[stringpool]")
-{
-    auto bb = StringPool::split(',', SF_DISTINCT_NO_CASE, SAMPLE_API_2_WORDS, 64);
-    auto strings = split_string_to_vector(',', SAMPLE_API_2_WORDS);
-    for(const auto& s : strings) {
-        auto id = bb.find(s.c_str());
-        REQUIRE ( id >= 0 );
-
-        auto _str = bb[id];
-        REQUIRE ( strlen(_str) == s.length() );
-        REQUIRE ( s == _str );
-    }
-}
-
-TEST_CASE("split a string into a set of API keywords (API-2) into a single page","[stringpool]")
-{
-    auto bb = StringPool::split(',', SF_DISTINCT_NO_CASE | SF_SINGLE_PAGE, SAMPLE_API_2_WORDS);
-    auto strings = split_string_to_vector(',', SAMPLE_API_2_WORDS);
-    for(const auto& s : strings) {
-        auto id = bb.find(s.c_str());
-        REQUIRE ( id >= 0 );
-
-        auto _str = bb[id];
-        REQUIRE ( strlen(_str) == s.length() );
-        REQUIRE ( s == _str );
-    }
-}
-
-TEST_CASE("can iterate over a list of API keywords (API-2)","[stringpool]")
+TEST_CASE("StringPool can iterate over a list of API keywords (API-2)","[stringpool]")
 {
     auto bb = StringPool::split(',', SF_DISTINCT_NO_CASE, SAMPLE_API_2_WORDS);
     auto strings = split_string_to_vector(',', SAMPLE_API_2_WORDS);
@@ -452,7 +399,7 @@ TEST_CASE("can iterate over a list of API keywords (API-2)","[stringpool]")
     }
 }
 
-TEST_CASE("can iterate over a range (c++11) of API keywords (API-2)","[stringpool]")
+TEST_CASE("StringPool can iterate over a range (c++11) of API keywords (API-2)","[stringpool]")
 {
     auto bb = StringPool::split(',', SF_DISTINCT_NO_CASE, SAMPLE_API_2_WORDS);
     auto strings = split_string_to_vector(',', SAMPLE_API_2_WORDS);
@@ -462,42 +409,123 @@ TEST_CASE("can iterate over a range (c++11) of API keywords (API-2)","[stringpoo
     }
 }
 
-TEST_CASE("split empty string","[stringpool]")
+TEST_CASE("StringPool various string split cases","[stringpool]")
 {
-    auto bb = StringPool::split(',', SF_NONE, "");
-    REQUIRE ( bb.count()==0 );
-    REQUIRE ( bb.bytes()==0 );
+    SECTION("split empty string") {
+        auto bb = StringPool::split(',', SF_NONE, "");
+        REQUIRE (bb.count() == 0);
+        REQUIRE (bb.bytes() == 0);
+    }
+
+    SECTION("split singleton string") {
+        auto bb = StringPool::split(',', SF_NONE, "single entry");
+        REQUIRE (bb.count() == 1);
+        REQUIRE (bb.bytes() == 13 + sizeof(char *)); // sizeof string plus 1 entry in index
+    }
+
+    SECTION("split singleton string with terminator") {
+        auto bb = StringPool::split(',', SF_IGNORE_EMPTY, "single entry,,,");
+        REQUIRE (bb.count() == 1);
+        REQUIRE (bb.bytes() == 13 + sizeof(char *)); // sizeof string plus 1 entry in index
+    }
+
+    SECTION("split many names with ending terminator") {
+        auto bb = StringPool::split(',', SF_IGNORE_EMPTY,
+                                    "jim,john,mary,frank,maya,julia,matthew,david,greg,colin,kinga,");
+        REQUIRE (bb.count() == 11);
+    }
+
+    SECTION("split names with empty entries") {
+        auto bb = StringPool::split(',', SF_IGNORE_EMPTY,
+                                    "jim,john,,mary,frank,maya,,julia,,matthew,david,greg,colin,kinga");
+        REQUIRE (bb.count() == 11);
+    }
+
+    SECTION("split names with empty entries and ending terminator") {
+        auto bb = StringPool::split(',', SF_IGNORE_EMPTY,
+                                    "jim,john,,mary,frank,maya,,julia,,matthew,david,greg,colin,kinga,");
+        REQUIRE (bb.count() == 11);
+    }
+
+    SECTION("split names that count duplicates") {
+        auto bb = StringPool::split(',', SF_IGNORE_EMPTY,
+                                    "jim,john,mary,frank,maya,julia,matthew,julia,david,greg,john,colin,kinga");
+        REQUIRE (bb.count() == 13);
+    }
+
+    SECTION("split names that eliminate duplicates except counts case differences") {
+        auto bb = StringPool::split(',', SF_IGNORE_EMPTY|SF_DISTINCT,
+                                    "jim,john,mary,frank,maya,julia,matthew,julia,david,Julia,greg,john,colin,John,kinga");
+        REQUIRE (bb.count() == 13);
+    }
+
+    SECTION("split names that eliminate duplicates") {
+        auto bb = StringPool::split(',', SF_IGNORE_EMPTY|SF_DISTINCT,
+                                    "jim,john,mary,frank,maya,julia,matthew,julia,david,greg,john,colin,kinga");
+        REQUIRE (bb.count() == 11);
+    }
+
+    SECTION("split names that count duplicates ignoring case") {
+        auto bb = StringPool::split(',', SF_IGNORE_EMPTY|SF_DISTINCT_NO_CASE,
+                                    "jim,john,mary,julia,frank,maya,julia,matthew,Julia,david,greg,joHn,colin,kinga");
+        REQUIRE (bb.count() == 11);
+    }
+
+    SECTION("split a string into names")
+    {
+        auto bb = StringPool::split(',', SF_DISTINCT_NO_CASE, LIST_OF_NAMES);
+        auto strings = split_string_to_vector(',', LIST_OF_NAMES);
+
+        for(const auto& s : strings) {
+            REQUIRE ( bb.find(s.c_str()) >= 0 );
+        }
+    }
+
+    SECTION("split a string into a set of API keywords (API-1)")
+    {
+        auto bb = StringPool::split(',', SF_DISTINCT_NO_CASE, SAMPLE_API_1_WORDS);
+        auto strings = split_string_to_vector(',', SAMPLE_API_1_WORDS);
+        for(const auto& s : strings) {
+            auto id = bb.find(s.c_str());
+            REQUIRE ( id >= 0 );
+
+            auto _str = bb[id];
+            REQUIRE ( strlen(_str) == s.length() );
+            REQUIRE ( s == _str );
+        }
+    }
+
+    SECTION("split a string into a set of API keywords (API-2)")
+    {
+        auto bb = StringPool::split(',', SF_DISTINCT_NO_CASE, SAMPLE_API_2_WORDS, 64);
+        auto strings = split_string_to_vector(',', SAMPLE_API_2_WORDS);
+        for(const auto& s : strings) {
+            auto id = bb.find(s.c_str());
+            REQUIRE ( id >= 0 );
+
+            auto _str = bb[id];
+            REQUIRE ( strlen(_str) == s.length() );
+            REQUIRE ( s == _str );
+        }
+    }
+
+    SECTION("split a string into a set of API keywords (API-2) into a single page")
+    {
+        auto bb = StringPool::split(',', SF_DISTINCT_NO_CASE | SF_SINGLE_PAGE, SAMPLE_API_2_WORDS);
+        auto strings = split_string_to_vector(',', SAMPLE_API_2_WORDS);
+        for(const auto& s : strings) {
+            auto id = bb.find(s.c_str());
+            REQUIRE ( id >= 0 );
+
+            auto _str = bb[id];
+            REQUIRE ( strlen(_str) == s.length() );
+            REQUIRE ( s == _str );
+        }
+    }
+
 }
 
-TEST_CASE("split singleton string","[stringpool]")
-{
-    auto bb = StringPool::split(',', SF_NONE, "single entry");
-    REQUIRE ( bb.count()==1 );
-    REQUIRE ( bb.bytes()==13 + sizeof(char*) ); // sizeof string plus 1 entry in index
-}
-
-TEST_CASE("split singleton string with terminator","[stringpool]")
-{
-    auto bb = StringPool::split(',', SF_IGNORE_EMPTY, "single entry,,,");
-    REQUIRE ( bb.count()==1 );
-    REQUIRE ( bb.bytes()==13 + sizeof(char*) ); // sizeof string plus 1 entry in index
-}
-
-TEST_CASE("binbag_split_seperator_terminated_string","[stringpool]")
-{
-    auto bb = StringPool::split(',', SF_IGNORE_EMPTY,
-            "jim,john,mary,frank,maya,julia,matthew,david,greg,colin,kinga,");
-    REQUIRE ( bb.count()==11 );
-}
-
-TEST_CASE("binbag_split_string_and_ignore_empties","[stringpool]")
-{
-    auto bb = StringPool::split(',', SF_IGNORE_EMPTY,
-            "jim,john,,mary,frank,maya,,julia,,matthew,david,greg,colin,kinga,");
-    REQUIRE ( bb.count()==11 );
-}
-
-TEST_CASE("insert using substring","[stringpool]")
+TEST_CASE("StringPool insert using substring","[stringpool]")
 {
     StringPool bb;
     long first, last, middle;
@@ -514,7 +542,7 @@ TEST_CASE("insert using substring","[stringpool]")
 }
 
 
-TEST_CASE("insert distinct words from 'There was an old lady'","[stringpool]")
+TEST_CASE("StringPool insert distinct words from 'There was an old lady'","[stringpool]")
 {
     StringPool bb;
     auto line1 = split_string_to_vector(' ', "She swallowed the goat to catch the dog");
@@ -534,7 +562,7 @@ TEST_CASE("insert distinct words from 'There was an old lady'","[stringpool]")
     REQUIRE ( bb.count() == 9 );
 }
 
-TEST_CASE("insert distinct words from 'There was an old lady' using char-range insert","[stringpool]")
+TEST_CASE("StringPool insert distinct words from 'There was an old lady' using char-range insert","[stringpool]")
 {
     StringPool bb;
     auto line1 = "She swallowed the goat to catch the dog";
@@ -551,7 +579,7 @@ TEST_CASE("insert distinct words from 'There was an old lady' using char-range i
     REQUIRE ( bb.count() == 9 );
 }
 
-TEST_CASE("various find cases","[stringpool]")
+TEST_CASE("StringPool various find cases","[stringpool]")
 {
     StringPool bb = StringPool::split(' ', 0, "jim john mary frank maya julia matthew david greg colin kinga");
     REQUIRE ( bb.count() == 11);
@@ -591,7 +619,7 @@ TEST_CASE("various find cases","[stringpool]")
 
 }
 
-TEST_CASE("various find cases when multiple pages","[stringpool]")
+TEST_CASE("StringPool various find cases when multiple pages","[stringpool]")
 {
     StringPool bb = StringPool::split(' ', 0, "jim john mary frank maya julia matthew david greg colin kinga", 16);
     REQUIRE ( bb.count() == 11);
