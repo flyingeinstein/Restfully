@@ -64,8 +64,14 @@ namespace Rest {
             p = s = str;
             while (*p) {
                 if (*p == seperator) {
-                    if(p>s || (flags & SF_IGNORE_EMPTY)==0)
-                        bb.insert(s, p-s);
+                    if(p>s || (flags & SF_IGNORE_EMPTY)==0) {
+                        if(flags & SF_DISTINCT_NO_CASE)
+                            bb.insert_distinct(s, p - s, strncasecmp);
+                        else if(flags & SF_DISTINCT)
+                            bb.insert_distinct(s, p - s, strncmp);
+                        else
+                            bb.insert(s, p - s);
+                    }
                     s = p+1;
                 }
                 p++;

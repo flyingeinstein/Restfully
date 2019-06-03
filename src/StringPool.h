@@ -10,11 +10,11 @@
 #include <cstring>
 
 // split string flags
-#define SF_NONE               0
-#define SF_IGNORE_EMPTY       1     // dont insert empty strings (i.e. double separator)
-#define SF_DISTINCT           2     // insert if and only if it doesnt already exist (case sensitive)
-#define SF_DISTINCT_NO_CASE   4     // insert if and only if it doesnt already exist (case insensitive)
-#define SF_SINGLE_PAGE        8     // scan input and allocate a page to hold the entire string(s)
+#define SF_NONE               0U
+#define SF_IGNORE_EMPTY       1U     // dont insert empty strings (i.e. double separator)
+#define SF_DISTINCT           2U     // insert if and only if it doesnt already exist (case sensitive)
+#define SF_DISTINCT_NO_CASE   4U     // insert if and only if it doesnt already exist (case insensitive)
+#define SF_SINGLE_PAGE        8U     // scan input and allocate a page to hold the entire string(s)
 
 namespace Rest {
 
