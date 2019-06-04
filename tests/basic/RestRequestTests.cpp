@@ -9,12 +9,6 @@
 
 #include "requests.h"
 
-#if 0
-template<class H> Rest::MethodHandler<std::function<H> > PUTR(const H& handler) {
-    auto f = std::function<H>(handler);
-    return Rest::MethodHandler<std::function<H> >(HttpPut, f);
-}
-#endif
 
 TEST_CASE("Endpoints echo request with std::function lambda")
 {
