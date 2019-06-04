@@ -1,10 +1,12 @@
 //
 // Created by Colin MacKenzie on 2019-04-06.
 //
+#define CATCH_CONFIG_FAST_COMPILE
+#include <catch.hpp>
 
 #include <Pool.h>
-#include <tests.h>
 #include <vector>
+
 
 struct Point {
     long x;
@@ -15,38 +17,34 @@ struct Point {
     inline Point(long _x, long _y, short _z) : x(_x), y(_y), z(_z) {}
 };
 
-TEST(paged_pool_create)
+TEST_CASE("PagedPool create")
 {
     Rest::PagedPool pool;
     auto info = pool.info();
-    return (info.available ==0)
-        ? OK
-        : FAIL;
+    REQUIRE (info.available ==0);
 }
 
-TEST(paged_pool_one_object)
+TEST_CASE("PagedPool alloc single object")
 {
     Rest::PagedPool pool;
     Point* x = pool.make<Point>();
-    return (x != nullptr)
-        ? OK
-        : FAIL;
+    REQUIRE (x != nullptr);
 }
 
-TEST(paged_pool_two_objects)
+TEST_CASE("PagedPool alloc two objects")
 {
     Rest::PagedPool pool;
     Point* i = pool.make<Point>();
     Point* j = pool.make<Point>(25600,128000,(short)27);
 
-    if (i == nullptr && j == nullptr)
-        return FAIL;
-    if(i->x!=0 || i->y!=1 || i->z!=2)
-        return FAIL;
-    if(j->x!=25600 || j->y!=128000 || j->z!=27)
-        return FAIL;
-
-    return OK;
+    REQUIRE (i != nullptr);
+    REQUIRE (j != nullptr);
+    REQUIRE (i->x==0);
+    REQUIRE (i->y==1);
+    REQUIRE (i->z==2);
+    REQUIRE (j->x==25600);
+    REQUIRE (j->y==128000);
+    REQUIRE (j->z==27);
 }
 
 std::vector<Point*> paged_pool_add_n(Rest::PagedPool& pool, size_t n)
@@ -88,22 +86,18 @@ error:
     return nullptr;
 }
 
-TEST(paged_pool_fifty_objects)
+TEST_CASE("PagedPool alloc 50 single objects")
 {
     Rest::PagedPool pool(64);
     auto points = paged_pool_add_n(pool, 50);
     auto info = pool.info();
-    return (info.available>0)
-           ? OK
-           : FAIL;
+    REQUIRE (info.available>0);
 }
 
-TEST(paged_pool_array_fifty_objects)
+TEST_CASE("PagedPool alloc 50 as array")
 {
     Rest::PagedPool pool(64);
     auto points = paged_pool_add_n_array(pool, 50);
     auto info = pool.info();
-    return (info.available ==0) // should allocate 1 single large page
-           ? OK
-           : FAIL;
+    REQUIRE (info.available ==0); // should allocate 1 single large page
 }

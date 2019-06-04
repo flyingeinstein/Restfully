@@ -3,9 +3,9 @@
 //
 
 #define CATCH_CONFIG_FAST_COMPILE
+#include <catch.hpp>
 
 #include <Argument.h>
-#include <catch.hpp>
 
 
 using namespace Rest;
