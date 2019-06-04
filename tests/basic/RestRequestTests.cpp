@@ -1,3 +1,5 @@
+#define CATCH_CONFIG_FAST_COMPILE
+#include <catch.hpp>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -5,9 +7,7 @@
 #include <functional>
 #include <utility>
 
-#include <tests.h>
 #include "requests.h"
-
 
 #if 0
 template<class H> Rest::MethodHandler<std::function<H> > PUTR(const H& handler) {
@@ -16,37 +16,41 @@ template<class H> Rest::MethodHandler<std::function<H> > PUTR(const H& handler) 
 }
 #endif
 
-TEST(endpoints_std_function)
+TEST_CASE("Endpoints echo request with std::function lambda")
 {
     RestRequestHandler<RestRequest> rest;
     std::function<int(RestRequest & )> func = [](RestRequest &request) {
         request.response = "Hello World!";
         return 200;
     };
-    rest.on("/api/echo/:msg(string|integer)").GET(func);
-    return OK;
+    rest.on("/api/echo/:msg(string|integer)")
+        .GET(func);
+    auto req ( rest.endpoints.resolve(Rest::HttpGet, "/api/echo/colin") );
+    REQUIRE( req );
 }
 
 int handler_func(RestRequest& r) { r.response = "hello world"; return 2; }
 
-TEST(endpoints_function)
+TEST_CASE("Endpoints echo request with function ptr")
 {
     RestRequestHandler<RestRequest> rest;
     rest.on("/api/echo/:msg(string|integer)").GET(handler_func);
-    return OK;
+    auto req ( rest.endpoints.resolve(Rest::HttpGet, "/api/echo/colin") );
+    REQUIRE( req );
 }
 
-TEST(endpoints_lambda)
+TEST_CASE("Endpoints request with lambda")
 {
     RestRequestHandler<RestRequest> rest;
     rest.on("/api/echo/:msg(string|integer)").GET([](RestRequest &request) {
         request.response = "Hello World!";
         return 200;
     });
-    return OK;
+    auto req ( rest.endpoints.resolve(Rest::HttpGet, "/api/echo/colin") );
+    REQUIRE( req );
 }
 
-TEST(endpoints_split_collection)
+TEST_CASE("Endpoints split collection")
 {
     char msg[256];
     RestRequestHandler<RestRequest> rest;
@@ -79,31 +83,26 @@ TEST(endpoints_split_collection)
     std::string response;
     if(rest.handle(HttpGet, "/api/device/2/echo/Colin", &response)) {
         //printf("response: %s\n", response.c_str());
-        if(response !="Hello Colin from Device2")
-            return FAIL;
+        REQUIRE (response =="Hello Colin from Device2" );
     }
 
     if(rest.handle(HttpGet, "/api/device/1/echo/Maya", &response)) {
         //printf("response: %s\n", response.c_str());
-        if(response !="Hello Maya from Device1")
-            return FAIL;
+        REQUIRE (response !="Hello Maya from Device1" );
     }
 
     if(rest.handle(HttpGet, "/api/device/3/echo/Maya", &response)) {
-        //printf("response: %s\n", response.c_str());
-        if(response !="no device 3")
-            return FAIL;
+        REQUIRE (response !="no device 3");
     }
-
-    return OK;
 }
 
-TEST(endpoints_path_with_dot)
+TEST_CASE("Endpoints path containing dot (like versions)")
 {
     RestRequestHandler<RestRequest> rest;
     rest.on("/api/v1.0/echo/:msg(string|integer)").GET([](RestRequest &request) {
         request.response = "Hello World!";
         return 200;
     });
-    return OK;
+    auto req ( rest.endpoints.resolve(Rest::HttpGet, "/api/v1.0/echo/colin") );
+    REQUIRE( req );
 }
