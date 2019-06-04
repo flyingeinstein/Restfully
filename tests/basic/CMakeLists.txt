@@ -1,7 +1,7 @@
 project(basic-tests)
 
-# SOURCE_FILES requests.h HandlerTests.cpp RestEndpointsTests.cpp RestRequestTests.cpp RestRequestVptrTests.cpp)
-set(SOURCE_FILES basic-tests.cpp StringPoolTests.cpp Arguments.cc pagedpool.cc)
+# SOURCE_FILES requests.h RestEndpointsTests.cpp RestRequestTests.cpp RestRequestVptrTests.cpp)
+set(SOURCE_FILES basic-tests.cpp StringPoolTests.cpp Arguments.cc pagedpool.cc HandlerTests.cpp)
 
 add_executable(basic-tests ${SOURCE_FILES})
 add_dependencies(basic-tests restfully)

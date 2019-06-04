@@ -1,3 +1,5 @@
+#define CATCH_CONFIG_FAST_COMPILE
+#include <catch.hpp>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -5,7 +7,6 @@
 #include <functional>
 #include <utility>
 
-#include <tests.h>
 #include <Endpoints.h>
 
 
@@ -20,44 +21,40 @@ public:
 typedef Rest::Handler<FakeRequest&> FakeHandler;
 
 
-TEST(handler_std_function)
+TEST_CASE("FakeRequest with std::function")
 {
     FakeRequest r(1);
     std::function<int(FakeRequest&)> f = [](FakeRequest& r) { r.value = 2; return r.value; };
     FakeHandler h(f);
-    return (h(r)==2 && r.value==2)
-        ? OK
-        : FAIL;
+    REQUIRE ( h(r)==2 );
+    REQUIRE ( r.value==2 );
 }
 
-TEST(handler_lambda)
+TEST_CASE("FakeRequest with lambda")
 {
     FakeRequest r(1);
     FakeHandler h([](FakeRequest& r) { r.value = 2; return r.value; });
-    return (h(r)==2 && r.value==2)
-           ? OK
-           : FAIL;
+    REQUIRE ( h(r)==2 );
+    REQUIRE ( r.value==2 );
 }
 
-TEST(handler_lambda_wcapture)
+TEST_CASE("FakeRequest with lambda and capture")
 {
     int rr = 4;
     FakeRequest r(1);
     FakeHandler h([&rr](FakeRequest& r) { r.value = 2; rr=2; return r.value;});
-    return (h(r)==rr && r.value==rr)
-           ? OK
-           : FAIL;
+    REQUIRE ( h(r)==rr );
+    REQUIRE ( r.value==rr );
 }
 
 int handler_func(FakeRequest& r) { return r.value = 2; }
 
-TEST(handler_function)
+TEST_CASE("FakeRequest with function ptr")
 {
     FakeRequest r(1);
     FakeHandler h(handler_func);
-    return (h(r)==2 && r.value==2)
-           ? OK
-           : FAIL;
+    REQUIRE ( h(r)==2 );
+    REQUIRE ( r.value==2 );
 }
 
 class handler_class
@@ -68,34 +65,22 @@ public:
     int m(FakeRequest& r) { rr = 2; return r.value = 2; }
 };
 
-TEST(handler_instance_function)
+TEST_CASE("FakeRequest with instance handler")
 {
     handler_class c;
     FakeRequest r(1);
     FakeHandler h(std::bind(&handler_class::m, &c, std::placeholders::_1));
-    return (h(r)==2 && r.value==2)
-           ? OK
-           : FAIL;
+    REQUIRE ( h(r)==2 );
+    REQUIRE ( r.value==2 );
 }
 
-TEST(handler_get_std_function)
-{
-    FakeRequest r(1);
-    std::function<int(FakeRequest&)> f = [](FakeRequest& r) { r.value = 2; return r.value; };
-    FakeHandler h(f);
-    return (h(r)==2 && r.value==2)
-           ? OK
-           : FAIL;
-}
-
-TEST(handler_get_instance_function)
+TEST_CASE("FakeRequest using std::bind on function with extra arguments")
 {
     handler_class c;
     FakeRequest r(1);
     FakeHandler h(std::bind(&handler_class::m, &c, std::placeholders::_1));
-    return (h(r)==2 && r.value==2)
-           ? OK
-           : FAIL;
+    REQUIRE ( h(r)==2 );
+    REQUIRE ( r.value==2 );
 }
 
 
