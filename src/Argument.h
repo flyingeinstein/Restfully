@@ -7,7 +7,8 @@
 #include <string>
 #include <cstring>
 #include <cassert>
-#include "Pool.h"
+
+#include "StringPool.h"
 
 #if defined(ARDUINO)
 #include <Arduino.h>
@@ -25,6 +26,10 @@
 
 
 namespace Rest {
+
+    // shared index of text strings
+    // assigned a unique integer ID to each word stored
+    extern StringPool literals_index;
 
     class Type
     {
