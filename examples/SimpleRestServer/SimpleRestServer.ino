@@ -21,7 +21,7 @@ const char* password = "mypassword";
 using WebServer = ESP8266WebServer;
 #else
 #include <WiFi.h>
-#include <mDNS.h>
+//#include <mDNS.h>
 #include <WebServer.h>
 #include <HTTPClient.h>
 #endif
@@ -101,7 +101,7 @@ int handleEcho(RestRequest& request) {
   // if we have a json body, perhaps we have a greeting parameter
   if(request.hasJson) {
     auto root = request.body.as<JsonObject>();  // expect request is a Json object not array
-    auto greeting = root.get<const char*>("greeting");  // NULL if this argument doesnt exist
+    const char* greeting = root["greeting"];  // NULL if this argument doesnt exist
     if(greeting) {
       s = greeting; // default to Hello if greeting argument wasnt supplied
       s += ' ';
@@ -253,4 +253,3 @@ void loop() {
   if(WiFi.getMode() != WIFI_STA)
     return;
 }
-
