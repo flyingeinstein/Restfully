@@ -1,3 +1,5 @@
+#define CATCH_CONFIG_FAST_COMPILE
+#include <catch.hpp>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -5,7 +7,6 @@
 #include <functional>
 #include <utility>
 
-#include <tests.h>
 #include <Endpoints.h>
 #include "requests.h"
 
@@ -68,100 +69,99 @@ bool check_response(const std::function<int(RestRequest&)>& x, const std::functi
     return rx.response == ry.response;
 }
 
-TEST(endpoints_simple)
+TEST_CASE("Endpoints simple")
 {
     Endpoints endpoints;
 
     // add some endpoints
     endpoints.on("/api/devices").GET(getbus);
     Endpoints::Request res = endpoints.resolve(Rest::HttpGet, "/api/devices");
-    return (res.method==Rest::HttpGet && check_response(res.handler.handler, getbus) && res.status==Rest::UriMatched)
-       ? OK
-       : FAIL;
+    REQUIRE (res.method==Rest::HttpGet);
+    REQUIRE (check_response(res.handler.handler, getbus));
+    REQUIRE (res.status==Rest::UriMatched);
 }
 
-TEST(endpoints_echo)
+TEST_CASE("Endpooints echo")
 {
     Endpoints endpoints;
 
     // add some endpoints
     endpoints.on("/api/echo/:msg(string)").GET(echo);
     Endpoints::Request res = endpoints.resolve(Rest::HttpGet, "/api/echo/Colin MacKenzie");
-    if (res.method!=Rest::HttpGet || res.status!=Rest::UriMatched)
-        return FAIL;
+    REQUIRE (res.method==Rest::HttpGet);
+    REQUIRE (res.status==Rest::UriMatched);
 
     RestRequest rr(res);
-    return (res.handler(rr)==200 && rr.response=="Hello Colin MacKenzie")
-        ? OK
-        : FAIL;
+    REQUIRE (res.handler(rr)==200);
+    REQUIRE (rr.response=="Hello Colin MacKenzie");
 }
 
-TEST(endpoints_echo_with_dot)
+TEST_CASE("Endpooints including dots in path")
 {
     Endpoints endpoints;
 
     // add some endpoints
     endpoints.on("/api/v1.0/echo/:msg(string)").GET(echo);
     Endpoints::Request res = endpoints.resolve(Rest::HttpGet, "/api/v1.0/echo/Colin MacKenzie");
-    if (res.method!=Rest::HttpGet || res.status!=Rest::UriMatched)
-        return FAIL;
+    REQUIRE (res.method==Rest::HttpGet);
+    REQUIRE (res.status==Rest::UriMatched);
 
     RestRequest rr(res);
-    return (res.handler(rr)==200 && rr.response=="Hello Colin MacKenzie")
-           ? OK
-           : FAIL;
+    REQUIRE (res.handler(rr)==200);
+    REQUIRE (rr.response=="Hello Colin MacKenzie");
 }
 
-TEST(endpoints_partial_match_returns_no_handler) {
+TEST_CASE("Endpooints partial match returns no handler") {
     Endpoints endpoints;
     //Endpoints::Handler getbus("get i2c-bus");
     endpoints.on("/api/bus/i2c/:bus(integer)/devices").GET(getbus);
     Endpoints::Request r = endpoints.resolve(Rest::HttpGet, "/api/bus/i2c");
-    return (r.status==Rest::NoHandler)
-        ? OK
-        : FAIL;
+    REQUIRE (r.status==Rest::NoHandler);
 }
 
-TEST(endpoints_wildcard_match_returns_handler) {
+TEST_CASE("Endpooints wildcard match returns handler") {
     Endpoints endpoints;
     //Endpoints::Handler getbus("get i2c-bus");
     endpoints.on("/api/bus/i2c/:bus(integer)/*").GET(getbus);
     Endpoints::Request r = endpoints.resolve(Rest::HttpGet, "/api/bus/i2c/5/config/display");
-    return (r.status==Rest::UriMatchedWildcard && check_response(r.handler.handler, getbus))
-           ? OK
-           : FAIL;
+    REQUIRE (r.status==Rest::UriMatchedWildcard);
+    REQUIRE (check_response(r.handler.handler, getbus));
 }
 
-TEST(endpoints_int_argument)
+TEST_CASE("Endpooints int argument")
 {
     Endpoints endpoints;
     endpoints.on("/api/bus/i2c/:bus(integer)/devices").GET(getbus);
     Endpoints::Request r_1 = endpoints.resolve(Rest::HttpGet, "/api/bus/i2c/3/devices");
-    return (r_1.status==Rest::UriMatched && check_response(r_1.handler.handler, getbus) && r_1["bus"].isInteger() && 3==(long)r_1["bus"])
-       ? OK
-       : FAIL;
+    REQUIRE (r_1.status==Rest::UriMatched);
+    REQUIRE (check_response(r_1.handler.handler, getbus));
+    REQUIRE (r_1["bus"].isInteger());
+    REQUIRE (((long)r_1["bus"]) == 3);
 }
 
-TEST(endpoints_real_argument)
+TEST_CASE("Endpooints real argument")
 {
     Endpoints endpoints;
     endpoints.on("/api/bus/i2c/:bus(real)/devices").GET(getbus);
     Endpoints::Request r_1 = endpoints.resolve(Rest::HttpGet, "/api/bus/i2c/3.14/devices");
-    return (r_1.status==Rest::UriMatched && check_response(r_1.handler.handler, getbus) && r_1["bus"].isNumber() && 3.14==(double)r_1["bus"])
-        ? OK
-        : FAIL;
+    REQUIRE (r_1.status==Rest::UriMatched);
+    REQUIRE (check_response(r_1.handler.handler, getbus));
+    REQUIRE (r_1["bus"].isNumber());
+    REQUIRE (3.14==(double)r_1["bus"]);
 }
 
-TEST(endpoints_string_argument)
+TEST_CASE("Endpooints string argument")
 {
     Endpoints endpoints;
     endpoints.on("/api/bus/i2c/:bus(string)/devices").GET(getbus);
     Endpoints::Request r_1 = endpoints.resolve(Rest::HttpGet, "/api/bus/i2c/default/devices");
-    return (r_1.status==Rest::UriMatched && check_response(r_1.handler.handler, getbus) && r_1["bus"].isString() && strcmp("default", (const char*)r_1["bus"])==0)
-        ? OK
-        : FAIL;
+    REQUIRE (r_1.status==Rest::UriMatched);
+    REQUIRE (check_response(r_1.handler.handler, getbus));
+    REQUIRE (r_1["bus"].isString());
+    REQUIRE (strcmp("default", (const char*)r_1["bus"])==0);
 }
 
+#if 0
 TEST_DISABLED(endpoints_many)
 {
 	Endpoints endpoints;
@@ -187,36 +187,35 @@ TEST_DISABLED(endpoints_many)
         .katch([](Endpoints::Exception ex) {
             std::cout << "exception occured adding endpoints: "
                 << uri_result_to_string(ex.code);
-            return FAIL;
+            REQUIRE(ex.status ==0);
         });
 
     // resolve some endpoints
     Endpoints::Request rb1 = endpoints.resolve(Rest::HttpGet, "/api/devices/5/slots");
-    if(rb1.status!=Rest::UriMatched)
-        return FAIL;
+    REQUIRE (rb1.status==Rest::UriMatched);
 
     Endpoints::Request rb2 = endpoints.resolve(Rest::HttpGet, "/api/devices/i2c/slots");
-    if(rb2.status!=Rest::UriMatched)
-        return FAIL;
+    REQUIRE (rb2.status==Rest::UriMatched);
 
     Endpoints::Request rc1 = endpoints.resolve(Rest::HttpPut, "/api/devices/i2c/slot/96/meta");
-    if(rc1.status!=Rest::UriMatched)
-        return FAIL;
+    REQUIRE (rc1.status==Rest::UriMatched);
+
     const char* devid = rc1["dev"];
-    if(!rc1["dev"].isString() || strcmp(rc1["dev"], "i2c")!=0)
-        return FAIL;
+    REQUIRE (c1["dev"].isString());
+    REQUIRE (strcmp(rc1["dev"], "i2c")==0);
+
     unsigned long slotid = rc1["slot"];
-    if(!rc1["slot"].isInteger() || 96!=(long)rc1["slot"])
-        return FAIL;
+    REQUIRE (rc1["slot"].isInteger());
+    REQUIRE (96==(long)rc1["slot"]);
 
     Endpoints::Request r_1 = endpoints.resolve(Rest::HttpPut, "/api/bus/i2c/3/devices");
-    if(r_1.status!=Rest::UriMatched || !r_1["bus"].isInteger() || 3!=(long)r_1["bus"])
-        return FAIL;
-
-    return OK;
+    REQUIRE (r_1.status==Rest::UriMatched);
+    REQUIRE (r_1["bus"].isInteger());
+    REQUIRE (3!=(long)r_1["bus"]);
 }
+#endif
 
-TEST(endpoints_subnode_simple)
+TEST_CASE("Endpooints subnode simple")
 {
     Endpoints endpoints;
 
@@ -225,47 +224,47 @@ TEST(endpoints_subnode_simple)
     devs.on("lights").GET(getbus);
 
     Endpoints::Request res = endpoints.resolve(Rest::HttpGet, "/api/devices/lights");
-    if(res.method!=Rest::HttpGet || !check_response(res.handler.handler, getbus) || res.status!=Rest::UriMatched)
-        return FAIL;
-
-    return OK;
+    REQUIRE (res.method==Rest::HttpGet);
+    REQUIRE (check_response(res.handler.handler, getbus));
+    REQUIRE (res.status==Rest::UriMatched);
 }
 
-TEST(endpoints_subnode_three)
+TEST_CASE("Endpooints subnode three")
 {
     Endpoints endpoints;
 
     // starting at the path /api/devices, add 4 new lights and doors endpoints.
     // if any of the additions fail then they will return an invalid NodeRef which we then return FAIL. Note,
     // calling on(...) on an invalid NodeRef just returns the invalid NodeRef again.
-    if(endpoints.on("/api/devices")
+    REQUIRE(0 == endpoints.on("/api/devices")
         .PUT("lights", devices)
         .GET("lights/kitchen", getbus)
         .GET("lights/bedroom", getbus)
         .GET("doors/garage", getbus)
-        .error() !=0)
-            return FAIL;
+        .error());
 
     Endpoints::Request res = endpoints.resolve(Rest::HttpPut, "/api/devices/lights");
-    if(res.method!=Rest::HttpPut || !check_response(res.handler.handler, devices) || res.status!=Rest::UriMatched)
-        return FAIL;
+    REQUIRE (res.method==Rest::HttpPut);
+    REQUIRE (check_response(res.handler.handler, devices));
+    REQUIRE (res.status==Rest::UriMatched);
 
     res = endpoints.resolve(Rest::HttpGet, "/api/devices/lights/kitchen");
-    if(res.method!=Rest::HttpGet || !check_response(res.handler.handler, getbus) || res.status!=Rest::UriMatched)
-        return FAIL;
+    REQUIRE (res.method==Rest::HttpGet);
+    REQUIRE (check_response(res.handler.handler, getbus));
+    REQUIRE (res.status==Rest::UriMatched);
 
     res = endpoints.resolve(Rest::HttpGet, "/api/devices/lights/bedroom");
-    if(res.method!=Rest::HttpGet || !check_response(res.handler.handler, getbus) || res.status!=Rest::UriMatched)
-        return FAIL;
+    REQUIRE (res.method==Rest::HttpGet);
+    REQUIRE (check_response(res.handler.handler, getbus));
+    REQUIRE (res.status==Rest::UriMatched);
 
     res = endpoints.resolve(Rest::HttpGet, "/api/devices/doors/garage");
-    if(res.method!=Rest::HttpGet || !check_response(res.handler.handler, getbus) || res.status!=Rest::UriMatched)
-        return FAIL;
-
-    return OK;
+    REQUIRE (res.method==Rest::HttpGet);
+    REQUIRE (check_response(res.handler.handler, getbus));
+    REQUIRE (res.status==Rest::UriMatched);
 }
 
-TEST(endpoints_subnode_bad_path_fails)
+TEST_CASE("Endpooints subnode fails with bad path")
 {
     Endpoints endpoints;
 
@@ -278,31 +277,26 @@ TEST(endpoints_subnode_bad_path_fails)
         .GET("kitchen", getbus)
         .GET("bedroom", getbus)
         .GET("doors/ &garage", getbus);
-    if(devs.error())
-        return OK;
-
-    return FAIL; // failed FAIL test
+    REQUIRE (0 != devs.error());
 }
 
-TEST(endpoints_subnode_inner_exception_fails)
+TEST_CASE("Endpooints subnode fails with inner exception")
 {
     Endpoints endpoints;
 
     // starting at the path /api/devices, add 4 new lights and doors endpoints.
     // if any of the additions fail then they will return an invalid NodeRef which we then return FAIL. Note,
     // calling on(...) on an invalid NodeRef just returns the invalid NodeRef again.
-    if(endpoints.on("/api/devices")
+    REQUIRE (0 != endpoints.on("/api/devices")
             .PUT("lights", devices)
             .GET("/lights/ &kitchen", getbus)
             .GET("/lights/bedroom", getbus)
             .GET("doors/garage", getbus)
-            .error()!=0 )
-        return OK;  // correctly caused error
-    else
-        return FAIL; // failed FAIL test
+            .error() ); // expect error!
 }
 
-TEST(endpoints_curry_using_bind) {
+TEST_CASE("Endpooints curry using std::bind")
+{
     Endpoints endpoints;
     bool ledState = false;
 
@@ -324,10 +318,9 @@ TEST(endpoints_curry_using_bind) {
                       std::placeholders::_1,     // RestRequest placeholder,
                       false                      // specified and bound as constant
     ));
-    return OK;
 }
 
-TEST(endpoints_curry_with_same)
+TEST_CASE("Endpooints add curry with same endpoint type")
 {
     Endpoints endpoints1, endpoints2;
     endpoints1
@@ -335,10 +328,9 @@ TEST(endpoints_curry_with_same)
             .with(endpoints2)
                .on("echo/:msg(string|integer)")
                .GET(getbus);
-    return OK;
 }
 
-TEST(endpoints_with_same_resolve)
+TEST_CASE("Endpooints resolve curry with same endpoint type")
 {
     Endpoints endpoints1, endpoints2;
 
@@ -349,8 +341,7 @@ TEST(endpoints_with_same_resolve)
             .PUT(getbus);
 
     Endpoints::Request res = endpoints1.resolve(Rest::HttpPut, "/api/echo/johndoe");
-    if(res.method!=Rest::HttpPut || !check_response(res.handler.handler, getbus) || res.status!=Rest::UriMatched)
-        return FAIL;
-
-    return OK;
+    REQUIRE (res.method==Rest::HttpPut);
+    REQUIRE (check_response(res.handler.handler, getbus));
+    REQUIRE (res.status==Rest::UriMatched);
 }
