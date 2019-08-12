@@ -135,7 +135,7 @@ namespace Rest {
         inline operator unsigned int() const { assert(type&ARG_MASK_INTEGER); return (int)ul; }
         inline operator long() const { assert(type&ARG_MASK_INTEGER); return l; }
         inline operator unsigned long() const { assert(type&ARG_MASK_INTEGER); return ul; }
-        inline operator double() const { assert(type&ARG_MASK_NUMBER); return d; }
+        inline operator double() const { assert(type&ARG_MASK_NUMBER); return (type&ARG_MASK_REAL) ? d : (double)l; }
         inline operator bool() const { return (type == ARG_MASK_BOOLEAN) ? b : (ul>0); }
         inline operator const char*() const { assert(type&ARG_MASK_STRING); return s; }
 
