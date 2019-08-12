@@ -106,6 +106,23 @@ namespace Rest {
                     (type==ARG_MASK_BOOLEAN && b==rhs.b)
              );
         }
+
+        bool operator==(const char* text) const {
+            return (type == ARG_MASK_STRING) && (strcmp(s, text)==0);
+        }
+
+        bool operator==(long n) const {
+            return (type == ARG_MASK_INTEGER) && (l==n);
+        }
+
+        bool operator==(unsigned long n) const {
+            return (type == ARG_MASK_UINTEGER) && (ul==n);
+        }
+
+        bool operator==(double n) const {
+            return (((type&ARG_MASK_REAL) && (d==n)) || (isNumber() && ((double)l==n)));
+        }
+
         inline bool operator!=(const Argument& rhs) const { return !operator==(rhs); }
 
         int isOneOf(std::initializer_list<const char*> enum_values, bool case_insensitive=true) {
@@ -124,6 +141,7 @@ namespace Rest {
 
 
         inline bool isInteger() const { return (type&ARG_MASK_INTEGER)==ARG_MASK_INTEGER; }
+        inline bool isIntegerBetween(int min, int max) const { return (type&ARG_MASK_INTEGER)==ARG_MASK_INTEGER && min<=l && max>=l; }
         inline bool isSignedInteger() const { return (type&ARG_MASK_UINTEGER)==ARG_MASK_INTEGER; }
         inline bool isUnsignedInteger() const { return (type&ARG_MASK_UINTEGER)==ARG_MASK_UINTEGER; }
         inline bool isNumber() const { return (type&ARG_MASK_NUMBER)>0; }
