@@ -149,16 +149,16 @@ namespace Rest {
         inline bool isString() const { return (type&ARG_MASK_STRING)==ARG_MASK_STRING; }
 
         // only supported in C++11
-        inline operator int() const { assert(type&ARG_MASK_INTEGER); return (int)l; }
-        inline operator unsigned int() const { assert(type&ARG_MASK_INTEGER); return (int)ul; }
-        inline operator long() const { assert(type&ARG_MASK_INTEGER); return l; }
-        inline operator unsigned long() const { assert(type&ARG_MASK_INTEGER); return ul; }
-        inline operator double() const { assert(type&ARG_MASK_NUMBER); return (type&ARG_MASK_REAL) ? d : (double)l; }
-        inline operator bool() const { return (type == ARG_MASK_BOOLEAN) ? b : (ul>0); }
-        inline operator const char*() const { assert(type&ARG_MASK_STRING); return s; }
+        inline explicit operator int() const { assert(type&ARG_MASK_INTEGER); return (int)l; }
+        inline explicit operator unsigned int() const { assert(type&ARG_MASK_INTEGER); return (int)ul; }
+        inline explicit operator long() const { assert(type&ARG_MASK_INTEGER); return l; }
+        inline explicit operator unsigned long() const { assert(type&ARG_MASK_INTEGER); return ul; }
+        inline explicit operator double() const { assert(type&ARG_MASK_NUMBER); return (type&ARG_MASK_REAL) ? d : (double)l; }
+        inline explicit operator bool() const { return (type == ARG_MASK_BOOLEAN) ? b : (ul>0); }
+        inline explicit operator const char*() const { assert(type&ARG_MASK_STRING); return s; }
 
 #if defined(ARDUINO)
-        inline operator String() const { assert(type&ARG_MASK_STRING); return String(s); }
+        inline explicit operator String() const { assert(type&ARG_MASK_STRING); return String(s); }
 
         String toString() const {
           if(type & ARG_MASK_STRING)
