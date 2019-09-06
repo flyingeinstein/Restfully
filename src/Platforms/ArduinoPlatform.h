@@ -165,7 +165,7 @@ namespace Rest {
             }
 
             virtual int defer(Endpoints &endpoints, TRequest &parent) {
-                String _uri_rest = parent["_url"];  // contains the remaining part of the URL
+                String _uri_rest = (String)parent["_url"];  // contains the remaining part of the URL
                 typename Endpoints::Request ep = endpoints.resolve(parent.method, _uri_rest.c_str());
                 if (ep) {
                     RequestType request(parent);

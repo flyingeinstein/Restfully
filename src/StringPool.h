@@ -105,9 +105,9 @@ namespace Rest {
 
         class const_iterator {
         private:
-            const PagedPool::Page *_page;     // the current page
-            short _page_idx;            // index from within current page
-            index_type _base_idx;        // the accumulated index base from all previous pages
+            const PagedPool::Page *_page;       // the current page
+            short _page_idx;                    // index from within current page
+            index_type _base_idx;               // the accumulated index base from all previous pages
 
         protected:
             inline explicit const_iterator(const PagedPool::Page *page) : _page(page), _page_idx(0), _base_idx(0) {}
@@ -129,7 +129,7 @@ namespace Rest {
 
             const_iterator &operator++() {
                 _page_idx++;
-                if (_page_idx >= indexElementCount(_page)) {
+                if ( (size_t)_page_idx >= indexElementCount(_page)) {
                     // advance page (if we reach the end then _page becomes nullptr)
                     _base_idx += _page->_insertp / sizeof(char*);
                     _page = _page->_next;
@@ -145,7 +145,7 @@ namespace Rest {
             }
 
             const char* operator*() const {
-                return (_page != nullptr && _page_idx < indexElementCount(_page))
+                return (_page != nullptr && (size_t)_page_idx < indexElementCount(_page))
                        ? indexElement(_page, _page_idx)
                        : nullptr;
             }

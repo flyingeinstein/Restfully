@@ -52,7 +52,7 @@ namespace Rest {
         }
 
         StringPool bb(page_size);
-        PagedPool::Page *data_page, *index_page;
+        PagedPool::Page *data_page, *index_page;        // @todo why do I set these and not use them?
 
         if(flags & SF_SINGLE_PAGE) {
             // allocate pages ahead of time
@@ -202,7 +202,7 @@ namespace Rest {
         while(p) {
             auto elements = (const char**)p->_data;
             auto count = indexElementCount(p);
-            for(int i=0; i<count; i++)
+            for(size_t i=0; i<count; i++)
                 if(compar(match, elements[i]) ==0)
                     return idx + i;
             idx += count;
@@ -220,7 +220,7 @@ namespace Rest {
         while(p) {
             auto elements = (const char**)p->_data;
             auto count = indexElementCount(p);
-            for(int i=0; i<count; i++)
+            for(size_t i=0; i<count; i++)
                 if(compar(match, elements[i], n) ==0 && elements[i][n]==0)  // ensure the pool string is null terminated
                     return idx + i;
             idx += count;
