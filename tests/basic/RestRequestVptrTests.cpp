@@ -1,11 +1,11 @@
+#define CATCH_CONFIG_FAST_COMPILE
+#include <catch.hpp>
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <iostream>
 #include <functional>
 #include <utility>
-
-#include <tests.h>
 
 #include "requests.h"
 
@@ -47,42 +47,37 @@ public:
 };
 
 
-TEST(endpoints_vptr_decl)
+TEST_CASE("endpoints_vptr_decl")
 {
     VptrTest::Endpoints endpoints;
-    return OK;
+    REQUIRE( endpoints.getRoot() );
 }
 
-TEST(endpoints_vptr_on_echo)
+TEST_CASE("endpoints_vptr_on_echo")
 {
     VptrTest::Endpoints endpoints;
-    endpoints.on("/api/echo/:msg(string|integer)").GET(&VptrTest::echo);
-    return OK;
+    endpoints.on("/api/echo/:msg(string|integer)")
+        .GET(&VptrTest::echo);
 }
 
-TEST(endpoints_vptr_resolve_echo_class_member)
+TEST_CASE("endpoints_vptr_resolve_echo_class_member")
 {
     std::string response;
     VptrTest one;
     VptrTest::Endpoints endpoints;
 
-    endpoints.on("/api/echo/:msg(string|integer)").GET(&VptrTest::echo);
+    endpoints.on("/api/echo/:msg(string|integer)")
+        .GET(&VptrTest::echo);
 
     auto endpoint = endpoints.resolve(HttpGet, "/api/echo/Maya");
-    if(endpoint) {
-        RestRequest rr(endpoint);
-        VptrTest::Handler h = endpoint.handler;
-        if( (one.*h)(rr) !=200)
-            return FAIL;
-        if(rr.response !="Hello Maya")
-            return FAIL;
-    } else
-        return FAIL;    // handle returned fail
-
-    return OK;
+    REQUIRE( endpoint );
+    RestRequest rr(endpoint);
+    VptrTest::Handler h = endpoint.handler;
+    REQUIRE( (one.*h)(rr) == 200);
+    REQUIRE( rr.response =="Hello Maya" );
 }
 
-TEST(endpoints_vptr_resolve_derived_echo_class_member)
+TEST_CASE("endpoints_vptr_resolve_derived_echo_class_member")
 {
     std::string response;
     Vptr2Test one;
@@ -91,21 +86,15 @@ TEST(endpoints_vptr_resolve_derived_echo_class_member)
     endpoints.on("/api/echo/:msg(string|integer)").GET(&VptrTest::echo);
 
     auto endpoint = endpoints.resolve(HttpGet, "/api/echo/Maya");
-    if(endpoint) {
-        RestRequest rr(endpoint);
-        VptrTest::Handler h = endpoint.handler;
-        if( (one.*h)(rr) !=200)
-            return FAIL;
-        if(rr.response !="I say, Hello Maya")
-            return FAIL;
-    } else
-        return FAIL;    // handle returned fail
-
-    return OK;
+    REQUIRE (endpoint);
+    RestRequest rr(endpoint);
+    VptrTest::Handler h = endpoint.handler;
+    REQUIRE( (one.*h)(rr) == 200);
+    REQUIRE(rr.response == "I say, Hello Maya");
 }
 
-#if 1
-TEST(endpoints_vptr_resolve_derived_eko)
+#if 0
+TEST_CASE("endpoints_vptr_resolve_derived_eko")
 {
     std::string response;
     Vptr2Test one;
@@ -127,12 +116,11 @@ TEST(endpoints_vptr_resolve_derived_eko)
 
     return OK;
 }
-#endif
 
 //using Handler = int(VptrTest::*)(RestRequest&);
 //using Endpoints = Rest::Endpoints< Handler >;
 
-TEST(endpoints_curry_with_class_method)
+TEST_CASE("endpoints_curry_with_class_method")
 {
     using Handler1 = Rest::Handler<RestRequest&>;
     using Endpoints1 = Rest::Endpoints< Handler1 >;
@@ -148,7 +136,7 @@ TEST(endpoints_curry_with_class_method)
     return OK;
 }
 
-TEST(endpoints_curry_with_class_method_resolve)
+TEST_CASE("endpoints_curry_with_class_method_resolve")
 {
     using Handler1 = Rest::Handler<RestRequest&>;
     using Endpoints1 = Rest::Endpoints< Handler1 >;
@@ -176,7 +164,7 @@ TEST(endpoints_curry_with_class_method_resolve)
     return OK;
 }
 
-TEST(endpoints_curry_with_anonymous_class_method_resolve)
+TEST_CASE("endpoints_curry_with_anonymous_class_method_resolve")
 {
     using Handler1 = Rest::Handler<RestRequest&>;
     using Endpoints1 = Rest::Endpoints< Handler1 >;
@@ -204,7 +192,7 @@ TEST(endpoints_curry_with_anonymous_class_method_resolve)
     return OK;
 }
 
-TEST(endpoints_curry_with_anonymous_class_method_inst_resolver)
+TEST_CASE("endpoints_curry_with_anonymous_class_method_inst_resolver")
 {
     using Handler1 = Rest::Handler<RestRequest&>;
     using Endpoints1 = Rest::Endpoints< Handler1 >;
@@ -271,7 +259,7 @@ TEST(endpoints_curry_with_anonymous_class_method_inst_resolver)
     return OK;
 }
 
-TEST(endpoints_curry_with_anonymous_class_method_inst_resolver_bug)
+TEST_CASE("endpoints_curry_with_anonymous_class_method_inst_resolver_bug")
 {
     using Handler1 = Rest::Handler<RestRequest&>;
     using Endpoints1 = Rest::Endpoints< Handler1 >;
@@ -305,7 +293,7 @@ TEST(endpoints_curry_with_anonymous_class_method_inst_resolver_bug)
     return OK;
 }
 
-TEST(endpoints_curry_with_anonymous_class_method_inst_resolver_at_root)
+TEST_CASE("endpoints_curry_with_anonymous_class_method_inst_resolver_at_root")
 {
     using Handler1 = Rest::Handler<RestRequest&>;
     using Endpoints1 = Rest::Endpoints< Handler1 >;
@@ -338,7 +326,7 @@ TEST(endpoints_curry_with_anonymous_class_method_inst_resolver_at_root)
     return OK;
 }
 
-TEST(endpoints_curry_with_anonymous_class_method_inst_resolver_devices)
+TEST_CASE("endpoints_curry_with_anonymous_class_method_inst_resolver_devices")
 {
     using Handler1 = Rest::Handler<RestRequest&>;
     using Endpoints1 = Rest::Endpoints< Handler1 >;
@@ -374,7 +362,7 @@ TEST(endpoints_curry_with_anonymous_class_method_inst_resolver_devices)
     return OK;
 }
 
-TEST(endpoints_curry_with_anonymous_class_method_inst_resolver_devices_404)
+TEST_CASE("endpoints_curry_with_anonymous_class_method_inst_resolver_devices_404")
 {
     using Handler1 = Rest::Handler<RestRequest&>;
     using Endpoints1 = Rest::Endpoints< Handler1 >;
@@ -404,7 +392,7 @@ TEST(endpoints_curry_with_anonymous_class_method_inst_resolver_devices_404)
     return FAIL;
 }
 
-TEST(endpoints_curry_with_anonymous_class_method_instptr_resolver_devices)
+TEST_CASE("endpoints_curry_with_anonymous_class_method_instptr_resolver_devices")
 {
     using Handler1 = Rest::Handler<RestRequest&>;
     using Endpoints1 = Rest::Endpoints< Handler1 >;
@@ -442,7 +430,7 @@ TEST(endpoints_curry_with_anonymous_class_method_instptr_resolver_devices)
     return OK;
 }
 
-TEST(endpoints_curry_with_anonymous_class_method_instptr_resolver_devices_404)
+TEST_CASE("endpoints_curry_with_anonymous_class_method_instptr_resolver_devices_404")
 {
     using Handler1 = Rest::Handler<RestRequest&>;
     using Endpoints1 = Rest::Endpoints< Handler1 >;
@@ -472,7 +460,7 @@ TEST(endpoints_curry_with_anonymous_class_method_instptr_resolver_devices_404)
         : FAIL;
 }
 
-TEST(endpoints_curry_nimble_test1)
+TEST_CASE("endpoints_curry_nimble_test1")
 {
     using Handler1 = Rest::Handler<RestRequest&>;
     using Endpoints1 = Rest::Endpoints< Handler1 >;
@@ -505,7 +493,7 @@ TEST(endpoints_curry_nimble_test1)
            : FAIL;
 }
 
-TEST(endpoints_vptr_resolve_echo)
+TEST_CASE("endpoints_vptr_resolve_echo")
 {
     using Endpoints = Rest::Endpoints< int(VptrTest::*)(RestRequest&) >;
     Endpoints rest;  // endpoints based on this member function type
@@ -527,7 +515,7 @@ TEST(endpoints_vptr_resolve_echo)
     return OK;
 }
 
-TEST(endpoints_vptr_resolve_echo_instance)
+TEST_CASE("endpoints_vptr_resolve_echo_instance")
 {
     using Endpoints = Rest::Endpoints< int(VptrTest::*)(RestRequest&) >;
     Endpoints rest;  // endpoints based on this member function type
@@ -551,3 +539,4 @@ TEST(endpoints_vptr_resolve_echo_instance)
     return OK;
 }
 
+#endif
