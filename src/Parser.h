@@ -60,12 +60,14 @@ namespace Rest {
     public:
         HttpMethod method;
         const char* uri;
+        const char* contentType;
+
         Arguments args;
         int status;
 
-        inline UriRequest() :  method(HttpMethodAny), uri(nullptr), status(0) {}
-        inline UriRequest(HttpMethod _method, const char* _uri, int _status=0) : method(_method), uri(_uri), status(_status) {}
-        inline UriRequest(const UriRequest& copy) : method(copy.method), uri(copy.uri), args(copy.args), status(copy.status) {}
+        inline UriRequest() :  method(HttpMethodAny), uri(nullptr), contentType(ApplicationJsonMimeType), status(0) {}
+        inline UriRequest(HttpMethod _method, const char* _uri, int _status=0) : method(_method), uri(_uri), contentType(ApplicationJsonMimeType), status(_status) {}
+        inline UriRequest(const UriRequest& copy) : method(copy.method), uri(copy.uri), contentType(copy.contentType), args(copy.args), status(copy.status) {}
 
         inline const Argument& operator[](int idx) const { return args.operator[](idx); }
         inline const Argument& operator[](const char* name) const { return args.operator[](name); }
@@ -73,6 +75,7 @@ namespace Rest {
         inline UriRequest& operator=(const UriRequest& copy) {
             method=copy.method;
             uri=copy.uri;
+            contentType=copy.contentType;
             args=copy.args;
             status=copy.status;
             return *this;
@@ -88,7 +91,8 @@ namespace Rest {
     public:
         typedef enum {
             expand = 1,           // indicates adding a new endpoint/handler
-            resolve = 2        // indicates we are resolving a URL to a defined handler
+            resolve = 2,          // indicates we are resolving a URL to a defined handler
+            queryAccept = 3       // indicate we are checking if we should accept a URI as a Rest Endpoint
         } mode_e;
 
         explicit ParserState(const UriRequest& _request)
@@ -191,7 +195,16 @@ namespace Rest {
             // read datatype or decl type
             while(ev->t.id!=TID_EOF) {
                 rescan:
+
                 epc = context;
+                if(ev->mode == ParserState::queryAccept && epc->acceptAll) {
+                    return UriAccepted;
+                }
+                if(ev->mode != ParserState::expand && epc->contentTypes != nullptr) {
+                    // check the content type
+                    if( ! epc->checkContentType(ev->request.contentType) )
+                        return UriUnsupportedContentType;   // maybe later we can allow further checking to happen
+                }
 
                 switch(ev->state) {
                     case expectPathPartOrSep:
@@ -204,7 +217,7 @@ namespace Rest {
                     case expectPathSep: {
                         // expect a slash or end of URL
                         if(ev->t.id=='/') {
-                            NEXT_STATE( (ev->mode==ParserState::resolve) ? expectPathPart : expectPathPartOrParam);
+                            NEXT_STATE( (ev->mode==ParserState::expand) ? expectPathPartOrParam : expectPathPart );
 
                         } else if(ev->t.id == TID_EOF) {
                             // safe place to end
@@ -251,7 +264,7 @@ namespace Rest {
                                     // regular URI word, add to lexicon and generate code
                                     lit = pool->newLiteralString(context, ev->t.s);
                                     context = lit->nextNode = pool->newNode();
-                                } else if(ev->mode == ParserState::resolve && epc->string!=nullptr) {
+                                } else if(epc->string!=nullptr) {
                                     GOTO_STATE(expectParameterValue);
                                 } else {
                                     if(epc->wild != nullptr) {
@@ -270,7 +283,7 @@ namespace Rest {
 
                             NEXT_STATE( expectPathSep );
 
-                        } else if(ev->mode == ParserState::resolve) {
+                        } else if(ev->mode != ParserState::expand) {
                             GOTO_STATE(expectParameterValue);
                         } else
                             NEXT_STATE( errorExpectedIdentifierOrString );

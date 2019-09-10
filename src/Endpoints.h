@@ -90,16 +90,59 @@ public:
     virtual ~Endpoints() {
     }
 
+    /// \brief Return or create a new Rest API namespace at the given URI
+    /// You begin with this method to build your Rest API tree using method chaining. The on() method returns Node objects
+    /// which represent Rest Endpoints where you can attach your function handlers using the methods GET, POST, PUT,
+    /// PATCH, DELETE, etc. You can also use the on() from Nodes as well. The Node object has other useful methods such
+    /// as with(...) and withContentType(...) for controlling your Rest API.
+    /// ```
+    ///    Endpoints endpoints;
+    ///    endpoints.on("/api/rooms/:roomid(string|integer)")
+    ///        .GET("lights", get_lights)       // subpath + get handler
+    ///        .PUT("lights", set_lights)       // subpath + put handler
+    ///        .GET(get_room_details);          // get handler attached to /api/rooms/:roomid
+    /// ```
     Node on(const char* expression) {
         return getRoot().on(expression);
     }
 
-    Request resolve(HttpMethod method, const char* expression) {
+    /// \brief Check if a URL should be accepted by the Rest API
+    /// This function performs a check on a URI to see if it is within the Rest API namespace. It works most efficient
+    /// if you have used the accept() method on short base paths to indicate your Rest API URI namespaces and therefor
+    /// the queryAccept method can stop parsing the URI sooner in the parsing process. A URI that is accepted but later
+    /// doesnt resolve to a handler would be considered 404.
+    inline int queryAccept(HttpMethod method, const char* uri) {
         return (ep_head == nullptr)
-            ? Request(method, expression, URL_FAIL_NULL_ROOT)
-            : getRoot().resolve(method, expression);
+               ? NoEndpoint
+               : getRoot().queryAccept(method, uri);
     }
 
+
+    /// \brief \deprecated Resolve the request handler for a URI
+    /// Returns the Request handler for a URI, or returns a blank Request handler with status set to a ParseResult code.
+    /// This method is deprecated. You should construct a Request object using your HttpMethod, URI and optionally other
+    /// details such as contentType, then pass that Request object into the resolve(...) method.
+    Request resolve(HttpMethod method, const char* uri) {
+        if (ep_head == nullptr)
+            return Request(method, uri, URL_FAIL_NULL_ROOT);
+        typename Node::Request req(method, uri);
+        resolve(req);
+        return req;
+    }
+
+    /// \brief Resolve the request handler for a URI
+    /// Resolves a Request object into a function handler. The Request contains the URI and HttpMethod that will be
+    /// resolved. The status member of the Request object will be set upon return.
+    /// \returns true if the Request matched to a valid handler.
+    bool resolve(Request& req) {
+        if (ep_head == nullptr) {
+            req.status = URL_FAIL_NULL_ROOT;
+            return false;
+        }
+        return getRoot().resolve(req);
+    }
+
+    /// \brief Returns the root node of the Rest API namespace.
     inline Node getRoot() {
         return Node(this,
             (ep_head == nullptr)

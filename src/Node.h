@@ -48,9 +48,30 @@ namespace Rest {
         // if we are at the end of the URI then we can pass to one of the http verb handlers
         HandlerType GET, POST, PUT, PATCH, DELETE, OPTIONS;
 
+        // the allowable content types (seperated by pipe)
+        // if NULL, then content type must be application/json
+        const char* contentTypes;
+
+        // by default, we always accept Json content-type
+        bool acceptsJsonContent;
+
+        // if true, this node indicates all sub-endpoints fall under Rest API control
+        // useful for a framework that needs to check if a URL is a Rest API endpoint before accepting it
+        // such as Esp8266/32's WebServerHandler::canHandle() method
+        bool acceptAll;
+
+
         inline NodeData() : literals(nullptr), string(nullptr), numeric(nullptr), boolean(nullptr), wild(nullptr),
-                            GET(nullptr), POST(nullptr), PUT(nullptr), PATCH(nullptr), DELETE(nullptr), OPTIONS(nullptr)
+                            GET(nullptr), POST(nullptr), PUT(nullptr), PATCH(nullptr), DELETE(nullptr), OPTIONS(nullptr),
+                            contentTypes(nullptr), acceptsJsonContent(true), acceptAll(false)
         {}
+
+        ~NodeData() {
+            if(contentTypes) {
+                free(contentTypes);
+                contentTypes = nullptr;
+            }
+        }
 
         inline bool isSet(const HandlerType& h) const { return h != nullptr; }
 
@@ -85,6 +106,13 @@ namespace Rest {
                     if(!isSet(OPTIONS)) OPTIONS = handler;
                     break;
             }
+        }
+
+        bool checkContentType(const char* contentType) {
+            // todo: we should enhance the match algorithm to allow multiple contentType seperated by pipes
+            // we match either our specifically given contentType expression, or we default to matching Json content-type
+            return (contentTypes != nullptr && strcasecmp(contentTypes, contentType)==0)
+                || (acceptsJsonContent && strcasecmp("application/json", contentType)==0);
         }
     };
 
@@ -373,6 +401,52 @@ namespace Rest {
             }
         }
 
+        /// \brief Returns true if the contentType expression matches contentType set for this node
+        /// Typically Rest requests are of the application/json content-type but Restfully allows other contentTypes
+        /// if you specifically allow it using the allowContentTypes() method.
+        inline bool checkContentType(const char* contentTypeExppression) {
+            return _node->checkContentType(contentTypeExppression);
+        }
+
+        Node withContentType(const char* contentTypeExpression, bool acceptJson = true) {
+            /// @todo If we instead attached an externals/lambda and returned a new Node that checked contentType then we would have the ability to attach handlers matching different content-types to the same Endpoint URI
+            // ....actually you can generalize the when() where it matches anything in UriRequest given a match callback function
+            _node->contentTypes = strdup(contentTypeExpression);
+            _node->acceptsJsonContent = acceptJson;
+            return *this;
+        }
+
+        /// \brief Indicate that all remaining endpoint paths are considered in the Rest APIs namespace
+        /// If only checking that a URI matches a Rest endpoint you dont need to parse any further as you are indicating
+        /// any remaining URI would either match an Endpoint handler or should be considered 404. This allows some
+        /// WebServer embedded frameworks to do a quick check that a URI is a Rest API endpoint versus other handler such
+        /// as http. The quick check parses just enough to find a node marked accept() then returns that our Restfully
+        /// handler should be given the request. If later during resolving we dont find a handler then we will return 404
+        // to the caller.
+        Node accept(bool accept=true) {
+            if(_node)
+                _node->acceptAll = accept;
+            return *this;
+        }
+
+        /// \brief Check if a URL should be accepted by the Rest API
+        /// This function performs a check on a URI to see if it is within the Rest API namespace. It works most efficient
+        /// if you have used the accept() method on short base paths to indicate your Rest API URI namespaces and therefor
+        /// the queryAccept method can stop parsing the URI sooner in the parsing process. A URI that is accepted but later
+        /// doesnt resolve to a handler would be considered 404.
+        int queryAccept(HttpMethod method, const char* uri) {
+            // initialize new parser state
+            Request request(method, uri);
+            ParserState ev(request);
+            if (ev.state < 0)
+                return URL_FAIL_SYNTAX;
+            ev.mode = ParserState::queryAccept;
+            ev.request.args.reserve(_endpoints->maxUriArgs);
+
+            resolve(ev);
+            return ev.result;
+        }
+
         /// \brief Parse and add single Uri Endpoint expressions to our list of Endpoints
         Node on(const char *endpoint_expression) {
             short rs;
@@ -431,6 +505,10 @@ namespace Rest {
             // parse the input
             Parser parser(_node, _endpoints);
             if((ev.result=parser.parse( &ev )) >=UriMatched) {
+                // if we are just querying for acceptance, then return immediately
+                if(ev.mode == ParserState::queryAccept)
+                    return Handler();
+
                 // successfully resolved the endpoint
                 Handler handler = parser.context->handle(ev.request.method);
                 if(handler != nullptr)
@@ -447,8 +525,8 @@ namespace Rest {
                     Handler h = (*external)(ev);
 
                     // check result for error
-                    if(ev.request.status <0 || ev.request.status>299) {
-                        // handler reported error
+                    if((ev.request.status<0 && ev.request.status != UriUnsupportedContentType) || ev.request.status>299) {
+                        // handler reported error, so we must report it and not check other externals
                         ev.result = ev.request.status;
                         return Handler();
                     }

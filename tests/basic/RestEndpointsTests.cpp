@@ -357,3 +357,109 @@ TEST_CASE("Endpooints resolve curry with same endpoint type")
     REQUIRE (check_response(res.handler.handler, getbus));
     REQUIRE (res.status==Rest::UriMatched);
 }
+
+TEST_CASE("Endpoints accepts all /api requests", "[uri-accept]")
+{
+    Endpoints endpoints;
+    endpoints
+            .on("/api")
+            .accept()
+            .on("echo/:msg(string|integer)")
+            .GET(getbus);
+
+    SECTION("accepts /api") {
+        REQUIRE(endpoints.queryAccept(Rest::HttpGet, "/api") > 0);
+    }
+    SECTION("accepts /api/echo/johndoe") {
+        REQUIRE(endpoints.queryAccept(Rest::HttpGet, "/api/echo/johndoe") > 0);
+    }
+    SECTION("resolves /api/echo/johndoe") {
+        auto req = endpoints.resolve(Rest::HttpGet, "/api/echo/johndoe");
+        REQUIRE(req.status == Rest::UriMatched);
+    }
+
+    SECTION("accepts /api/ping/johndoe") {
+        REQUIRE(endpoints.queryAccept(Rest::HttpGet, "/api/ping/johndoe") > 0);
+    }
+    SECTION("does not resolve /api/ping/johndoe") {
+        auto req = endpoints.resolve(Rest::HttpGet, "/api/ping/johndoe");
+        REQUIRE(req.status == Rest::NoEndpoint);
+    }
+    SECTION("does not accept /ping/echo/johndoe") {
+        REQUIRE(endpoints.queryAccept(Rest::HttpGet, "/ping/echo/johndoe") < 0);
+    }
+}
+
+TEST_CASE("Endpoints accepts all /api/echo requests", "[uri-accept]")
+{
+    Endpoints endpoints;
+    endpoints
+            .on("/api/echo")
+//            .on("echo")
+            .accept()
+            .on("name/:msg(string|integer)")
+            .GET(getbus);
+
+    SECTION("accepts /api/echo") {
+        REQUIRE(endpoints.queryAccept(Rest::HttpGet, "/api/echo") > 0);
+    }
+    SECTION("accepts /api/echo/johndoe") {
+        REQUIRE(endpoints.queryAccept(Rest::HttpGet, "/api/echo/johndoe") > 0);
+    }
+    SECTION("resolves /api/echo/johndoe") {
+        auto req = endpoints.resolve(Rest::HttpGet, "/api/echo/name/johndoe");
+        REQUIRE(req.status == Rest::UriMatched);
+    }
+
+    SECTION("accepts /api/echo/johndoe") {
+        REQUIRE(endpoints.queryAccept(Rest::HttpGet, "/api/echo/johndoe") > 0);
+    }
+    SECTION("does not resolve /api/ping/johndoe") {
+        auto req = endpoints.resolve(Rest::HttpGet, "/api/ping/johndoe");
+        REQUIRE(req.status == Rest::NoEndpoint);
+    }
+}
+
+TEST_CASE("Endpoint accepts only yaml content-type", "[uri-content-type]") {
+    Endpoints endpoints;
+    endpoints
+            .on("/api/config")
+            .withContentType("application/x-yaml", false)
+            .on("cloud-init")
+            .GET(getbus);
+
+    SECTION("accepts application/x-yaml") {
+        Endpoints::Request req(Rest::HttpGet, "/api/config/cloud-init");
+        req.contentType = "application/x-yaml";
+        REQUIRE( endpoints.resolve(req) );
+        REQUIRE(req.status == Rest::UriMatched);
+    }
+    SECTION("doesnt accept application/json") {
+        Endpoints::Request req(Rest::HttpGet, "/api/config/cloud-init");
+        req.contentType = "application/json";
+        REQUIRE( ! endpoints.resolve(req) );
+        REQUIRE( req.status != Rest::UriMatched );
+    }
+}
+
+TEST_CASE("Endpoint accepts yaml or json content-type", "[uri-content-type]") {
+    Endpoints endpoints;
+    endpoints
+            .on("/api/config")
+            .withContentType("application/x-yaml")
+            .on("cloud-init")
+            .GET(getbus);
+
+    SECTION("accepts application/x-yaml") {
+        Endpoints::Request req(Rest::HttpGet, "/api/config/cloud-init");
+        req.contentType = "application/x-yaml";
+        REQUIRE( endpoints.resolve(req) );
+        REQUIRE(req.status == Rest::UriMatched);
+    }
+    SECTION("accepts application/json") {
+        Endpoints::Request req(Rest::HttpGet, "/api/config/cloud-init");
+        req.contentType = "application/json";
+        REQUIRE( endpoints.resolve(req) );
+        REQUIRE(req.status == Rest::UriMatched);
+    }
+}
