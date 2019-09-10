@@ -106,7 +106,6 @@ namespace Rest {
         class Request : public UriRequest {
         public:
             Handler handler;
-            // todo: possibly make this derived class contain the conversions from class instance to static?
 
             inline Request() : handler(nullptr) {}
             inline Request(HttpMethod _method, const char* _uri, int _status=0) : UriRequest(_method, _uri, _status), handler(nullptr) {}

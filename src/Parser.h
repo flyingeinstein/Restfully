@@ -12,25 +12,29 @@
 
 namespace Rest {
 
+    extern const char* ApplicationJsonMimeType;
+
     typedef enum {
         UriMatched                          = 1,
         UriMatchedWildcard                  = 2,
-        NoEndpoint                          = -1,
-        NoHandler                           = -2,
-        InvalidHandler                      = -3,
-        Duplicate                           = -4,
-        InvalidParameterType                = -5,
-        MissingParameter                    = -6,
-        URL_FAIL_AMBIGUOUS_PARAMETER        = -7,
-        URL_FAIL_EXPECTED_PATH_SEPARATOR    = -8,
-        URL_FAIL_EXPECTED_EOF               = -9,
-        URL_FAIL_INVALID_TYPE               = -10,
-        URL_FAIL_SYNTAX                     = -11,
-        URL_FAIL_INTERNAL                   = -15,
-        URL_FAIL_INTERNAL_BAD_STRING        = -16,
-        URL_FAIL_NULL_ROOT                  = -17,
-        URL_FAIL_EXPECTED_IDENTIFIER        = -18,
-        URL_FAIL_EXPECTED_STRING            = -19
+        UriAccepted                         = 3,
+        InvalidHandler                      = -402,
+        NoHandler                           = -403,
+        NoEndpoint                          = -404,
+        UriUnsupportedContentType           = -405,
+        Duplicate                           = -406,
+        InvalidParameterType                = -501,
+        MissingParameter                    = -502,
+        URL_FAIL_AMBIGUOUS_PARAMETER        = -503,
+        URL_FAIL_EXPECTED_PATH_SEPARATOR    = -504,
+        URL_FAIL_EXPECTED_EOF               = -505,
+        URL_FAIL_INVALID_TYPE               = -506,
+        URL_FAIL_SYNTAX                     = -507,
+        URL_FAIL_INTERNAL                   = -508,
+        URL_FAIL_INTERNAL_BAD_STRING        = -509,
+        URL_FAIL_NULL_ROOT                  = -510,
+        URL_FAIL_EXPECTED_IDENTIFIER        = -511,
+        URL_FAIL_EXPECTED_STRING            = -512
     } ParseResult;
 
     /// \brief Convert a return value to a string.

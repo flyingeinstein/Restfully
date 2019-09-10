@@ -39,6 +39,8 @@ namespace Rest {
 
     const Argument Argument::null;
 
+    const char* ApplicationJsonMimeType = "application/json";
+
 const char* uri_method_to_string(HttpMethod method) {
     switch(method) {
         case HttpGet: return "GET";
