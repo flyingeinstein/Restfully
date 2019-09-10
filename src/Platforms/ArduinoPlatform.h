@@ -80,36 +80,41 @@ namespace Rest {
 
             // the collection of Rest handlers
             Endpoints endpoints;
-            typename Endpoints::Request req;
+
+            Rest::HttpMethod TranslateHttpMethod(HTTPMethod requestMethod) {
+                // convert our Http method enumeration
+                switch(requestMethod) {
+                    case HTTP_GET: return HttpGet;
+                    case HTTP_POST: return HttpPost;
+                    case HTTP_PUT: return HttpPut;
+                    case HTTP_PATCH: return HttpPatch;
+                    case HTTP_DELETE: return HttpDelete;
+                    case HTTP_OPTIONS: return HttpOptions;
+                    default: return HttpMethodAny;
+                }
+            }
 
             virtual bool canHandle(HTTPMethod requestMethod, String uri) {
-                // convert our Http method enumeration
-                Rest::HttpMethod method;
-                switch(requestMethod) {
-                    case HTTP_ANY: method = HttpMethodAny; break;
-                    case HTTP_GET: method = HttpGet; break;
-                    case HTTP_POST: method = HttpPost; break;
-                    case HTTP_PUT: method = HttpPut; break;
-                    case HTTP_PATCH: method = HttpPatch; break;
-                    case HTTP_DELETE: method = HttpDelete; break;
-                    case HTTP_OPTIONS: method = HttpOptions; break;
-                    default: return false;
-                }
-
-                return (bool)(req = endpoints.resolve(method, uri.c_str()));
+                Rest::HttpMethod method = TranslateHttpMethod(requestMethod);
+                return endpoints.queryAccept(method, uri.c_str()) >0;
             }
 
             virtual bool handle(WebServerType &server, HTTPMethod requestMethod, String requestUri) {
-                if (req) {
-                    req.uri = requestUri.c_str();
+                Rest::HttpMethod method = TranslateHttpMethod(requestMethod);
+                typename Endpoints::Request req = typename Endpoints::Request(method, requestUri.c_str());
+
+                // add content-type header
+                req.contentType = server.hasHeader("content-type")
+                        ? server.header("content-type").c_str()
+                        : Rest::ApplicationJsonMimeType;
+
+                if (endpoints.resolve(req)) {
+                    // convert the Endpoints::Request (UriRequest) into a Rest Request object (with request/response text, etc)
                     RequestType request(server, req);
                     request.timestamp = millis();
 
-                    if(request.server.hasHeader("content-type"))
-                        request.contentType = request.server.header("content-type");
-
                     // check for POST data and parse if it exists
-                    if(request.contentType=="application/json" && server.hasArg("plain")) {
+                    if(request.contentType==Rest::ApplicationJsonMimeType && server.hasArg("plain")) {
                         DeserializationError error = deserializeJson(
                                 request.body,
                                 server.arg("plain")
@@ -117,7 +122,7 @@ namespace Rest {
                         if(error) {
                             // generate an error response
                             request.httpStatus = 400;
-                            request.server.send(
+                            server.send(
                                     400,              // Bad Request
                                     "text/plain",     // plain text error
                                     String("expected Json in POST data : ")+error.c_str()     // error string from json parse
@@ -146,15 +151,13 @@ namespace Rest {
                     // send output to server
                     String content;
                     serializeJson(request.response, content);
-                    server.send(request.httpStatus, "application/json", content);
-                    req = typename Endpoints::Request(); // clear request
+                    server.send(request.httpStatus, Rest::ApplicationJsonMimeType, content);
                     return true;
                 }
 
                 // handler or object not found
                 sendError(server, 404);
                 server.send(404, "text/plain", "Not found");
-                req = typename Endpoints::Request(); // clear request
                 return true;
             }
 
@@ -170,7 +173,7 @@ namespace Rest {
                 if (ep) {
                     RequestType request(parent);
 #if 1
-                    request.contentType = "application/json";
+                    request.contentType = Rest::ApplicationJsonMimeType;
                     request.timestamp = millis();
                     //request.args = request.args + parent.args;
 #elif 0
