@@ -96,6 +96,18 @@ TEST_CASE("Endpooints echo")
     REQUIRE (rr.response=="Hello Colin MacKenzie");
 }
 
+TEST_CASE("Endpoints on() starts with url argument")
+{
+    Endpoints endpoints;
+    endpoints
+            .on("/api/echo")
+            .on(":msg(string|integer)")     // starts with argument, this should be ok
+            .GET(getbus);
+
+    auto req = endpoints.resolve(Rest::HttpGet, "/api/echo/johndoe");
+    REQUIRE(req.status == Rest::UriMatched);
+}
+
 TEST_CASE("Endpooints including dots in path")
 {
     Endpoints endpoints;

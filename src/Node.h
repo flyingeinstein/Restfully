@@ -388,6 +388,8 @@ namespace Rest {
             // create new parser state
             ParserState ev( UriRequest(HttpMethodAny, endpoint_expression) );
             ev.mode = ParserState::expand;         // tell the parser we are adding this endpoint
+            ev.state = expectPathPartOrParam;      // expression may start with path or url argument
+                                                   // it cant start with / since we check for absolute URLs above
 
             // parse the Uri expression
             Parser parser(_node, _endpoints);
