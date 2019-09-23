@@ -194,10 +194,13 @@ namespace Rest {
 
                        ParserState rhs_request(lhs_request);
                        typename EP::Handler handler = rhs_node.resolve(rhs_request);
-                       return (handler!=nullptr)
-                            ? std::bind(handler, inst, std::placeholders::_1)    // todo: what if there is more than 1 argument in handler?
-                            : Handler();
-                       //return [&inst](RestRequest& rr) -> int { return inst.*h(rr); };
+                       if (handler!=nullptr) {
+                           lhs_request = rhs_request;
+                           // rebind the instance handler to provide a static call to parent
+                           // todo: what if there is more than 1 argument in handler?
+                           return std::bind(handler, inst, std::placeholders::_1);
+                       } else
+                           return handler;
                    }
             );
             return ep.getRoot();
@@ -215,9 +218,13 @@ namespace Rest {
 
                         ParserState rhs_request(lhs_request);
                         typename EP::Handler handler = rhs_node.resolve(rhs_request);
-                        return (handler!=nullptr)
-                               ? std::bind(handler, inst, std::placeholders::_1)    // todo: what if there is more than 1 argument in handler?
-                               : Handler();
+                        if (handler!=nullptr) {
+                            lhs_request = rhs_request;
+                            // rebind the instance handler to provide a static call to parent
+                            // todo: what if there is more than 1 argument in handler?
+                            return std::bind(handler, inst, std::placeholders::_1);
+                        } else
+                            return handler;
                     }
             );
 
@@ -246,7 +253,7 @@ namespace Rest {
                             // resolved an instance handler, now call the instance resolver to get an object instance (this pointer)
                             I& inst = resolver(rhs_request.request);
                             if(!rhs_request.request.isSuccessful() || &inst == nullptr ) {
-                                lhs_request.request.status = rhs_request.request.status;
+                                lhs_request = rhs_request;
                                 return Handler();   // failed to resolve due to instance callback
                             }
 
@@ -284,7 +291,7 @@ namespace Rest {
                             // resolved an instance handler, now call the instance resolver to get an object instance (this pointer)
                             I* inst = resolver(rhs_request.request);
                             if(inst == nullptr || !rhs_request.request.isSuccessful()) {
-                                lhs_request.request.status = rhs_request.request.status;
+                                lhs_request = rhs_request;
                                 return Handler();   // failed to resolve due to instance callback
                             }
 
@@ -322,7 +329,7 @@ namespace Rest {
                             // resolved an instance handler, now call the instance resolver to get an object instance (this pointer)
                             const I* inst = resolver(rhs_request.request);
                             if(inst == nullptr || !rhs_request.request.isSuccessful()) {
-                                lhs_request.request.status = rhs_request.request.status;
+                                lhs_request = rhs_request;
                                 return Handler();   // failed to resolve due to instance callback
                             }
 
@@ -351,7 +358,11 @@ namespace Rest {
                         ParserState rhs_request(lhs_request);
 
                         // try to resolve the rest of the endpoint Uri
-                        return rhs_node.resolve(rhs_request);
+                        auto handler = rhs_node.resolve(rhs_request);
+                        if(handler != nullptr) {
+                            lhs_request = rhs_request;
+                        }
+                        return handler;
                     }
             );
             return ep.getRoot();

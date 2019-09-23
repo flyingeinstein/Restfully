@@ -96,6 +96,31 @@ TEST_CASE("Endpooints echo")
     REQUIRE (rr.response=="Hello Colin MacKenzie");
 }
 
+TEST_CASE("Endpooints echo inside with()")
+{
+    Endpoints endpoints1;
+    Endpoints endpoints2;
+
+    // add an outer endpoints
+    endpoints1
+      .on("/api")
+      .with(endpoints2);
+
+    // add an inner endpoints with the echo handler
+    endpoints2
+      .on("echo/:msg(string)")
+      .GET(echo);
+
+    // we should be able to resolve the Echo handler through the first endpoints
+    Endpoints::Request res = endpoints1.resolve(Rest::HttpGet, "/api/echo/Colin MacKenzie");
+    REQUIRE (res.method==Rest::HttpGet);
+    REQUIRE (res.status==Rest::UriMatched);
+
+    RestRequest rr(res);
+    REQUIRE (res.handler(rr)==200);
+    REQUIRE (rr.response=="Hello Colin MacKenzie");
+}
+
 TEST_CASE("Endpoints on() starts with url argument")
 {
     Endpoints endpoints;
