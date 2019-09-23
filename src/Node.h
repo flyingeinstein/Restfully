@@ -200,7 +200,7 @@ namespace Rest {
                            // todo: what if there is more than 1 argument in handler?
                            return std::bind(handler, inst, std::placeholders::_1);
                        } else
-                           return handler;
+                           return Handler();
                    }
             );
             return ep.getRoot();
@@ -224,7 +224,7 @@ namespace Rest {
                             // todo: what if there is more than 1 argument in handler?
                             return std::bind(handler, inst, std::placeholders::_1);
                         } else
-                            return handler;
+                            return Handler();
                     }
             );
 
