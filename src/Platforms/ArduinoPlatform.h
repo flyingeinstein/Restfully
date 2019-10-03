@@ -112,6 +112,7 @@ namespace Rest {
                     // convert the Endpoints::Request (UriRequest) into a Rest Request object (with request/response text, etc)
                     RequestType request(server, req);
                     request.timestamp = millis();
+                    request.contentType = req.contentType;
 
                     // check for POST data and parse if it exists
                     if(request.contentType==Rest::ApplicationJsonMimeType && server.hasArg("plain")) {
