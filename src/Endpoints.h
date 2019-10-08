@@ -209,5 +209,11 @@ public:
     size_t maxUriArgs;       // maximum number of embedded arguments on any one endpoint expression
 };
 
+// handles Endpoints using function as direct handler
+// wraps the direct handler in a std::function object
+template<typename TReturn, typename ... Args>
+class Endpoints<TReturn(Args...)> : public Endpoints< std::function< TReturn(Args...) > >
+{
+};
 
 } // ns:Rest
