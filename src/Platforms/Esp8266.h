@@ -18,8 +18,8 @@ namespace Rest {
 
             using Esp8266Config = Generics::Config<
                     ::ESP8266WebServer,             // using the Arduino Esp8266 based web server
-                    ArduinoJson::Request,           // using a Request/Response structure based on the ArduinoJson dependancy
-                    ArduinoJson::Response,
+                    Arduino::Request,           // using a Request/Response structure based on the Arduino dependancy
+                    Arduino::Response,
                     ::RequestHandler                // Arduino's generic RequestHandler class
             >;
         }

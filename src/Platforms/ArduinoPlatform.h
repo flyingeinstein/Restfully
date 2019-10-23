@@ -27,7 +27,7 @@ namespace Rest {
         }
     };
 
-    namespace ArduinoJson {
+    namespace Arduino {
         class Request {
         public:
             Request() {
@@ -211,13 +211,14 @@ namespace Rest {
                     ResponseFragment
             >;
 
-            using Endpoints = Rest::Endpoints<Rest::Handler<Request> >;
-
             using WebServerRequestHandler = Rest::Generics::WebServerRequestHandler<
                     WebServer,
                     Request,
                     typename TConfig::WebServerBaseRequestHandler
             >;
+
+            using HandlerType = typename WebServerRequestHandler::HandlerType;
+            using Endpoints = typename WebServerRequestHandler::Endpoints;
         };
 
     }
