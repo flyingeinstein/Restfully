@@ -13,23 +13,22 @@
 
 namespace Rest {
 
-    template<class TNode> struct NodeLink {
-        TNode* nextNode;
-    };
-
-    template<class THandler, class TLiteral = Rest::Literal, class TArgumentType = Rest::Type>
+    template<class THandler>
     class NodeData {
     public:
         /// links to other nodes are of this type. These links are used in Literals, Arguments and Externals to traverse
         /// to the next node.
-        using Link = NodeLink<NodeData>;
+        class Link {
+        public:
+            NodeData* nextNode;
+        };
 
         /// Construct a type for a linked list of Literals that are non-argument part of a URI.
         /// If a literal is matched then parsing follows the NodeLink to the next part of the path matching.
-        using LiteralType = LinkedMixin<TLiteral, Link >;
+        using LiteralType = LinkedMixin<Literal, Link >;
 
         // Custruct a type is an argument of a specific type
-        using ArgumentType = Mixin<TArgumentType, Link >;
+        using ArgumentType = Mixin<Type, Link >;
         using HandlerType = THandler;
 
         using External = Linked< std::function<THandler(ParserState&)> >;
