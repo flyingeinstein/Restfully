@@ -27,16 +27,15 @@ namespace Rest {
 /// compiled byte-code machine can optimally compare and match a request Uri to an
 /// Endpoint specification.
 template<
-        class THandler = std::function<short(void)>,
-        class TNodeData = Rest::NodeData<THandler>
+        class THandler
 >
 class Endpoints {
 public:
     using Handler = THandler;
-    using NodeData = TNodeData;
+    using NodeData = Rest::NodeData<THandler>;
 
-    using Literal = typename TNodeData::LiteralType;
-    using ArgumentType = typename TNodeData::ArgumentType;
+    using Literal = typename NodeData::LiteralType;
+    using ArgumentType = typename NodeData::ArgumentType;
     using Argument = Rest::Argument;
     using Node = Rest::Node< Endpoints >;
 
@@ -156,7 +155,7 @@ public:
     // todo: hide the Endpoints argument, node and literal building methods behind a Builder interface.
 
     Node newNode() {
-        return Node(this, pool.make<TNodeData>() );
+        return Node(this, pool.make<NodeData>() );
     }
 
     ArgumentType* newArgumentType(int literal_id, unsigned short typemask) {
@@ -167,7 +166,7 @@ public:
         return literals_index.find_nocase(word);
     }
 
-    Literal* newLiteral(TNodeData* ep, Literal* literal)
+    Literal* newLiteral(NodeData* ep, Literal* literal)
     {
         Literal* _new = pool.make<Literal>(*literal);
         if(ep->literals == nullptr) {
@@ -182,7 +181,7 @@ public:
         return _new;
     }
 
-    Literal* newLiteralString(TNodeData* ep, const char* literal_value)
+    Literal* newLiteralString(NodeData* ep, const char* literal_value)
     {
         Literal lit;
         lit.isNumeric = false;
@@ -191,7 +190,7 @@ public:
         return newLiteral(ep, &lit);
     }
 
-    Literal* newLiteralNumber(TNodeData* ep, ssize_t literal_value)
+    Literal* newLiteralNumber(NodeData* ep, ssize_t literal_value)
     {
         Literal lit;
         lit.isNumeric = true;
@@ -203,7 +202,7 @@ public:
 public:
     // stores the expression as a chain of endpoint nodes
     PagedPool pool;
-    TNodeData *ep_head;
+    NodeData *ep_head;
 
     // some statistics on the endpoints
     size_t maxUriArgs;       // maximum number of embedded arguments on any one endpoint expression
