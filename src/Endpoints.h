@@ -41,11 +41,8 @@ public:
 
     using HandlerTraits = Rest::function_traits<THandler>;
 
-    template<class Klass>
-    using ClassEndpoints = Endpoints< typename HandlerTraits::template CVFunctionType<Klass> >;
-
-    template<class Klass>
-    using ClassConstEndpoints = Endpoints< typename HandlerTraits::template CVConstFunctionType<Klass> >;
+    template<class K> using ClassConstEndpoints = Rest::Endpoints< typename Rest::KlassHandler<K, THandler>::ConstType >;
+    template<class K> using ClassEndpoints = Rest::Endpoints< typename Rest::KlassHandler<K, THandler>::Type >;
 
 public:
     using Request = typename Node::Request;

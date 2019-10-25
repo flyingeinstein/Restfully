@@ -323,6 +323,71 @@ struct function_traits<std::_Binder<std::_Unforced, ReturnTypeT(__cdecl &)(Args 
     {};
 
 #endif
+
+
+    /*
+     * StaticHandler<>
+     * Converts a given handler, specifically CV-type (class) method handlers into thier static non-class function types
+     */
+    template<typename R, typename ... Args>
+    struct StaticHandler {
+        using Type = R(Args ...);
+        using Function = std::function< Type >;
+    };
+
+    template<typename R, typename ... Args>
+    struct StaticHandler<R(Args...)> : StaticHandler<R, Args...> {};
+
+    template<typename ... Args>
+    struct StaticHandler<Rest::Handler< int(Args...) > > {
+        using Type = Rest::Handler<int(Args ...)>;
+        using Function = std::function< Type >;
+    };
+
+    template<typename R, typename C, typename ... Args>
+    struct StaticHandler<R(C::*)(Args...)> : StaticHandler<R, Args...> {
+        using Type = int(C::*)(Args...);
+
+        template<class I>
+        static std::function< int(Args...) > bind(typename std::function<int(C::*)(Args...)>& handler, I& inst) {
+            return std::bind(handler, inst, std::placeholders::_1);
+        }
+
+        template<class I>
+        static std::function< int(Args...) > bind(Type& handler, I& inst) {
+            return std::bind(handler, inst, std::placeholders::_1);
+        }
+    };
+
+    template<typename C, typename ... Args>
+    struct StaticHandler<Rest::Handler< int(C::*)(Args...) > > : StaticHandler< Rest::Handler<int, Args...> > {
+        template<class I>
+        static Rest::Handler< int(Args...)> bind(typename Rest::Handler< int(C::*)(Args...) >& handler, I& inst) {
+            return std::bind(handler.handler, inst, std::placeholders::_1);
+        }
+    };
+
+
+
+    /*
+       * StaticHandler<>
+       * Converts a given handler, specifically CV-type (class) method handlers into thier static non-class function types
+       */
+    template<class K, class H>
+    struct KlassHandler {
+        using HandlerTraits = Rest::function_traits<H>;
+        using Type = typename HandlerTraits::template CVFunctionType<K>;
+        using ConstType = typename HandlerTraits::template CVConstFunctionType<K>;
+    };
+
+    template<class K, class H>
+    struct KlassHandler< K, Rest::Handler<H> > {
+        using HandlerTraits = Rest::function_traits< Rest::Handler<H> >;
+        using Type = Rest::Handler< typename HandlerTraits::template CVFunctionType<K> >;
+        using ConstType = Rest::Handler< typename HandlerTraits::template CVConstFunctionType<K> >;
+    };
+
+
 } // ns: Rest
 
 #endif //RESTFULLY_FUNCTION_TRAITS_H

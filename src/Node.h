@@ -221,7 +221,7 @@ namespace Rest {
                             lhs_request = rhs_request;
                             // rebind the instance handler to provide a static call to parent
                             // todo: what if there is more than 1 argument in handler?
-                            return std::bind(handler, inst, std::placeholders::_1);
+                            return StaticHandler<typename EP::Handler>::bind(handler, inst);
                         } else
                             return Handler();
                     }
@@ -257,8 +257,7 @@ namespace Rest {
                             }
 
                             // now bind the instance to the handler thus creating a static invokable function
-                            return std::bind(handler, inst,
-                                      std::placeholders::_1);    // todo: what if there is more than 1 argument in handler?
+                            return StaticHandler<typename EP::Handler>::bind(handler, inst);
                         }
                         else return Handler();  // external did not resolve handler
                     }
@@ -295,8 +294,7 @@ namespace Rest {
                             }
 
                             // now bind the instance to the handler thus creating a static invokable function
-                            return std::bind(handler, inst,
-                                             std::placeholders::_1);    // todo: what if there is more than 1 argument in handler?
+                            return StaticHandler<typename EP::Handler>::bind(handler, inst);
                         }
                         else return Handler();  // external did not resolve handler
                     }
@@ -333,8 +331,7 @@ namespace Rest {
                             }
 
                             // now bind the instance to the handler thus creating a static invokable function
-                            return std::bind(handler, inst,
-                                             std::placeholders::_1);    // todo: what if there is more than 1 argument in handler?
+                            return StaticHandler<typename EP::Handler>::bind(handler, inst);
                         }
                         else return Handler();  // external did not resolve handler
                     }
