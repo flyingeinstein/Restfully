@@ -367,6 +367,14 @@ struct function_traits<std::_Binder<std::_Unforced, ReturnTypeT(__cdecl &)(Args 
         }
     };
 
+    template<typename C, typename ... Args>
+    struct StaticHandler<Rest::Handler< int(C::*)(Args...)const > > : StaticHandler< Rest::Handler<int, Args...> > {
+        template<class I>
+        static Rest::Handler< int(Args...)const > bind(typename Rest::Handler< int(C::*)(Args...)const >& handler, I& inst) {
+            return std::bind(handler.handler, inst, std::placeholders::_1);
+        }
+    };
+
 
 
     /*
