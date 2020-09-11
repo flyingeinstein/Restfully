@@ -89,6 +89,19 @@ class Token {
       clear();
     }
 
+    inline bool operator==(const char* value) const {
+        return (id == TID_STRING || id == TID_IDENTIFIER) && strcmp(s, value) == 0;
+    }
+
+    inline bool operator==(int value) const { return (id == TID_INTEGER) && i == value; }
+    //inline bool operator==(unsigned int value) const { return (id == TID_INTEGER) && i == value; }
+    inline bool operator==(long value) const { return (id == TID_INTEGER) && i == value; }
+    //inline bool operator==(unsigned long value) const { return (id == TID_INTEGER) && i == value; }
+
+    inline bool operator==(double value) const {
+        return (id == TID_FLOAT) && d == value;
+    }
+
     /// \brief clears the token and frees memory if token was a string
     void clear()
     {

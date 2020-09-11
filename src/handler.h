@@ -12,22 +12,6 @@
 
 namespace Rest {
 
-    // indicates a default Rest handler that matches any http verb request
-// this enum belongs with the web servers HTTP_GET, HTTP_POST, HTTP_xxx constants
-    typedef enum {
-        HttpMethodAny = 0,
-        HttpGet,
-        HttpPost,
-        HttpPut,
-        HttpPatch,
-        HttpDelete,
-        HttpOptions,
-    } HttpMethod;
-
-/// \brief Convert a http method enum value to a string.
-    const char* uri_method_to_string(HttpMethod method);
-
-
     template<class... TArgs>
     class Handler {
     public:

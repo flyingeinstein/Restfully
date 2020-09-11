@@ -398,6 +398,12 @@ namespace Rest {
                 _node->attach(method, handler);
         }
 
+        using ConstHandler = typename std::add_const<Handler>::type;
+        inline void attach(HttpMethod method, ConstHandler handler ) {
+            if(_node!= nullptr)
+                _node->attach(method, (Handler)handler);
+        }
+
         template<class HandlerT>
         void attach(const char* expr, HttpMethod method, HandlerT handler ) {
             if (_node != nullptr) {
@@ -451,7 +457,7 @@ namespace Rest {
             ev.request.args.reserve(_endpoints->maxUriArgs);
 
             resolve(ev);
-            return ev.result;
+            return ev.status;
         }
 
         /// \brief Parse and add single Uri Endpoint expressions to our list of Endpoints
@@ -504,14 +510,14 @@ namespace Rest {
             Handler h = resolve(ev);
             request.args = ev.request.args; // todo: can we get rid of this Args copy?
             request.handler = h;
-            request.status = ev.result;
-            return ev.result >=0;
+            request.status = ev.status;
+            return ev.status >= 0;
         }
 
         Handler resolve(ParserState& ev) {
             // parse the input
             Parser parser(_node, _endpoints);
-            if((ev.result=parser.parse( &ev )) >=UriMatched) {
+            if((ev.status=parser.parse(&ev )) >= UriMatched) {
                 // if we are just querying for acceptance, then return immediately
                 if(ev.mode == ParserState::queryAccept)
                     return Handler();
@@ -521,10 +527,10 @@ namespace Rest {
                 if(handler != nullptr)
                     return handler;
 
-                ev.result = NoHandler;
+                ev.status = NoHandler;
             }
 
-            if((ev.result == NoEndpoint || ev.result == NoHandler) && parser.context->externals != nullptr) {
+            if((ev.status == NoEndpoint || ev.status == NoHandler) && parser.context->externals != nullptr) {
                 // try any externals
                 auto external = parser.context->externals;
                 while(external != nullptr) {
@@ -534,13 +540,13 @@ namespace Rest {
                     // check result for error
                     if((ev.request.status<0 && ev.request.status != UriUnsupportedContentType) || ev.request.status>299) {
                         // handler reported error, so we must report it and not check other externals
-                        ev.result = ev.request.status;
+                        ev.status = ev.request.status;
                         return Handler();
                     }
 
                     // if we have a handler then return success
                     if(h!=nullptr) {
-                        ev.result = UriMatched;
+                        ev.status = UriMatched;
                         return h;
                     }
 
