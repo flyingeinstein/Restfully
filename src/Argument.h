@@ -9,6 +9,7 @@
 #include <cassert>
 
 #include "StringPool.h"
+#include "Token.h"
 
 #if defined(ARDUINO)
 #include <Arduino.h>
@@ -34,7 +35,7 @@ namespace Rest {
     class Type
     {
     public:
-        inline Type() : name_index(0), type_mask(0) {}
+        inline Type() : name_index(-1), type_mask(0) {}
         Type(const char* _name, unsigned short _typemask)
                 : name_index(literals_index.insert_distinct(_name, strcasecmp)),
                   type_mask(_typemask) {
@@ -45,7 +46,7 @@ namespace Rest {
                   type_mask(_typemask) {
         }
 
-        inline const char* name() const { return literals_index[name_index]; }
+        inline const char* name() const { return (name_index >= 0) ?  literals_index[name_index] : nullptr; }
 
         inline unsigned short typemask() const { return type_mask; }
         inline bool supports(unsigned short mask) const { return (mask & type_mask)==mask; }
@@ -75,6 +76,18 @@ namespace Rest {
                 ul = copy.ul;
         }
 
+        Argument(Argument&& move) : Type(move), type(move.type), ul(move.ul) {
+            if(type == ARG_MASK_STRING) {
+                s = move.s;
+                move.s = nullptr;
+            } else if((type & ARG_MASK_REAL) >0)
+                d = move.d;
+            else
+                ul = move.ul;
+            move.type = 0;
+            move.l = 0;
+        }
+
         Argument(const Type& arg) : Type(arg), type(0), ul(0) {}
 
         Argument(const Type& arg, long _l) : Type(arg), type(ARG_MASK_INTEGER), l(_l) {}
@@ -83,13 +96,38 @@ namespace Rest {
         Argument(const Type& arg, bool _b) : Type(arg), type(ARG_MASK_BOOLEAN), b(_b) {}
         Argument(const Type& arg, const char* _s) : Type(arg), type(ARG_MASK_STRING), s(strdup(_s)) {}
 
-        virtual ~Argument() { if(s && type == ARG_MASK_STRING) ::free(s); }
+        Argument(const Type& arg, const Token& _t) : Type(arg), l(0) {
+            switch(_t.id) {
+                case TID_STRING:
+                case TID_IDENTIFIER:
+                    type = ARG_MASK_STRING;
+                    s = strdup(_t.s);
+                    break;
+                case TID_INTEGER:
+                    type = ARG_MASK_INTEGER;
+                    l = _t.i;
+                    break;
+                case TID_FLOAT:
+                    type = ARG_MASK_REAL;
+                    d = _t.d;
+                    break;
+                case TID_BOOL:
+                    type = ARG_MASK_BOOLEAN;
+                    b = _t.i > 0;
+                    break;
+            }
+        }
+
+        virtual ~Argument() {
+            if(s && type == ARG_MASK_STRING)
+                ::free(s);
+        }
 
         Argument& operator=(const Argument& copy) {
             Type::operator=(copy);
             type = copy.type;
             if(type == ARG_MASK_STRING)
-                s = strdup(copy.s);
+                s = copy.s;
             else if((type & ARG_MASK_REAL) >0)
                 d = copy.d;
             else
@@ -111,12 +149,20 @@ namespace Rest {
             return (type == ARG_MASK_STRING) && (strcmp(s, text)==0);
         }
 
+        bool operator==(int n) const {
+            return (type & ARG_MASK_INTEGER) && (l==n);
+        }
+
+        bool operator==(unsigned int n) const {
+            return (type & ARG_MASK_INTEGER) && (l==n);
+        }
+
         bool operator==(long n) const {
-            return (type == ARG_MASK_INTEGER) && (l==n);
+            return (type & ARG_MASK_INTEGER) && (l==n);
         }
 
         bool operator==(unsigned long n) const {
-            return (type == ARG_MASK_UINTEGER) && (ul==n);
+            return (type & ARG_MASK_UINTEGER) && (ul==n);
         }
 
         bool operator==(double n) const {
@@ -196,153 +242,5 @@ namespace Rest {
     public:
         static const Argument null;
     };
-
-    class Arguments {
-        using _size_t = short;
-
-    public:
-        Arguments()
-            : args(nullptr), _capacity(0), _count(0)
-        {}
-
-        Arguments(_size_t _capacity)
-            : args(nullptr), _capacity(0), _count(0)
-        {
-            alloc(_capacity);
-        }
-
-        Arguments(Argument* _args, _size_t n)
-                : args(nullptr), _capacity(0), _count(0)
-        {
-            copy(_args, _args + n);
-        }
-
-        Arguments(Argument* _args, _size_t n, _size_t _capacity)
-                : args(nullptr), _capacity(0), _count(0)
-        {
-            if(_capacity<n) _capacity = n;
-            alloc(_capacity);
-            copy(_args, _args + n);
-        }
-
-        Arguments(const Arguments& _copy)
-            : args(nullptr), _capacity(0), _count(0)
-        {
-            alloc(_copy._capacity);
-            copy(_copy.args, _copy.args + _copy._count);
-        }
-
-        virtual ~Arguments() { free(); }
-
-        inline Arguments& operator=(const Arguments& _copy) {
-            free();
-            alloc(_copy._capacity);
-            copy(_copy.args, _copy.args + _copy._count);
-            return *this;
-        }
-
-        Arguments operator+(const Arguments& rhs) {
-            Arguments a(_count + rhs._count);
-            a.copy(args, args + _count);                         // left
-            a.copy(rhs.args, rhs.args + rhs._count, a._count);    // right
-            return a;
-        }
-
-        /*Arguments concat(const Argument* _begin, const Argument* _end) {
-            decltype(nargs) i;
-            size_t cnt = _end - _begin;
-            Arguments a(nargs + cnt);
-            for(i=0; i<nargs; i++)
-                a.args[i] = args[i];
-            while(_begin < _end)
-                a.args[i++] = *_begin++;
-            return a;
-        }*/
-
-        const Argument& operator[](int idx) const {
-            return (idx<_count)
-                   ? args[idx]
-                   : Argument::null;
-        }
-
-        const Argument& operator[](const char* _name) const {
-            for(decltype(_count) i=0; i<_count; i++) {
-                if (strcmp(_name, args[i].name()) == 0)
-                    return args[i];
-            }
-            return Argument::null;
-        }
-
-        Argument& add(Type& t) {
-            // ensure we have room to add
-            if(_count >= _capacity)
-                alloc(_capacity+1);
-            assert(_count < _capacity);
-
-            // add the argument
-            Argument* arg = new (&args[_count++]) Argument(t);    // placement copy constructor
-            assert(arg);
-            return *arg;
-        }
-
-        Argument& add(const Argument& t) {
-            // ensure we have room to add
-            if(_count >= _capacity)
-                alloc(_capacity+1);
-            assert(_count < _capacity);
-
-            // add the argument
-            Argument* arg = new (&args[_count++]) Argument(t);    // placement copy constructor
-            assert(arg);
-            return *arg;
-        }
-
-        inline void reserve(_size_t _count) { alloc(_count); }
-
-        inline _size_t count() const { return _count; }
-
-        inline _size_t capacity() const { return _capacity; }
-
-    protected:
-        Argument* args;
-        _size_t _capacity;
-        _size_t _count;
-
-        void alloc(_size_t _count) {
-            if(_count ==0) {
-                // just free
-                free();
-            } else if(_count != _capacity) {
-                _capacity = _count;
-                args = (args != nullptr)
-                    ? (Argument*)realloc(args, _capacity * sizeof(Argument))
-                    : (Argument*)calloc(_capacity, sizeof(Argument));
-            }
-        }
-
-        void free() {
-            if(args) {
-                //for(Argument *a = args, *_a=args+nargs; a < _a; a++)
-                //    a->~Argument();
-                ::free(args);
-                args = nullptr;
-                _capacity = 0;
-                _count = 0;
-            }
-        }
-
-        void copy(Argument* begin, Argument* end, _size_t dest_index=0) {
-            _size_t n = end - begin;
-            if(_capacity < n)
-                alloc( n );
-
-            Argument* dest = args + dest_index;
-            while(begin < end) {
-                new(dest++) Argument(*begin++);    // placement copy constructor
-                _count++;
-            }
-        }
-    };
-
 
 }; // ns: Rest

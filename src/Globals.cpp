@@ -2,7 +2,7 @@
 // Created by guru on 9/10/20.
 //
 #include "StringPool.h"
-
+#include "Argument.h"
 
 namespace Rest {
 
@@ -11,6 +11,6 @@ namespace Rest {
 
     const char *ApplicationJsonMimeType = "application/json";
 
-    //const Argument Argument::null;
+    const Argument Argument::null;
 }
 

@@ -24,8 +24,8 @@
 
 // String token IDs
 // the following token types allocate memory for string tokens and so must be freed
-#define TID_ERROR                500
-#define TID_STRING               501
+#define TID_STRING               500        // must stay as first
+#define TID_ERROR                501
 #define TID_IDENTIFIER           502
 
 
@@ -73,6 +73,8 @@ class Token {
     }
 
     Token& operator=(const Token& copy) {
+      if(this == &copy) return *this;   // self-assignment check
+      clear();
       id = copy.id;
       i = copy.i;
       d = copy.d;
@@ -183,6 +185,8 @@ class Token {
     inline bool is(short _id, Targs... args) const {
       return id == _id || is(args...);
     }
+
+    inline bool isString() const { return id >= 500; }
 
     int isOneOf(std::initializer_list<const char*> enum_values, bool case_insensitive = true) {
       if (id <= 500)

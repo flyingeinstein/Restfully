@@ -8,6 +8,7 @@
 //#include "handler.h"
 #include "UriRequest.h"
 #include "Exception.h"
+#include "Argument.h"
 
 #include <functional>
 
@@ -105,6 +106,8 @@ namespace Rest {
         // parse result
         int status;
 
+        // indicates type information for this node
+        Type typeinfo;
 
     public:
         Parser()
@@ -121,6 +124,18 @@ namespace Rest {
         virtual void abort(int code) { status = code; }
 
         inline bool isSuccessful() const { return status == 0 || (status >= 200 && status < 300); }
+
+
+        Argument operator[](const char* argname) const {
+            auto name = typeinfo.name();
+            if(name && strcmp(name, argname)==0) {
+                Token t = _request->words[token];
+                return Argument(typeinfo, t);
+            }
+            return _parent
+                ? _parent->operator[](argname)
+                : Argument::null;
+        }
 
         Parser operator/(const char* input) {
             if(status != 0) return *this;
@@ -180,6 +195,18 @@ namespace Rest {
             return Parser(_request, *this, token, NoHandler);
         }
 
+        Parser operator/(Type arg) {
+            if (status != 0) return *this;
+
+            Token t = _request->words[token];
+            if(typeMatch(t.id, arg.typemask())) {
+                // matched as argument
+                typeinfo = arg;
+                return Parser(_request, *this, token + 1, 0);
+            }
+            return Parser(_request, *this, token, NoHandler);
+        }
+
         Parser operator/(Handler handler) {
             if (status != 0) return *this;
             if (handler.matches(*_request))
@@ -195,10 +222,29 @@ namespace Rest {
             return target.delegate(next);
         }
 
+
     protected:
         Parser(UriRequest* request, Parser& parent, int tokenOrdinal, int _result)
                 : _request(request), _parent(&parent), token(tokenOrdinal), status(_result)
         {
+        }
+
+        static bool typeMatch(short tokenType, short argType) {
+            switch(argType) {
+                case ARG_MASK_UNSIGNED:
+                case ARG_MASK_UINTEGER:
+                case ARG_MASK_NUMBER:
+                case ARG_MASK_INTEGER:
+                    return (tokenType & TID_INTEGER) > 0;
+                case ARG_MASK_REAL:
+                    return (tokenType & TID_INTEGER) > 0;
+                case ARG_MASK_BOOLEAN:
+                    return (tokenType & TID_BOOL) > 0;
+                case ARG_MASK_STRING:
+                    return tokenType >= TID_STRING;
+                default:
+                    return false;
+            }
         }
     };
 }

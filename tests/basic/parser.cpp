@@ -199,6 +199,35 @@ TEST_CASE("match Uri using delegation", "Parser") {
     REQUIRE(echo.name == "john.doe");
 }
 
+TEST_CASE("matched Uri with Integer Argument", "Parser") {
+    Rest::UriRequest request(Rest::HttpGet, "/api/dev/6/echo/john.doe");
+    Rest::Endpoint root(request);
+    bool hit = false;
+    std::string name = "jane";
+    auto good = root / "api" / "dev" / Rest::Type("devid", ARG_MASK_INTEGER) / "echo" / &name / Rest::GET([&]() { hit = true; return 200; });
+    auto devid = good["devid"];
+    REQUIRE(good.status == 200);
+    REQUIRE(devid.isInteger());
+    REQUIRE(devid == 6);
+    REQUIRE(name == "john.doe");
+    REQUIRE(hit);
+}
+
+TEST_CASE("matched Uri with String Argument", "Parser") {
+    Rest::UriRequest request(Rest::HttpGet, "/api/dev/6/echo/john.doe");
+    Rest::Endpoint root(request);
+    bool hit = false;
+    int id = 0;
+    auto good = root / "api" / "dev" / &id / "echo" / Rest::Type("name", ARG_MASK_STRING) / Rest::GET([&]() { hit = true; return 200; });
+    auto name = good["name"];
+    REQUIRE(good.status == 200);
+    REQUIRE(name.isString());
+    REQUIRE(name == "john.doe");
+    REQUIRE(id == 6);
+    REQUIRE(hit);
+}
+
+
 #if 0
     // each parser function returns an iterator into the parsing, therefor parsing can be re-continued
     // the parser itself would be an iterator then right?
