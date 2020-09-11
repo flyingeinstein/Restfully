@@ -7,7 +7,6 @@
 
 #pragma once
 
-#include "Argument.h"
 #include "Token.h"
 
 #include <vector>
@@ -37,13 +36,11 @@ namespace Rest {
 
     class UriRequest {
     public:
-        HttpMethod method;
-        const char *contentType;
+        HttpMethod method;              // HTTP Request method: GET, POST, PUT, PATCH, DELETE, OPTIONS, etc
+        const char *contentType;        // MIME content-type, typically application/json for Rest services
+        std::vector<Token> words;       // parsed list of symbols in the Uri
 
-        // parsed list of symbols in the Uri
-        std::vector<Token> words;
-
-
+    public:
         inline UriRequest() : method(HttpMethodAny), contentType(ApplicationJsonMimeType){}
 
         UriRequest(HttpMethod _method, const char *_uri);
