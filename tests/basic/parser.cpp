@@ -9,17 +9,17 @@
 #include <iostream>
 #include <map>
 
-#include <Parser.h>
+#include <Restfully.h>
 
 
 TEST_CASE("parses 3 alpha terms", "Parser") {
     Rest::UriRequest request(Rest::HttpGet, "/api/dev/echo");
-    Rest::Parser parser(request);
+    Rest::Endpoint root(request);
 
     std::string hello_msg = "Greetings!";
 
-    auto good = parser / "api" / "dev" / "echo";
-    auto bad = parser / "api" / "dev" / 1;
+    auto good = root / "api" / "dev" / "echo";
+    auto bad = root / "api" / "dev" / 1;
 
     REQUIRE(good.status == 0);
     REQUIRE_FALSE(bad.status == 0);
@@ -27,26 +27,26 @@ TEST_CASE("parses 3 alpha terms", "Parser") {
 
 TEST_CASE("parses a numeric path", "Parser") {
     Rest::UriRequest request(Rest::HttpGet, "/api/dev/1/echo");
-    Rest::Parser parser(request);
-    auto good = parser / "api" / "dev" / 1;
+    Rest::Endpoint root(request);
+    auto good = root / "api" / "dev" / 1;
     REQUIRE(good.status == 0);
 }
 
 TEST_CASE("parses a direct numeric argument", "Parser") {
     Rest::UriRequest request(Rest::HttpGet, "/api/dev/6/echo");
-    Rest::Parser parser(request);
+    Rest::Endpoint root(request);
     int id = 0;
-    auto good = parser / "api" / "dev" / &id;
+    auto good = root / "api" / "dev" / &id;
     REQUIRE(good.status == 0);
     REQUIRE(id == 6);
 }
 
 TEST_CASE("parses a direct string argument", "Parser") {
     Rest::UriRequest request(Rest::HttpGet, "/api/dev/6/echo/john.doe");
-    Rest::Parser parser(request);
+    Rest::Endpoint root(request);
     int id = 0;
     std::string name = "jane";
-    auto good = parser / "api" / "dev" / &id / "echo" / &name;
+    auto good = root / "api" / "dev" / &id / "echo" / &name;
     REQUIRE(good.status == 0);
     REQUIRE(id == 6);
     REQUIRE(name == "john.doe");
@@ -54,10 +54,10 @@ TEST_CASE("parses a direct string argument", "Parser") {
 
 TEST_CASE("mismatched Uri does not fill direct arguments", "Parser") {
     Rest::UriRequest request(Rest::HttpGet, "/api/dev/6/echo/john.doe");
-    Rest::Parser parser(request);
+    Rest::Endpoint root(request);
     int id = 0;
     std::string name = "jane";
-    auto bad = parser / "api" / "device" / &id / "echo" / &name;
+    auto bad = root / "api" / "device" / &id / "echo" / &name;
     REQUIRE(bad.status != 0);
     REQUIRE(id != 6);
     REQUIRE(name == "jane");
@@ -71,10 +71,10 @@ TEST_CASE("parsing logic with two branches", "Parser") {
 
     auto api_eval = [&id, &name, &echo_greeted, &exported_config](const char* req_uri) {
         Rest::UriRequest request(Rest::HttpGet, req_uri);
-        Rest::Parser parser(request);
+        Rest::Endpoint root(request);
         echo_greeted = false;
         exported_config = false;
-        if (auto device_endpoint = parser / "api" / "dev" / &id) {
+        if (auto device_endpoint = root / "api" / "dev" / &id) {
             if (device_endpoint / "echo" / &name)
                 echo_greeted = true;
             if (device_endpoint / "system" / "config")
@@ -97,11 +97,11 @@ TEST_CASE("parsing logic with two branches", "Parser") {
 
 TEST_CASE("matched Uri calls GET handler", "Parser") {
     Rest::UriRequest request(Rest::HttpGet, "/api/dev/6/echo/john.doe");
-    Rest::Parser parser(request);
+    Rest::Endpoint root(request);
     bool hit = false;
     int id = 0;
     std::string name = "jane";
-    auto good = parser / "api" / "dev" / &id / "echo" / &name / Rest::GET([&]() { hit = true; return 200; });
+    auto good = root / "api" / "dev" / &id / "echo" / &name / Rest::GET([&]() { hit = true; return 200; });
     REQUIRE(good.status == 200);
     REQUIRE(id == 6);
     REQUIRE(name == "john.doe");
@@ -110,11 +110,11 @@ TEST_CASE("matched Uri calls GET handler", "Parser") {
 
 TEST_CASE("matched Uri calls GET handler amongst PUT handler", "Parser") {
     Rest::UriRequest request(Rest::HttpGet, "/api/dev/6/echo/john.doe");
-    Rest::Parser parser(request);
+    Rest::Endpoint root(request);
     bool hit = false;
     int id = 0;
     std::string name = "jane";
-    auto good = parser / "api" / "dev" / &id / "echo" / &name
+    auto good = root / "api" / "dev" / &id / "echo" / &name
             / Rest::PUT([&]() { hit = true; return 500; })
             / Rest::GET([&]() { hit = true; return 200; });
     REQUIRE(good.status == 200);
@@ -125,11 +125,11 @@ TEST_CASE("matched Uri calls GET handler amongst PUT handler", "Parser") {
 
 TEST_CASE("matched Uri calls PUT handler before GET handler", "Parser") {
     Rest::UriRequest request(Rest::HttpPut, "/api/dev/6/echo/john.doe");
-    Rest::Parser parser(request);
+    Rest::Endpoint root(request);
     bool hit = false;
     int id = 0;
     std::string name = "jane";
-    auto good = parser / "api" / "dev" / &id / "echo" / &name
+    auto good = root / "api" / "dev" / &id / "echo" / &name
                 / Rest::PUT([&]() { hit = true; return 200; })
                 / Rest::GET([&]() { hit = true; return 500; });
     REQUIRE(good.status == 200);
@@ -140,11 +140,11 @@ TEST_CASE("matched Uri calls PUT handler before GET handler", "Parser") {
 
 TEST_CASE("matched Uri calls PUT handler with UriRequest arg", "Parser") {
     Rest::UriRequest request(Rest::HttpPut, "/api/dev/6/echo/john.doe/and/jane");
-    Rest::Parser parser(request);
+    Rest::Endpoint root(request);
     int hit = 0;
     int id = 0;
     std::string name = "jane";
-    auto good = parser / "api" / "dev" / &id / "echo" / &name
+    auto good = root / "api" / "dev" / &id / "echo" / &name
                 / Rest::PUT([&](const Rest::UriRequest& req) {
                     hit = req.words.size();
                     return 200;
@@ -158,12 +158,12 @@ TEST_CASE("matched Uri calls PUT handler with UriRequest arg", "Parser") {
 
 TEST_CASE("matched Uri calls PUT handler with Parser arg", "Parser") {
     Rest::UriRequest request(Rest::HttpPut, "/api/dev/6/echo/john.doe/and/jane");
-    Rest::Parser parser(request);
+    Rest::Endpoint root(request);
     int hit = 0;
     int id = 0;
     std::string name = "jane";
-    auto good = parser / "api" / "dev" / &id / "echo" / &name
-                / Rest::PUT([&](const Rest::Parser& p) {
+    auto good = root / "api" / "dev" / &id / "echo" / &name
+                / Rest::PUT([&](const Rest::Endpoint& p) {
                     hit = p.token;
                     return 200;
                 })

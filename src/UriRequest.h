@@ -14,8 +14,6 @@
 
 namespace Rest {
 
-    class Parser;
-
     extern const char* ApplicationJsonMimeType;
 
     // indicates a default Rest handler that matches any http verb request
@@ -65,53 +63,18 @@ namespace Rest {
 
     };
 
-    class UriRequestHandler: public UriRequestMatch {
-    public:
-        UriRequestHandler(HttpMethod _method, std::function<int()> _handler)
-                : UriRequestMatch(_method), handler(std::move(_handler)), handlerType(0)
-        {}
 
-        UriRequestHandler(HttpMethod _method, std::function<int(const UriRequest&)> _handler)
-                : UriRequestMatch(_method), handler_req(std::move(_handler)), handlerType(1)
-        {}
-
-        UriRequestHandler(HttpMethod _method, std::function<int(const Parser&)> _handler)
-                : UriRequestMatch(_method), handler_parser(std::move(_handler)), handlerType(2)
-        {}
-
-        UriRequestHandler(const UriRequestHandler& copy);
-
-        virtual ~UriRequestHandler();
-
-        virtual int call(const Parser& parser);
-
-        short handlerType;
-        union {
-            std::function<int()> handler;
-            std::function<int(const UriRequest&)> handler_req;
-            std::function<int(const Parser&)> handler_parser;
-        };
-    };
-
-
-    template<HttpMethod METHOD>
-    class SimpleUriRequestHandler : public UriRequestHandler {
+    template<HttpMethod METHOD, class TUriRequestHandler>
+    class SimpleUriRequestHandler : public TUriRequestHandler {
     public:
 #if 0
         SimpleUriRequestHandler(std::function<int()> _handler) : UriRequestHandler(METHOD, std::move(_handler)) {}
         SimpleUriRequestHandler(std::function<int(const UriRequest&)> _handler) : UriRequestHandler(METHOD, std::move(_handler)) {}
 #else
         template<class THandler>
-        SimpleUriRequestHandler(THandler _handler) : UriRequestHandler(METHOD, std::move(_handler)) {}
+        SimpleUriRequestHandler(THandler _handler) : TUriRequestHandler(METHOD, std::move(_handler)) {}
 #endif
     };
-
-    using GET = SimpleUriRequestHandler<HttpGet>;
-    using POST = SimpleUriRequestHandler<HttpPost>;
-    using PUT = SimpleUriRequestHandler<HttpPut>;
-    using PATCH = SimpleUriRequestHandler<HttpPatch>;
-    using DELETE = SimpleUriRequestHandler<HttpPut>;
-    using OPTIONS = SimpleUriRequestHandler<HttpOptions>;
 
 
 } //ns:Rest

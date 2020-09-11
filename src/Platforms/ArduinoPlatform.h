@@ -70,16 +70,17 @@ namespace Rest {
         >
         class WebServerRequestHandler : public TWebServerRequestHandler {
         public:
+            using Endpoint = Parser<TRequest>;
+
+            typename Endpoint::Delegate* endpoints;
+
             // types
             using RequestType = TRequest;
             using WebServerType = TWebServer;
 
-            using HandlerType = Handler<TRequest &>;
-            using Endpoints = Rest::Endpoints<HandlerType>;  // is really correct (it was RequestHandler)? endpoints reference self type???
-            using EndpointNode = typename Endpoints::Node;
-
-            // the collection of Rest handlers
-            Endpoints endpoints;
+            WebServerRequestHandler()
+                : endpoints(nullptr) {
+            }
 
             Rest::HttpMethod TranslateHttpMethod(HTTPMethod requestMethod) {
                 // convert our Http method enumeration
@@ -95,71 +96,64 @@ namespace Rest {
             }
 
             virtual bool canHandle(HTTPMethod requestMethod, String uri) {
-                Rest::HttpMethod method = TranslateHttpMethod(requestMethod);
-                return endpoints.queryAccept(method, uri.c_str()) >0;
+                //Rest::HttpMethod method = TranslateHttpMethod(requestMethod);
+                // todo: find out a way to just check for acceptance before parsing
+                //return endpoints.queryAccept(method, uri.c_str()) >0;
+                return true;
             }
 
             virtual bool handle(WebServerType &server, HTTPMethod requestMethod, String requestUri) {
                 Rest::HttpMethod method = TranslateHttpMethod(requestMethod);
-                typename Endpoints::Request req = typename Endpoints::Request(method, requestUri.c_str());
+                RequestType request = RequestType(method, requestUri.c_str());
 
                 // add content-type header
-                req.contentType = server.hasHeader("content-type")
+                request.contentType = server.hasHeader("content-type")
                         ? server.header("content-type").c_str()
                         : Rest::ApplicationJsonMimeType;
 
-                if (endpoints.resolve(req)) {
-                    // convert the Endpoints::Request (UriRequest) into a Rest Request object (with request/response text, etc)
-                    RequestType request(server, req);
-                    request.timestamp = millis();
-                    request.contentType = req.contentType;
 
-                    // check for POST data and parse if it exists
-                    if(request.contentType==Rest::ApplicationJsonMimeType && server.hasArg("plain")) {
-                        DeserializationError error = deserializeJson(
-                                request.body,
-                                server.arg("plain")
-                        );
-                        if(error) {
-                            // generate an error response
-                            request.httpStatus = 400;
-                            server.send(
-                                    400,              // Bad Request
-                                    "text/plain",     // plain text error
-                                    String("expected Json in POST data : ")+error.c_str()     // error string from json parse
-                                    );
-                            return true;
-                        } else
-                            request.hasJson = true;
-                    }
+                // convert the Endpoints::Request (UriRequest) into a Rest Request object (with request/response text, etc)
+                request.timestamp = millis();
 
-                    int rs = req.handler(request);
-                    if(rs == HTTP_RESPONSE_SENT)
-                        return true;    // handler sent its own response (probably non-Json)
-
-                    if (request.httpStatus == 0) {
-                        if (rs == 0)
-                            request.httpStatus = 200;
-                        else if (rs < 200)
-                            request.httpStatus = 400;
-                        else
-                            request.httpStatus = rs;
-                    }
-
-                    // send error code
-                    sendError(server, request.result);
-
-                    // send output to server
-                    String content;
-                    serializeJson(request.response, content);
-                    server.send(request.httpStatus, Rest::ApplicationJsonMimeType, content);
-                    return true;
+                // check for POST data and parse if it exists
+                if(request.contentType==Rest::ApplicationJsonMimeType && server.hasArg("plain")) {
+                    DeserializationError error = deserializeJson(
+                            request.body,
+                            server.arg("plain")
+                    );
+                    if(error) {
+                        // generate an error response
+                        request.httpStatus = 400;
+                        server.send(
+                                400,              // Bad Request
+                                "text/plain",     // plain text error
+                                String("expected Json in POST data : ")+error.c_str()     // error string from json parse
+                                );
+                        return true;
+                    } else
+                        request.hasJson = true;
                 }
 
-                // handler or object not found
-                sendError(server, 404);
-                server.send(404, "text/plain", "Not found");
+                Endpoint root(request);
+                int code = (endpoints && endpoints->delegate(root)) || 404;
+                if(code == HTTP_RESPONSE_SENT)
+                    return true;    // handler sent its own response (probably non-Json)
+
+
+                // send error code
+                sendError(server, request.result);
+
+                // send output to server
+                String content;
+                serializeJson(request.response, content);
+                server.send(code, Rest::ApplicationJsonMimeType, content);
                 return true;
+
+
+                // handler or object not found
+                //sendError(server, 404);
+                //server.send(404, "text/plain", "Not found");
+                //return true;
             }
 
             void sendError(WebServerType &server, const Error& error) {
@@ -168,6 +162,7 @@ namespace Rest {
                     server.sendHeader("x-api-message", error.message );
             }
 
+#if 0
             virtual int defer(Endpoints &endpoints, TRequest &parent) {
                 String _uri_rest = (String)parent["_url"];  // contains the remaining part of the URL
                 typename Endpoints::Request ep = endpoints.resolve(parent.method, _uri_rest.c_str());
@@ -187,13 +182,7 @@ namespace Rest {
                 }
                 return 404;
             }
-
-            // deprecated: this operator will probably disappear soon
-            Endpoints *operator->() { return &endpoints; }
-
-            // inline delegate calls to Endpoints class
-            inline EndpointNode on(const char* expression) { return endpoints.on(expression); }
-
+#endif
         };
 
 
@@ -205,20 +194,18 @@ namespace Rest {
             using ResponseFragment = typename TConfig::ResponseFragment;
 
             using Request = Rest::Generics::Request<
-                    WebServer,
-                    Rest::UriRequest,
-                    RequestFragment,
-                    ResponseFragment
+                    typename TConfig::WebServer,
+                    typename TConfig::RequestFragment,
+                    typename TConfig::ResponseFragment
             >;
 
             using WebServerRequestHandler = Rest::Generics::WebServerRequestHandler<
-                    WebServer,
+                    typename TConfig::WebServer,
                     Request,
                     typename TConfig::WebServerBaseRequestHandler
             >;
 
-            using HandlerType = typename WebServerRequestHandler::HandlerType;
-            using Endpoints = typename WebServerRequestHandler::Endpoints;
+            using Endpoint = Parser<Request>;
         };
 
     }

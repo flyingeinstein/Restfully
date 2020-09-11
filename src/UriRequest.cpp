@@ -63,7 +63,7 @@ namespace Rest {
     };
 
 
-
+#if 0
     UriRequestHandler::UriRequestHandler(const UriRequestHandler& copy)
         : UriRequestMatch(copy), handlerType(copy.handlerType)
     {
@@ -92,5 +92,6 @@ namespace Rest {
         }
         return 0;
     }
+#endif
 
 } //ns:Rest
