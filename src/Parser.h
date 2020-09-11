@@ -9,7 +9,7 @@
 #include "UriRequest.h"
 #include "Exception.h"
 
-#include <algorithm>
+#include <functional>
 
 namespace Rest {
 
@@ -28,31 +28,91 @@ namespace Rest {
         expectEof
     };
 
-
+    template<class TUriRequest>
     class Parser
     {
     public:
-        // parser input string (gets eaten as parsing occurs)
-        UriRequest request;
+        class Delegate {
+        public:
+            //virtual Parser delegate(const Parser& p) const = 0;
+            virtual Parser delegate(Parser& p) = 0;
+        };
 
-        // current token 't' and look-ahead token 'peek' pulled from the input string 'uri' (above)
-        Token t, peek;
-        int token;  // current token being pointed to
+        class Handler: public UriRequestMatch {
+        public:
+            using handlerType0 = std::function<int()>;
+            using handlerType1 = std::function<int(const UriRequest&)>;
+            using handlerType2 = std::function<int(const Parser&)>;
 
-        // parser state machine current state
-        int state;
+            Handler(HttpMethod _method, std::function<int()> _handler)
+                : UriRequestMatch(_method), handler(std::move(_handler)), handlerType(0)
+            {}
+
+            Handler(HttpMethod _method, std::function<int(const UriRequest&)> _handler)
+                : UriRequestMatch(_method), handler_req(std::move(_handler)), handlerType(1)
+            {}
+
+            Handler(HttpMethod _method, std::function<int(const Parser&)> _handler)
+                : UriRequestMatch(_method), handler_parser(std::move(_handler)), handlerType(2)
+            {}
+
+            Handler(const Handler& copy)
+                : UriRequestMatch(copy), handlerType(copy.handlerType)
+            {
+                // using the "placement" copy constructor to properly initialize our union object
+                switch(handlerType) {
+                    case 0: new (&handler) handlerType0(copy.handler); break;
+                    case 1: new (&handler_req) handlerType1 (copy.handler_req); break;
+                    case 2: new (&handler_parser) handlerType2 (copy.handler_parser); break;
+                }
+            }
+
+            virtual ~Handler() {
+                // using the "placement" copy constructor to properly initialize our union object
+                switch(handlerType) {
+                    case 0: handler.~handlerType0(); break;
+                    case 1: handler_req.~handlerType1(); break;
+                    case 2: handler_parser.~handlerType2(); break;
+                }
+            }
+
+            virtual int call(const Parser& parser) {
+                switch(handlerType) {
+                    case 0: return handler();
+                    case 1: return handler_req(*parser._request);
+                    case 2: return handler_parser(parser);
+                }
+                return 0;
+            }
+
+            short handlerType;
+            union {
+                handlerType0 handler;
+                handlerType1 handler_req;
+                handlerType2 handler_parser;
+            };
+        };
+
+    public:
+        UriRequest* _request;
 
         // reference to the previous state in the current parse chain
         // todo: this must be std::sharedp_ptr'ized since we are linking
         Parser *_parent;
+
+        int token;
 
         // parse result
         int status;
 
 
     public:
+        Parser()
+            : _request(nullptr), _parent(nullptr), token(0), status(NoHandler)
+        {}
+
         Parser(UriRequest& request)
-            : request(request), _parent(nullptr), token(0), status(0)
+            : _request(&request), _parent(nullptr), token(0), status(0)
         {
         }
 
@@ -65,71 +125,79 @@ namespace Rest {
         Parser operator/(const char* input) {
             if(status != 0) return *this;
             // compare the current token
-            Token t = request.words[token];
+            Token t = _request->words[token];
             if(t.is(TID_STRING, TID_IDENTIFIER)) {
                 if(strcasecmp(t.s, input) ==0) {
-                    return Parser(request, *this, token + 1, 0);
+                    return Parser(_request, *this, token + 1, 0);
                 }
             }
-            return Parser(request, *this, token, NoHandler);
+            return Parser(_request, *this, token, NoHandler);
         }
 
         Parser operator/(std::string input) {
             if(status != 0) return *this;
             // compare the current token
-            Token t = request.words[token];
+            Token t = _request->words[token];
             if(t.is(TID_STRING, TID_IDENTIFIER)) {
                 input = t.s;
                 if(strcasecmp(t.s, input.c_str()) ==0)
-                    return Parser(request, *this, token + 1, 0);
+                    return Parser(_request, *this, token + 1, 0);
             }
-            return Parser(request, *this, token, NoHandler);
+            return Parser(_request, *this, token, NoHandler);
         }
 
         Parser operator/(std::string* input) {
             if(status != 0) return *this;
             // compare the current token
-            Token t = request.words[token];
+            Token t = _request->words[token];
             if(t.is(TID_STRING, TID_IDENTIFIER)) {
                 *input = t.s;
-                return Parser(request, *this, token + 1, 0);
+                return Parser(_request, *this, token + 1, 0);
             }
-            return Parser(request, *this, token, NoHandler);
+            return Parser(_request, *this, token, NoHandler);
         }
 
         Parser operator/(int input) {
             if(status != 0) return *this;
             // compare the current token
-            Token t = request.words[token];
+            Token t = _request->words[token];
             if(t.is(TID_INTEGER)) {
                 if(t.i == input) {
-                    return Parser(request, *this, token + 1, 0);
+                    return Parser(_request, *this, token + 1, 0);
                 }
             }
-            return Parser(request, *this, token, NoHandler);
+            return Parser(_request, *this, token, NoHandler);
         }
 
         Parser operator/(int* input) {
             if(status != 0) return *this;
             // compare the current token
-            Token t = request.words[token];
+            Token t = _request->words[token];
             if(t.is(TID_INTEGER)) {
                 *input = t.i;        // set variable
-                return Parser(request, *this, token + 1, 0);
+                return Parser(_request, *this, token + 1, 0);
             }
-            return Parser(request, *this, token, NoHandler);
+            return Parser(_request, *this, token, NoHandler);
         }
 
-        Parser operator/(UriRequestHandler handler) {
+        Parser operator/(Handler handler) {
             if (status != 0) return *this;
-            if (handler.matches(request))
+            if (handler.matches(*_request))
                 this->status = handler.call(*this);
             return *this;
         }
 
+        Parser operator/(Delegate& target) {
+            if (status != 0) return *this;
+
+            // send the next token to the delegator
+            auto next = Parser(_request, *this, token, 0);
+            return target.delegate(next);
+        }
+
     protected:
-        Parser(UriRequest& request, Parser& parent, int tokenOrdinal, int _result)
-                : request(request), _parent(&parent), token(tokenOrdinal), status(_result)
+        Parser(UriRequest* request, Parser& parent, int tokenOrdinal, int _result)
+                : _request(request), _parent(&parent), token(tokenOrdinal), status(_result)
         {
         }
     };
