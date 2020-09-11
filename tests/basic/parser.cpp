@@ -174,6 +174,31 @@ TEST_CASE("matched Uri calls PUT handler with Parser arg", "Parser") {
     REQUIRE(hit == 5);
 }
 
+class EchoService : public Rest::Endpoint::Delegate
+{
+public:
+    std::string name;
+
+    Rest::Endpoint delegate(Rest::Endpoint &p) override {
+        return p / "echo" / &name / Rest::GET([this](const Rest::UriRequest& r) {
+            std::cout << "hello " << name << std::endl;
+            return 200;
+        });
+    }
+};
+
+TEST_CASE("match Uri using delegation", "Parser") {
+    Rest::UriRequest request(Rest::HttpGet, "/api/dev/6/echo/john.doe/and/jane");
+    Rest::Endpoint root(request);
+    int id = 0;
+    EchoService echo;
+    auto good = root / "api" / "dev" / &id / echo;
+
+    REQUIRE(good.status == 200);
+    REQUIRE(id == 6);
+    REQUIRE(echo.name == "john.doe");
+}
+
 #if 0
     // each parser function returns an iterator into the parsing, therefor parsing can be re-continued
     // the parser itself would be an iterator then right?
