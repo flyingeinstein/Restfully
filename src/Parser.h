@@ -116,7 +116,7 @@ namespace Rest {
         {}
 
         Parser(UriRequest& request)
-            : _request(&request), _parent(nullptr), _tokenOrdinal(0), status(0)
+            : _request(&request), _parent(nullptr), _tokenOrdinal(0), status(request.status)
         {
         }
 
@@ -168,7 +168,7 @@ namespace Rest {
             auto t = token();
             if(t.is(TID_STRING, TID_IDENTIFIER)) {
                 if(strcasecmp(t.s, input) ==0) {
-                    return Parser(_request, *this, _tokenOrdinal + 1, 0);
+                    return Parser(_request, *this, _tokenOrdinal + 1);
                 }
             }
             return Parser(_request, *this, _tokenOrdinal, NoHandler);
@@ -203,7 +203,7 @@ namespace Rest {
             auto t = token();
             if(t.is(TID_INTEGER)) {
                 if(t.i == input) {
-                    return Parser(_request, *this, _tokenOrdinal + 1, 0);
+                    return Parser(_request, *this, _tokenOrdinal + 1);
                 }
             }
             return Parser(_request, *this, _tokenOrdinal, NoHandler);
@@ -215,7 +215,7 @@ namespace Rest {
             auto t = token();
             if(t.is(TID_INTEGER)) {
                 *input = t.i;        // set variable
-                return Parser(_request, *this, _tokenOrdinal + 1, 0);
+                return Parser(_request, *this, _tokenOrdinal + 1);
             }
             return Parser(_request, *this, _tokenOrdinal, NoHandler);
         }
@@ -229,7 +229,7 @@ namespace Rest {
                 // matched as argument
                 _type = param.type;
                 _name = param.name;
-                return Parser(_request, *this, _tokenOrdinal + 1, 0);
+                return Parser(_request, *this, _tokenOrdinal + 1);
             }
             return Parser(_request, *this, _tokenOrdinal, NoHandler);
         }
@@ -242,13 +242,18 @@ namespace Rest {
                 _type = _arg;
             _name = _arg.name;
             _value = _arg;
-                return Parser(_request, *this, _tokenOrdinal, 0);
+                return Parser(_request, *this, _tokenOrdinal);
         }
 
         Parser operator/(Handler handler) {
             if (status != 0) return *this;
-            if (handler.matches(*_request))
+            if (handler.matches(*_request)) {
                 this->status = handler.call(*this);
+
+                // if handler returned an HTTP status code then we complete
+                if(this->status > 0)
+                    _request->status = this->status;
+            }
             return *this;
         }
 
@@ -256,12 +261,17 @@ namespace Rest {
             if (status != 0) return *this;
 
             // send the next token to the delegator
-            auto next = Parser(_request, *this, _tokenOrdinal, 0);
+            auto next = Parser(_request, *this, _tokenOrdinal);
             return target.delegate(next);
         }
 
 
     protected:
+        Parser(UriRequest* request, Parser& parent, int tokenOrdinal)
+                : _request(request), _parent(&parent), _tokenOrdinal(tokenOrdinal), status(request->status)
+        {
+        }
+
         Parser(UriRequest* request, Parser& parent, int tokenOrdinal, int _result)
                 : _request(request), _parent(&parent), _tokenOrdinal(tokenOrdinal), status(_result)
         {

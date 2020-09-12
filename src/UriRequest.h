@@ -38,8 +38,11 @@ namespace Rest {
         const char *contentType;        // MIME content-type, typically application/json for Rest services
         std::vector<Token> words;       // parsed list of symbols in the Uri
 
+        short status;
+
     public:
-        inline UriRequest() : method(HttpMethodAny), contentType(ApplicationJsonMimeType){}
+        inline UriRequest() : method(HttpMethodAny), contentType(ApplicationJsonMimeType), status(0)
+        {}
 
         UriRequest(HttpMethod _method, const char *_uri);
         UriRequest(HttpMethod _method, std::vector<Token> _uri);
@@ -55,7 +58,7 @@ namespace Rest {
         const char* contentType;
 
         UriRequestMatch() : method(HttpMethodAny), contentType(nullptr) {}
-        UriRequestMatch(HttpMethod _method) : method(_method), contentType(nullptr) {}
+        explicit UriRequestMatch(HttpMethod _method) : method(_method), contentType(nullptr) {}
 
         UriRequestMatch withContentType(const char* contentType) const;
 
