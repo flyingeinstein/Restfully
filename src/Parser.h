@@ -181,7 +181,7 @@ namespace Rest {
             if(t.is(TID_STRING, TID_IDENTIFIER)) {
                 input = t.s;
                 if(strcasecmp(t.s, input.c_str()) ==0)
-                    return Parser(_request, *this, _tokenOrdinal + 1, 0);
+                    return Parser(_request, *this, _tokenOrdinal + 1);
             }
             return Parser(_request, *this, _tokenOrdinal, NoHandler);
         }
@@ -192,10 +192,35 @@ namespace Rest {
             auto t = token();
             if(t.is(TID_STRING, TID_IDENTIFIER)) {
                 *input = t.s;
+                return Parser(_request, *this, _tokenOrdinal + 1);
+            }
+            return Parser(_request, *this, _tokenOrdinal, NoHandler);
+        }
+
+#if defined(ARDUINO)
+        Parser operator/(String input) {
+            if(status != 0) return *this;
+            // compare the current token
+            auto t = token();
+            if(t.is(TID_STRING, TID_IDENTIFIER)) {
+                input = t.s;
+                if(strcasecmp(t.s, input.c_str()) ==0)
+                    return Parser(_request, *this, _tokenOrdinal + 1, 0);
+            }
+            return Parser(_request, *this, _tokenOrdinal, NoHandler);
+        }
+
+        Parser operator/(String* input) {
+            if(status != 0) return *this;
+            // compare the current token
+            auto t = token();
+            if(t.is(TID_STRING, TID_IDENTIFIER)) {
+                *input = t.s;
                 return Parser(_request, *this, _tokenOrdinal + 1, 0);
             }
             return Parser(_request, *this, _tokenOrdinal, NoHandler);
         }
+#endif
 
         Parser operator/(int input) {
             if(status != 0) return *this;

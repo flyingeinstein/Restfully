@@ -104,7 +104,7 @@ namespace Rest {
 
             virtual bool handle(WebServerType &server, HTTPMethod requestMethod, String requestUri) {
                 Rest::HttpMethod method = TranslateHttpMethod(requestMethod);
-                RequestType request = RequestType(method, requestUri.c_str());
+                RequestType request = RequestType(server, UriRequest(method, requestUri.c_str()));
 
                 // add content-type header
                 request.contentType = server.hasHeader("content-type")

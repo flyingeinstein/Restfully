@@ -5,7 +5,6 @@
 #include <catch.hpp>
 
 #include <cstring>
-#include <stdio.h>
 #include <iostream>
 #include <map>
 
