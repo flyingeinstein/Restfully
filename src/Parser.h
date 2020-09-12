@@ -102,23 +102,22 @@ namespace Rest {
         // todo: this must be std::sharedp_ptr'ized since we are linking
         Parser *_parent;
 
-        int token;
+        int _tokenOrdinal;
 
         // parse result
         int status;
 
-        // indicates type information for this node
-        Type typeinfo;
-        Name name;
-        Variant arg;
+        Type _type;             // type information for this node (either explicitly set or derived from Token)
+        Name _name;             // node name. Will be valid for arguments but typically blank for const path nodes
+        Variant _value;         // preset value of this node (usually the value is derived from the token)
 
     public:
         Parser()
-            : _request(nullptr), _parent(nullptr), token(0), status(NoHandler)
+            : _request(nullptr), _parent(nullptr), _tokenOrdinal(0), status(NoHandler)
         {}
 
         Parser(UriRequest& request)
-            : _request(&request), _parent(nullptr), token(0), status(0)
+            : _request(&request), _parent(nullptr), _tokenOrdinal(0), status(0)
         {
         }
 
@@ -128,29 +127,36 @@ namespace Rest {
 
         inline bool isSuccessful() const { return status == 0 || (status >= 200 && status < 300); }
 
+        Token token() const {
+            return (_tokenOrdinal >= 0 && _tokenOrdinal < _request->words.size())
+                ? _request->words[_tokenOrdinal]
+                : Token();
+        }
+
+        inline int ordinal() const { return _tokenOrdinal; }
+
+        Type type() const {
+            return _type.isVoid()
+            ? typeFromToken(token())
+            : _type;
+        }
+
+#if defined(ARDUINO)
+        String name() const { return String(_name.value()); }
+#else
+        std::string name() const { return std::string(_name.value()); }
+#endif
+
+        Variant value() const {
+            return _value.empty()
+               ? valueFromToken(token())
+               : _value;
+        }
 
         Argument operator[](const char* argname) const {
-            if(name && strcmp(name.value(), argname)==0) {
+            if(_name && strcmp(_name.value(), argname) == 0) {
                 // check if we have a preset value for this node
-                if(!arg.empty())
-                    return Argument(name, arg);
-
-                // the argument is the token value
-                Token t = _request->words[token];
-                switch(t.id) {
-                    case TID_IDENTIFIER:
-                    case TID_STRING:
-                    case TID_ERROR:
-                        return Argument(name, t.s);
-                    case TID_INTEGER:
-                        return Argument(name, t.i);
-                    case TID_BOOL:
-                        return Argument(name, t.i > 0);
-                    case TID_FLOAT:
-                        return Argument(name, t.d);
-                    default:
-                        return Argument();
-                }
+                return Argument(_name, value());
             }
             return _parent
                 ? _parent->operator[](argname)
@@ -160,73 +166,73 @@ namespace Rest {
         Parser operator/(const char* input) {
             if(status != 0) return *this;
             // compare the current token
-            Token t = _request->words[token];
+            auto t = token();
             if(t.is(TID_STRING, TID_IDENTIFIER)) {
                 if(strcasecmp(t.s, input) ==0) {
-                    return Parser(_request, *this, token + 1, 0);
+                    return Parser(_request, *this, _tokenOrdinal + 1, 0);
                 }
             }
-            return Parser(_request, *this, token, NoHandler);
+            return Parser(_request, *this, _tokenOrdinal, NoHandler);
         }
 
         Parser operator/(std::string input) {
             if(status != 0) return *this;
             // compare the current token
-            Token t = _request->words[token];
+            auto t = token();
             if(t.is(TID_STRING, TID_IDENTIFIER)) {
                 input = t.s;
                 if(strcasecmp(t.s, input.c_str()) ==0)
-                    return Parser(_request, *this, token + 1, 0);
+                    return Parser(_request, *this, _tokenOrdinal + 1, 0);
             }
-            return Parser(_request, *this, token, NoHandler);
+            return Parser(_request, *this, _tokenOrdinal, NoHandler);
         }
 
         Parser operator/(std::string* input) {
             if(status != 0) return *this;
             // compare the current token
-            Token t = _request->words[token];
+            auto t = token();
             if(t.is(TID_STRING, TID_IDENTIFIER)) {
                 *input = t.s;
-                return Parser(_request, *this, token + 1, 0);
+                return Parser(_request, *this, _tokenOrdinal + 1, 0);
             }
-            return Parser(_request, *this, token, NoHandler);
+            return Parser(_request, *this, _tokenOrdinal, NoHandler);
         }
 
         Parser operator/(int input) {
             if(status != 0) return *this;
             // compare the current token
-            Token t = _request->words[token];
+            auto t = token();
             if(t.is(TID_INTEGER)) {
                 if(t.i == input) {
-                    return Parser(_request, *this, token + 1, 0);
+                    return Parser(_request, *this, _tokenOrdinal + 1, 0);
                 }
             }
-            return Parser(_request, *this, token, NoHandler);
+            return Parser(_request, *this, _tokenOrdinal, NoHandler);
         }
 
         Parser operator/(int* input) {
             if(status != 0) return *this;
             // compare the current token
-            Token t = _request->words[token];
+            auto t = token();
             if(t.is(TID_INTEGER)) {
                 *input = t.i;        // set variable
-                return Parser(_request, *this, token + 1, 0);
+                return Parser(_request, *this, _tokenOrdinal + 1, 0);
             }
-            return Parser(_request, *this, token, NoHandler);
+            return Parser(_request, *this, _tokenOrdinal, NoHandler);
         }
 
         /// @brief expect a parameter of specific type and store as an argument
         Parser operator/(Parameter param) {
             if (status != 0) return *this;
 
-            Token t = _request->words[token];
+            auto t = token();
             if(typeMatch(t.id, param.type)) {
                 // matched as argument
-                typeinfo = param.type;
-                name = param.name;
-                return Parser(_request, *this, token + 1, 0);
+                _type = param.type;
+                _name = param.name;
+                return Parser(_request, *this, _tokenOrdinal + 1, 0);
             }
-            return Parser(_request, *this, token, NoHandler);
+            return Parser(_request, *this, _tokenOrdinal, NoHandler);
         }
 
         /// @brief store a variable in an argument without reading from input Uri
@@ -234,10 +240,10 @@ namespace Rest {
             if (status != 0) return *this;
 
                 // matched as argument
-                typeinfo = _arg;
-                name = _arg.name;
-                arg = _arg;
-                return Parser(_request, *this, token, 0);
+                _type = _arg;
+            _name = _arg.name;
+            _value = _arg;
+                return Parser(_request, *this, _tokenOrdinal, 0);
         }
 
         Parser operator/(Handler handler) {
@@ -251,14 +257,14 @@ namespace Rest {
             if (status != 0) return *this;
 
             // send the next token to the delegator
-            auto next = Parser(_request, *this, token, 0);
+            auto next = Parser(_request, *this, _tokenOrdinal, 0);
             return target.delegate(next);
         }
 
 
     protected:
         Parser(UriRequest* request, Parser& parent, int tokenOrdinal, int _result)
-                : _request(request), _parent(&parent), token(tokenOrdinal), status(_result)
+                : _request(request), _parent(&parent), _tokenOrdinal(tokenOrdinal), status(_result)
         {
         }
 
@@ -277,6 +283,41 @@ namespace Rest {
                     return tokenType >= TID_STRING;
                 default:
                     return false;
+            }
+        }
+
+        static Type typeFromToken(short tokenType) {
+            switch(tokenType) {
+                case TID_IDENTIFIER:
+                case TID_STRING:
+                case TID_ERROR:
+                    return Type(ARG_MASK_STRING);
+                case TID_INTEGER:
+                    return Type(ARG_MASK_INTEGER);
+                case TID_BOOL:
+                    return Type(ARG_MASK_BOOLEAN);
+                case TID_FLOAT:
+                    return Type(ARG_MASK_REAL);
+                default:
+                    return Type();
+            }
+        }
+
+        static Variant valueFromToken(Token t) {
+            // the argument is the token value
+            switch(t.id) {
+                case TID_IDENTIFIER:
+                case TID_STRING:
+                case TID_ERROR:
+                    return Variant(t.s);
+                case TID_INTEGER:
+                    return Variant(t.i);
+                case TID_BOOL:
+                    return Variant(t.i > 0);
+                case TID_FLOAT:
+                    return Variant(t.d);
+                default:
+                    return Variant();
             }
         }
     };

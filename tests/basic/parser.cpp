@@ -164,7 +164,7 @@ TEST_CASE("matched Uri calls PUT handler with Parser arg", "Parser") {
     std::string name = "jane";
     auto good = root / "api" / "dev" / &id / "echo" / &name
                 / Rest::PUT([&](const Rest::Endpoint& p) {
-                    hit = p.token;
+                    hit = p.ordinal();
                     return 200;
                 })
                 / Rest::GET([&]() { hit = 1; return 500; });

@@ -55,6 +55,7 @@ namespace Rest {
         inline bool operator==(unsigned short _type) const { return _type == type_mask; }
         inline bool operator==(const Type& rhs) const { return type_mask == rhs.type_mask; }
 
+        inline bool isVoid() const { return type_mask == 0; }
         inline bool isInteger() const { return (type_mask & ARG_MASK_INTEGER); }
         inline bool isSigned() const { return (type_mask & ARG_MASK_INTEGER) && (type_mask & ARG_MASK_UNSIGNED)==0; }
         inline bool isUnsigned() const { return (type_mask & ARG_MASK_INTEGER) && (type_mask & ARG_MASK_UNSIGNED); }
