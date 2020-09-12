@@ -181,29 +181,25 @@ namespace Rest {
         inline bool isObject() const { return _type == ARG_MASK_OBJECT || _type == ARG_MASK_CONST_OBJECT; }
 */
         // only supported in C++11
-        inline explicit operator int() const { if(!isInteger()) throw std::bad_cast(); return (int)l; }
-        inline explicit operator unsigned int() const { if(!isInteger()) throw std::bad_cast(); return (int)ul; }
-        inline explicit operator long() const { if(!isInteger()) throw std::bad_cast(); return l; }
-        inline explicit operator unsigned long() const { if(!isInteger()) throw std::bad_cast(); return ul; }
-        inline explicit operator double() const { if(!isInteger() && !isReal()) throw std::bad_cast(); return isReal() ? d : (double)l; }
+        inline explicit operator int() const { assert_cast(isInteger()); return (int)l; }
+        inline explicit operator unsigned int() const { assert_cast(isInteger()); return (int)ul; }
+        inline explicit operator long() const { assert_cast(isInteger()); return l; }
+        inline explicit operator unsigned long() const { assert_cast(isInteger()); return ul; }
+        inline explicit operator double() const { assert_cast(isInteger() || isReal()); return isReal() ? d : (double)l; }
         inline explicit operator bool() const { return isBoolean() ? b : (ul > 0); }
-        inline explicit operator const char*() const { if(!isString()) throw std::bad_cast(); return s; }
+        inline explicit operator const char*() const { assert_cast(isString()); return s; }
 
         template<class T>
         inline const T& get() const {
-            if(!isObject())
-                throw Rest::Exception(InvalidParameterType);
+            assert_cast(isObject());
             return *(T*)obj;
         }
 
         template<class T>
         inline T& get() {
-            if(!isObject())
-                throw std::bad_cast();
-            else if(isConstObject())
-                throw std::bad_cast();
-            else
-                return *(T*)obj;
+            assert_cast(isObject());
+            assert_cast(!isConstObject());
+            return *(T*)obj;
         }
 
 

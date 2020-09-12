@@ -6,8 +6,20 @@
 #define RESTFULLY_EXCEPTION_H
 
 #include <exception>
+#include <cassert>
+
+#if defined(ARDUINO)
+#include <Arduino.h>
+#endif
+
 
 namespace Rest {
+
+#if defined(ARDUINO)
+    inline void assert_cast(bool test) { Serial.write("bad type cast\n"); assert(test); }
+#else
+    inline void assert_cast(bool test) { if(!test) throw std::bad_cast(); }
+#endif
 
     typedef enum {
         UriMatched                          = 1,
