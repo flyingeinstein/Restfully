@@ -138,24 +138,20 @@ namespace Rest {
             return isString() && (strcmp(s, text) == 0);
         }
 
-        bool operator==(int n) const {
-            return isInteger() && (l == n);
-        }
+        inline bool operator==(int n) const { return operator==( (long)n ); }
 
-        bool operator==(unsigned int n) const {
-            return isInteger() && (l == n);
-        }
+        inline bool operator==(unsigned int n) const { return operator==( (unsigned long)n ); }
 
         bool operator==(long n) const {
-            return isInteger() && (l == n);
+            return (isInteger() && (l == n)) || (isUnsigned() && (n>0) && ((long)ul == n));
         }
 
         bool operator==(unsigned long n) const {
-            return isInteger() && (ul == n);
+            return (isUnsigned() && (ul == n)) || (isInteger() && ((unsigned long)l == n));
         }
 
         bool operator==(double n) const {
-            return ((isReal() && (d == n)) || (isInteger() && ((double)l == n)));
+            return ((isReal() && (d == n))) || (isInteger() && ((double)l == n));
         }
 
         inline bool operator!=(const Variant& rhs) const { return !operator==(rhs); }
@@ -212,19 +208,19 @@ namespace Rest {
 
 
 #if defined(ARDUINO)
-        inline explicit operator String() const { assert(type&ARG_MASK_STRING); return String(s); }
+        inline explicit operator String() const { assert(isString()); return String(s); }
 
         String toString() const {
-          if(type & ARG_MASK_STRING)
+          if(isString())
             return String(s);
-          else if((type&ARG_MASK_INTEGER)==ARG_MASK_INTEGER)
+          else if(isInteger())
             return String(l, 10);
-          else if((type&ARG_MASK_UINTEGER)==ARG_MASK_UINTEGER)
+          else if(isUnsigned())
             return String(ul, 10);
-          else if((type&ARG_MASK_NUMBER)==ARG_MASK_NUMBER)
+          else if(isReal())
             return String(d,5);
-          else if((type&ARG_MASK_BOOLEAN)==ARG_MASK_BOOLEAN)
-            return String( b ? "true":"false" );
+          else if(isBoolean())
+            return String( b ? "true" : "false" );
           else
             return String();
         }

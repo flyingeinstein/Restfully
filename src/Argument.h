@@ -18,11 +18,11 @@ namespace Rest {
         Argument() {};
 
         Argument(const Name& _name, const Variant& var)
-                : name(_name), Variant(var)
+                : Variant(var), name(_name)
         {}
 
         Argument(Name&& _name, Variant&& var)
-            : name(std::move(_name)), Variant(std::move(var))
+            : Variant(std::move(var)), name(std::move(_name))
         {}
 
         template<class T> static Argument from(Name _name, T& obj) {
