@@ -66,6 +66,12 @@ namespace Rest {
                       hasJson(false), timestamp(0), httpStatus(0)
             {}
 
+            Request(WebServerType& _server, HttpMethod _method, const char *_uri )
+                    : UriRequest(_method, _uri), server(_server),
+                      hasJson(false), timestamp(0), httpStatus(0)
+            {}
+
+
             Request(Request& copy)
                 : UriRequest(copy), TRequestFragment(copy), TResponseFragment(copy),
                   server(copy.server), hasJson(copy.hasJson),

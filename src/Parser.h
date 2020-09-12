@@ -42,18 +42,18 @@ namespace Rest {
         class Handler: public UriRequestMatch {
         public:
             using handlerType0 = std::function<int()>;
-            using handlerType1 = std::function<int(UriRequest&)>;
+            using handlerType1 = std::function<int(TUriRequest&)>;
             using handlerType2 = std::function<int(const Parser&)>;
 
-            Handler(HttpMethod _method, std::function<int()> _handler)
+            Handler(HttpMethod _method, handlerType0 _handler)
                 : UriRequestMatch(_method), handler(std::move(_handler)), handlerType(0)
             {}
 
-            Handler(HttpMethod _method, std::function<int(UriRequest&)> _handler)
+            Handler(HttpMethod _method, handlerType1 _handler)
                 : UriRequestMatch(_method), handler_req(std::move(_handler)), handlerType(1)
             {}
 
-            Handler(HttpMethod _method, std::function<int(const Parser&)> _handler)
+            Handler(HttpMethod _method, handlerType2 _handler)
                 : UriRequestMatch(_method), handler_parser(std::move(_handler)), handlerType(2)
             {}
 
@@ -86,16 +86,16 @@ namespace Rest {
                 return 0;
             }
 
-            short handlerType;
             union {
                 handlerType0 handler;
                 handlerType1 handler_req;
                 handlerType2 handler_parser;
             };
+            short handlerType;
         };
 
     public:
-        UriRequest* _request;
+        TUriRequest* _request;
 
         // reference to the previous state in the current parse chain
         // todo: this must be std::sharedp_ptr'ized since we are linking
@@ -115,7 +115,7 @@ namespace Rest {
             : _request(nullptr), _parent(nullptr), _tokenOrdinal(0), status(NoHandler)
         {}
 
-        explicit Parser(UriRequest& request)
+        explicit Parser(TUriRequest& request)
             : _request(&request), _parent(nullptr), _tokenOrdinal(0), status(request.status)
         {
         }
@@ -292,12 +292,12 @@ namespace Rest {
 
 
     protected:
-        Parser(UriRequest* request, Parser& parent, int tokenOrdinal)
+        Parser(TUriRequest* request, Parser& parent, int tokenOrdinal)
                 : _request(request), _parent(&parent), _tokenOrdinal(tokenOrdinal), status(request->status)
         {
         }
 
-        Parser(UriRequest* request, Parser& parent, int tokenOrdinal, int _result)
+        Parser(TUriRequest* request, Parser& parent, int tokenOrdinal, int _result)
                 : _request(request), _parent(&parent), _tokenOrdinal(tokenOrdinal), status(_result)
         {
         }
