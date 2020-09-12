@@ -1,7 +1,7 @@
 project(basic-tests)
 
 #set(SOURCE_FILES requests.h basic-tests.cpp StringPoolTests.cpp Arguments.cc pagedpool.cc HandlerTests.cpp RestRequestTests.cpp RestEndpointsTests.cpp RestRequestVptrTests.cpp)
-set(SOURCE_FILES basic-tests.cpp uri-request.cpp parser.cpp)
+set(SOURCE_FILES basic-tests.cpp PagedPoolTests.cpp StringPoolTests.cpp UriRequestTests.cpp ParserTests.cpp)
 add_executable(basic-tests ${SOURCE_FILES})
 add_dependencies(basic-tests restfully)
 
@@ -22,4 +22,4 @@ install(TARGETS basic-tests
         RUNTIME DESTINATION "${APP_INSTALL_PREFIX}/tests")
 
 # include the generated list of cmake tests
-include(CMakeTests.txt)
+#include(CMakeTests.txt)
