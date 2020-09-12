@@ -42,14 +42,14 @@ namespace Rest {
         class Handler: public UriRequestMatch {
         public:
             using handlerType0 = std::function<int()>;
-            using handlerType1 = std::function<int(const UriRequest&)>;
+            using handlerType1 = std::function<int(UriRequest&)>;
             using handlerType2 = std::function<int(const Parser&)>;
 
             Handler(HttpMethod _method, std::function<int()> _handler)
                 : UriRequestMatch(_method), handler(std::move(_handler)), handlerType(0)
             {}
 
-            Handler(HttpMethod _method, std::function<int(const UriRequest&)> _handler)
+            Handler(HttpMethod _method, std::function<int(UriRequest&)> _handler)
                 : UriRequestMatch(_method), handler_req(std::move(_handler)), handlerType(1)
             {}
 
@@ -77,7 +77,7 @@ namespace Rest {
                 }
             }
 
-            virtual int call(const Parser& parser) {
+            virtual int call(Parser& parser) {
                 switch(handlerType) {
                     case 0: return handler();
                     case 1: return handler_req(*parser._request);
@@ -115,7 +115,7 @@ namespace Rest {
             : _request(nullptr), _parent(nullptr), _tokenOrdinal(0), status(NoHandler)
         {}
 
-        Parser(UriRequest& request)
+        explicit Parser(UriRequest& request)
             : _request(&request), _parent(nullptr), _tokenOrdinal(0), status(request.status)
         {
         }
