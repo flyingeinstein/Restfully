@@ -204,7 +204,7 @@ TEST_CASE("matched Uri with Integer Argument", "Parser") {
     Rest::Endpoint root(request);
     bool hit = false;
     std::string name = "jane";
-    auto good = root / "api" / "dev" / Rest::Type("devid", ARG_MASK_INTEGER) / "echo" / &name / Rest::GET([&]() { hit = true; return 200; });
+    auto good = root / "api" / "dev" / Rest::Parameter::Integer("devid") / "echo" / &name / Rest::GET([&]() { hit = true; return 200; });
     auto devid = good["devid"];
     REQUIRE(good.status == 200);
     REQUIRE(devid.isInteger());
@@ -218,13 +218,37 @@ TEST_CASE("matched Uri with String Argument", "Parser") {
     Rest::Endpoint root(request);
     bool hit = false;
     int id = 0;
-    auto good = root / "api" / "dev" / &id / "echo" / Rest::Type("name", ARG_MASK_STRING) / Rest::GET([&]() { hit = true; return 200; });
+    auto good = root / "api" / "dev" / &id / "echo" / Rest::Parameter::String("name") / Rest::GET([&]() { hit = true; return 200; });
     auto name = good["name"];
     REQUIRE(good.status == 200);
     REQUIRE(name.isString());
     REQUIRE(name == "john.doe");
     REQUIRE(id == 6);
     REQUIRE(hit);
+}
+
+class Device
+{
+public:
+    int id;
+};
+
+TEST_CASE("endpoint with object argument embedding", "Parser") {
+    Rest::UriRequest request(Rest::HttpGet, "/api/dev/echo/john.doe");
+    Rest::Endpoint root(request);
+    int hit = 0;
+    Device dev;
+    dev.id = 5;
+    auto good = root / "api" / "dev" / Rest::Argument::from("device", dev) / "echo" / Rest::Parameter::String("name") / Rest::GET([&](const Rest::Endpoint& p) {
+        auto dev = p["device"];
+        hit = dev.get<Device>().id;
+        return 200;
+    });
+    auto name = good["name"];
+    REQUIRE(good.status == 200);
+    REQUIRE(name.isString());
+    REQUIRE(name == "john.doe");
+    REQUIRE(hit == dev.id);
 }
 
 
