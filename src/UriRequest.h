@@ -34,21 +34,46 @@ namespace Rest {
 
     class UriRequest {
     public:
+        typedef enum {
+            Accept,             // request is only checking if we should handle the Uri or pass on to the next handler
+            Execute             // request is to fully execute and fulfill the request output
+        } Intent;
+
+    public:
         HttpMethod method;              // HTTP Request method: GET, POST, PUT, PATCH, DELETE, OPTIONS, etc
         const char *contentType;        // MIME content-type, typically application/json for Rest services
+        Intent intent;
         std::vector<Token> words;       // parsed list of symbols in the Uri
 
         short status;
 
     public:
-        inline UriRequest() : method(HttpMethodAny), contentType(ApplicationJsonMimeType), status(0)
+        inline UriRequest() : method(HttpMethodAny), contentType(ApplicationJsonMimeType), intent(Execute), status(0)
         {}
 
         UriRequest(HttpMethod _method, const char *_uri);
-        UriRequest(HttpMethod _method, std::vector<Token> _uri);
+        UriRequest(HttpMethod _method, std::vector<Token>&& _uri);
         UriRequest(const UriRequest &copy);
 
         UriRequest &operator=(const UriRequest &copy);
+
+        /// @brief If the intention of the request was only to check if we should accept the Uri
+        /// then this completes the request processing with the given return code.
+        virtual short accept(short code = 200) {
+            if(intent == Accept) {
+                complete(code);
+                return code;
+            } else
+                return 0;
+        }
+
+        /// @brief stops any further Uri processing and returns the given code to the requestor
+        virtual void complete(short code) {
+            status = code;
+        }
+
+        inline bool isSuccessful() const { return status >= 200 && status < 300; }
+
     };
 
 

@@ -20,13 +20,13 @@ namespace Rest {
         }
     }
 
-    UriRequest::UriRequest(HttpMethod _method, std::vector<Token> _words)
-        : method(_method), contentType(ApplicationJsonMimeType), words(_words), status(0)
+    UriRequest::UriRequest(HttpMethod _method, std::vector<Token>&& _words)
+        : method(_method), contentType(ApplicationJsonMimeType), intent(Execute), words(std::move(_words)), status(0)
     {
     }
 
     UriRequest::UriRequest(HttpMethod _method, const char *_uri)
-        : method(_method), contentType(ApplicationJsonMimeType), status(0)
+        : method(_method), contentType(ApplicationJsonMimeType), intent(Execute), status(0)
     {
         Rest::Token t;
         do {
@@ -38,13 +38,14 @@ namespace Rest {
     }
 
     UriRequest::UriRequest(const UriRequest &copy)
-        : method(copy.method), contentType(copy.contentType), words(copy.words), status(0)
+        : method(copy.method), contentType(copy.contentType), intent(copy.intent), words(copy.words), status(0)
     {
     }
 
     UriRequest& UriRequest::operator=(const UriRequest &copy) {
         method = copy.method;
         contentType = copy.contentType;
+        intent = copy.intent;
         words = copy.words;
         return *this;
     }

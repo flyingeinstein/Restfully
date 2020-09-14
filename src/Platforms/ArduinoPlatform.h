@@ -95,11 +95,28 @@ namespace Rest {
                 }
             }
 
-            virtual bool canHandle(HTTPMethod requestMethod, String uri) {
+            virtual bool canHandle(HTTPMethod requestMethod, String requestUri) {
+                if(!endpoints)
+                    return false;
+
                 //Rest::HttpMethod method = TranslateHttpMethod(requestMethod);
                 // todo: find out a way to just check for acceptance before parsing
                 //return endpoints.queryAccept(method, uri.c_str()) >0;
-                return true;
+                Rest::HttpMethod method = TranslateHttpMethod(requestMethod);
+
+                // todo: not liking that I am passing null for server!
+                RequestType request(*(WebServerType*)nullptr, method, requestUri.c_str());
+
+                // set the intent of the request only to check acceptance!
+                request.intent = UriRequest::Accept;
+
+                // convert the Endpoints::Request (UriRequest) into a Rest Request object (with request/response text, etc)
+                request.timestamp = millis();
+
+                Endpoint root(request);
+                endpoints->delegate(root);
+
+                return request.isSuccessful();
             }
 
             virtual bool handle(WebServerType &server, HTTPMethod requestMethod, String requestUri) {

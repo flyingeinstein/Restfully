@@ -9,6 +9,7 @@
 #include "Exception.h"
 #include "Parameter.h"
 #include "Argument.h"
+#include "HttpStatus.h"
 
 #include <functional>
 
@@ -120,11 +121,12 @@ namespace Rest {
         {
         }
 
+        Parser accept(short code=200)
+        {
+            return Parser(_request, *this, _tokenOrdinal, code);
+        }
+
         inline operator bool() const { return status >= 0; }
-
-        virtual void abort(int code) { status = code; }
-
-        inline bool isSuccessful() const { return status == 0 || (status >= 200 && status < 300); }
 
         Token token() const {
             return (_tokenOrdinal >= 0 && _tokenOrdinal < _request->words.size())
@@ -133,6 +135,9 @@ namespace Rest {
         }
 
         inline int ordinal() const { return _tokenOrdinal; }
+
+        const TUriRequest& request() const { return *_request; }
+        TUriRequest& request() { return *_request; }
 
         Type type() const {
             return _type.isVoid()
@@ -273,11 +278,11 @@ namespace Rest {
         Parser operator/(Handler handler) {
             if (status != 0) return *this;
             if (handler.matches(*_request)) {
-                this->status = handler.call(*this);
+                status = handler.call(*this);
 
                 // if handler returned an HTTP status code then we complete
-                if(this->status > 0)
-                    _request->status = this->status;
+                if(status > 0)
+                    _request->complete(status);
             }
             return *this;
         }
