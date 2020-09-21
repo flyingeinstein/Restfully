@@ -9,6 +9,7 @@
 #include <cstdio>
 #include <string>
 
+#include "RestTypes.h"
 #include "StringPool.h"
 
 #if defined(HAS_MALLOC_H)
@@ -224,7 +225,6 @@ class Token {
     int scan(const char** pinput, short allow_parameters)
     {
       const char* input = *pinput;
-      char error[512];
 
       clear();
 
@@ -349,9 +349,12 @@ class Token {
       }
 #endif
 
-      sprintf(error, "syntax error, unexpected '%c' in input", *input);
+      // set token to error
+      clear();
+      id = TID_ERROR;
+      s = (char *) calloc(1, 50);
+      sprintf((char*)s, "syntax error, unexpected '%c' in input", *input);
       input++;
-      set(TID_ERROR, error, nullptr);
 
 done:
       *pinput = input;
