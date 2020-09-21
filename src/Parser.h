@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include "RestTypes.h"
 #include "Token.h"
 #include "UriRequest.h"
 #include "Exception.h"
@@ -268,11 +269,11 @@ namespace Rest {
         Parser operator/(Argument _arg) {
             if (status != 0) return *this;
 
-                // matched as argument
-                _type = _arg;
+            // matched as argument
+            _type = _arg;
             _name = _arg.name;
             _value = _arg;
-                return Parser(_request, *this, _tokenOrdinal);
+            return Parser(_request, *this, _tokenOrdinal);
         }
 
         Parser operator/(Handler handler) {

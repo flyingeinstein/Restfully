@@ -30,18 +30,18 @@ namespace Rest {
     namespace Arduino {
         class Request {
         public:
-            Request() {
+            Request(): body(2048) {
             }
 
             Request(const Request &copy) = default;
 
             /// The parsed POST as Json if the content-type was application/json
-            DynamicJsonDocument body { 256 };
+            DynamicJsonDocument body;
         };
 
         class Response {
         public:
-            Response() {
+            Response() : responseDoc(2048) {
                 response = responseDoc.to<JsonObject>();
             }
 
@@ -50,7 +50,7 @@ namespace Rest {
             /// output response object built by Rest method handler.
             /// This object is empty when the method handler is called and is up to the method handler to populate with the
             /// exception of standard errors, warnings and status output which is added when the method handler returns.
-            DynamicJsonDocument responseDoc { 512 };
+            DynamicJsonDocument responseDoc;
             JsonObject response;
 
             // we can set an error code and it will be returned as a response header
@@ -133,7 +133,7 @@ namespace Rest {
                 request.timestamp = millis();
 
                 // check for POST data and parse if it exists
-                if(request.contentType==Rest::ApplicationJsonMimeType && server.hasArg("plain")) {
+                if(strcasecmp(request.contentType, Rest::ApplicationJsonMimeType)==0 && server.hasArg("plain")) {
                     DeserializationError error = deserializeJson(
                             request.body,
                             server.arg("plain")
@@ -147,23 +147,32 @@ namespace Rest {
                                 String("expected Json in POST data : ")+error.c_str()     // error string from json parse
                                 );
                         return true;
-                    } else
+                    } else {
                         request.hasJson = true;
+                    }
+#if (ARDUINOJSON_VERSION_MAJOR>=6) and (ARDUINOJSON_VERSION_MINOR >= 14)
+                    request.body.shrinkToFit();
+#endif
                 }
 
                 Endpoint root(request);
-                int code = (endpoints && endpoints->delegate(root)) || 404;
-                if(code == HTTP_RESPONSE_SENT)
+                endpoints->delegate(root);
+                if(request.status == HTTP_RESPONSE_SENT)
                     return true;    // handler sent its own response (probably non-Json)
 
 
                 // send error code
-                sendError(server, request.result);
+                if(!request.isSuccessful()) {
+                    if(request.status < Rest::OK)
+                        server.sendHeader("x-api-code", String(request.status));
+                    if (!request.message.isEmpty())
+                        server.sendHeader("x-api-message", request.message);
+                }
 
                 // send output to server
                 String content;
                 serializeJson(request.response, content);
-                server.send(code, Rest::ApplicationJsonMimeType, content);
+                server.send(request.status, Rest::ApplicationJsonMimeType, content);
                 return true;
 
 
@@ -171,12 +180,6 @@ namespace Rest {
                 //sendError(server, 404);
                 //server.send(404, "text/plain", "Not found");
                 //return true;
-            }
-
-            void sendError(WebServerType &server, const Error& error) {
-                server.sendHeader("x-api-code", String(error.code) );
-                if(error.message.length() >0)
-                    server.sendHeader("x-api-message", error.message );
             }
 
 #if 0

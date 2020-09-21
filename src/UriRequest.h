@@ -8,6 +8,8 @@
 #pragma once
 
 #include "Token.h"
+#include "HttpStatus.h"
+#include "Exception.h"
 
 #include <vector>
 #include <functional>
@@ -45,7 +47,13 @@ namespace Rest {
         Intent intent;
         std::vector<Token> words;       // parsed list of symbols in the Uri
 
+        // if status >= 200 then returned as a standard http response code,
+        // otherwise http response code is interpreted to 4xx or 5xx and the actual status code is returned as a
+        // x-api-code response header.
         short status;
+
+        // optional x-api-message header if value is non-empty
+        StringType message;
 
     public:
         inline UriRequest() : method(HttpMethodAny), contentType(ApplicationJsonMimeType), intent(Execute), status(0)
@@ -69,6 +77,29 @@ namespace Rest {
 
         /// @brief stops any further Uri processing and returns the given code to the requestor
         virtual void complete(short code) {
+            switch(code) {
+                case UriMatched:
+                case UriMatchedWildcard:
+                case UriAccepted:
+                    status = OK;
+                    break;
+
+                case InvalidHandler:
+                case NoHandler:
+                    status = NotFound;
+                    break;
+
+                case InvalidParameterType:
+                case MissingParameter:
+                    status = BadRequest;
+                    break;
+
+                default:
+                    if(code < 0)
+                        status = InternalServerError;
+                    break;
+
+            }
             status = code;
         }
 
